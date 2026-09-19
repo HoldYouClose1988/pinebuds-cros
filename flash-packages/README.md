@@ -1,5 +1,7 @@
 # Flash packages
 
+> **Work in progress — not a functional CROS product.** Experimental bins only. Not a hearing aid or PPE.
+
 **Current version: v0.1.3**
 
 Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.1.3.zip](./pinebuds-cros-v0.1.3.zip)**.

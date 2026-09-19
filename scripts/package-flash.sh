@@ -216,6 +216,8 @@ EOF
 {
   echo "# Flash packages"
   echo
+  echo "> **Work in progress — not a functional CROS product.** Experimental bins only. Not a hearing aid or PPE."
+  echo
   echo "**Current version: v$VERSION**"
   echo
   echo "Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[$ZIP_NAME](./$ZIP_NAME)**."
