@@ -90,7 +90,7 @@ index e12478e..568a50c 100644
  ##### ANC DEFINE END ######
  
 +#### CROS / Stage A ######
-+# 1 = FF mic → speaker loopback (Monday bring-up)
++# 1 = experimental FF mic → speaker loopback (bring-up)
 +export CROS_STAGE_A ?= 0
 +ifeq ($(CROS_STAGE_A),1)
 +KBUILD_CPPFLAGS += -DCROS_STAGE_A
