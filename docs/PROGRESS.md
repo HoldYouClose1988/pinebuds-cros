@@ -31,6 +31,7 @@ Newest entries at the top. DIY / tinker project — no clinical or PPE claims.
 - [x] Semver (`VERSION`) + changelog + bestool instructions in every zip (**v0.1.0**)
 - [x] ASRMIC table wiring fix (**v0.1.1**) — discard 0.1.0 for clap tests
 - [x] Scrub account/email identifiers from tracked files before public release (**v0.1.2**)
+- [x] Public-push policy: anonymous author, strip Co-authored-by, denylist hooks ([public-git.md](public-git.md))
 - [ ] Monday: backup stock → flash **v0.1.2+** → clap/quad-tap test → report results
 - Windows is the primary flash workstation ([docs/windows-flash.md](windows-flash.md))
 

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Reject staged content that looks like personal identifiers (public-repo policy).
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[[ -n "$ROOT" ]] || exit 0
+
+DENY_FILE="$ROOT/.git/info/public-denylist"
+PATTERNS=()
+
+# Generic email-shaped tokens in staged diff (too noisy for whole-repo; check added lines)
+# Plus local denylist entries (not committed — populated by setup-public-git.sh).
+if [[ -f "$DENY_FILE" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    PATTERNS+=("$line")
+  done <"$DENY_FILE"
+fi
+
+if [[ ${#PATTERNS[@]} -eq 0 ]]; then
+  exit 0
+fi
+
+# Scan staged blob names + patch for denylist hits
+diff="$(git diff --cached -U0 --no-color 2>/dev/null || true)"
+names="$(git diff --cached --name-only 2>/dev/null || true)"
+haystack="$names"$'\n'"$diff"
+
+for p in "${PATTERNS[@]}"; do
+  if grep -qiF -- "$p" <<<"$haystack"; then
+    echo "pre-commit: blocked identifier match for public push policy: '$p'" >&2
+    echo "Remove it from staged files (or update .git/info/public-denylist)." >&2
+    exit 1
+  fi
+done
+
+exit 0

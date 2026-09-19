@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Strip identity trailers Cursor (or other tools) may append to commit messages.
+set -euo pipefail
+
+MSG_FILE="${1:-}"
+[[ -n "$MSG_FILE" && -f "$MSG_FILE" ]] || exit 0
+
+tmp="$(mktemp)"
+awk '
+  BEGIN { IGNORECASE=1 }
+  /^(Co-authored-by|Signed-off-by|Reviewed-by|Acked-by):/ { next }
+  { lines[++n] = $0 }
+  END {
+    while (n > 0 && lines[n] ~ /^[ \t]*$/) n--
+    for (i = 1; i <= n; i++) print lines[i]
+  }
+' "$MSG_FILE" >"$tmp"
+mv "$tmp" "$MSG_FILE"
+exit 0

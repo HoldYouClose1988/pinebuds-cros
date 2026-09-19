@@ -55,6 +55,7 @@ Cloud agents bump `VERSION` / `CHANGELOG.md`, then run `./scripts/package-flash.
 - [Monday checklist — Stage A flash & clap test](docs/monday-checklist.md)
 - [Flash packages](flash-packages/README.md)
 - [Changelog](CHANGELOG.md)
+- [Public git / no-identifiers](docs/public-git.md)
 - [bestool on Windows](docs/bestool-windows.md)
 - [Windows flashing](docs/windows-flash.md) (primary flash workstation)
 - [Hardware overview](docs/hardware.md)

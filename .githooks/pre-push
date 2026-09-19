@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Refuse to push commits that carry personal identifiers (public-repo policy).
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+DENY_FILE="$ROOT/.git/info/public-denylist"
+ALLOWED_EMAIL="${PUBLIC_GIT_EMAIL:-noreply@users.noreply.github.com}"
+
+# stdin: <local_ref> <local_sha> <remote_ref> <remote_sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [[ "$local_sha" =~ ^0+$ ]] && continue
+  if [[ "$remote_sha" =~ ^0+$ ]]; then
+    range="$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+
+  while IFS= read -r commit; do
+    [[ -z "$commit" ]] && continue
+    body="$(git log -1 --format='%B' "$commit")"
+    author_email="$(git log -1 --format='%ae' "$commit")"
+    committer_email="$(git log -1 --format='%ce' "$commit")"
+    author_name="$(git log -1 --format='%an' "$commit")"
+    full="$(git cat-file -p "$commit")"
+
+    if grep -qiE '^(Co-authored-by|Signed-off-by):' <<<"$body"; then
+      echo "pre-push: $commit has identity trailer (Co-authored-by / Signed-off-by)" >&2
+      exit 1
+    fi
+
+    if [[ "$author_email" != "$ALLOWED_EMAIL" || "$committer_email" != "$ALLOWED_EMAIL" ]]; then
+      echo "pre-push: $commit author/committer email must be $ALLOWED_EMAIL" >&2
+      echo "  got author=$author_email committer=$committer_email" >&2
+      exit 1
+    fi
+
+    if [[ -f "$DENY_FILE" ]]; then
+      while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -z "$line" || "$line" =~ ^# ]] && continue
+        if grep -qiF -- "$line" <<<"$full"; then
+          echo "pre-push: $commit matches denylist entry '$line'" >&2
+          exit 1
+        fi
+      done <"$DENY_FILE"
+    fi
+  done < <(git rev-list "$range")
+done
+
+exit 0
