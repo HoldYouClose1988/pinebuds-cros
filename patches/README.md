@@ -8,6 +8,6 @@ Keep patches minimal and feature-scoped.
 
 | Patch | Purpose |
 |-------|---------|
-| `0001-stage-a-ff-loopback.patch` | Wire `CROS_STAGE_A`: build `apps/cros_loopback`, boot auto-start, quad-tap toggle, FF mic as ASRMIC |
+| `0001-stage-a-ff-loopback.patch` | Wire experimental `CROS_STAGE_A` build flag: `apps/cros_loopback`, boot auto-start, quad-tap toggle, FF mic as ASRMIC |
 
-Stage A C sources live in `firmware/stage_a/` (synced into the vendor tree by bootstrap; not in the patch).
+Experimental loopback sources live in `firmware/stage_a/` (synced into the vendor tree by bootstrap; not in the patch).

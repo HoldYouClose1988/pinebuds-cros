@@ -64,7 +64,7 @@ else
   echo "==> OpenPineBuds already cloned"
 fi
 
-# Sync Stage A sources into the vendored SDK (overwrite each bootstrap).
+# Sync experimental loopback sources into the vendored SDK (overwrite each bootstrap).
 if [[ -d "$ROOT/firmware/stage_a" ]]; then
   echo "==> Syncing firmware/stage_a -> vendor/OpenPineBuds/apps/cros_loopback"
   mkdir -p "$VENDOR_DIR/OpenPineBuds/apps/cros_loopback"

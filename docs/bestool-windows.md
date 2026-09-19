@@ -30,7 +30,7 @@ bestool\bestool\target\release\bestool.exe
 
 ### Put it on PATH (pick one)
 
-**Option A — copy next to this flash package** (simplest for Monday):
+**Option A — copy next to this flash package** (simple for one-off flashes):
 
 ```powershell
 Copy-Item .\path\to\bestool.exe .

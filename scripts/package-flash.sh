@@ -126,7 +126,7 @@ EOF
 cat >"$PKG/FLASH.md" <<EOF
 # PineBuds Pro flash package **v$VERSION** ($STAGE)
 
-DIY / own-risk. Not a hearing aid or PPE.
+DIY / own-risk. **Work in progress — not a functional CROS product.** Not a hearing aid or PPE.
 
 Start here → read **\`BESTOOL.md\`** (install flasher) and **\`RELEASE_NOTES.txt\`** (what changed).
 
@@ -174,21 +174,23 @@ Keep \`backups\\*.bin\` somewhere safe.
 
 5. Leave buds in case ~30s for TWS re-pair.
 
-## Stage A clap test
+## Experimental loopback test (if enabled in this build)
 
-- Wear one bud (open-air desk tests can howl).
-- Do **not** play phone music during the test.
-- Clap / talk near the **outer** face (FF mic). You should hear it in that ear.
-- **Quad-tap** toggles loopback off/on.
-- Repeat on the other bud.
+Only if this package was built with the experimental same-bud mic loopback:
+
+- Wear the bud (open-air desk tests can howl).
+- Avoid playing phone music during the test (A2DP can fight the loopback streams).
+- Sound near the **outer** face (FF mic) may be heard in that ear with delay.
+- **Quad-tap** may toggle loopback off/on.
+- This is **not** CROS to the other ear.
 
 ## Flash budget
 
 On-chip flash has limited erase cycles (~500). Flash only when you mean to.
 
-## Report back
+## Feedback
 
-Left/right, worn vs desk, clap vs speech, howl y/n, quad-tap y/n, phone paired y/n.
+If you test a build, note: left/right, worn vs desk, howl y/n, toggle y/n, phone paired y/n.
 EOF
 
 (

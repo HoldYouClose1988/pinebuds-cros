@@ -13,7 +13,7 @@ STAGE_A="${STAGE_A:-1}"
 EXTRA=()
 if [[ "$STAGE_A" == "1" ]]; then
   EXTRA+=(CROS_STAGE_A=1)
-  echo "==> Stage A enabled (FF mic loopback)"
+  echo "==> Experimental FF mic loopback enabled (CROS_STAGE_A=1)"
 fi
 
 echo "==> Building T=$TARGET (jobs=$JOBS) ${EXTRA[*]:-}"

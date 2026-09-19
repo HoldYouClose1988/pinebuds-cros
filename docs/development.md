@@ -41,7 +41,7 @@ Docker is optional. `./scripts/bootstrap-sdk.sh` installs the same GCC tarball u
 ./scripts/build.sh
 ```
 
-Patches live in `patches/` and are applied onto `vendor/OpenPineBuds` during bootstrap (idempotent: skip if already applied). Stage A sources in `firmware/stage_a/` are copied to `apps/cros_loopback/` on every bootstrap.
+Patches live in `patches/` and are applied onto `vendor/OpenPineBuds` during bootstrap (idempotent: skip if already applied). Experimental loopback sources in `firmware/stage_a/` are copied to `apps/cros_loopback/` on every bootstrap.
 
 ### Cursor environment
 

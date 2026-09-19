@@ -6,7 +6,7 @@
 
 **CROS** (contralateral routing of signals): mic on the poor side wirelessly feeds the good-side receiver so the wearer hears “around” the deaf side.
 
-**BiCROS**: same routing, plus amplification / mix on the better ear when that ear also needs help — or, for us, mix of CROS mic + phone A2DP/HFP into the good bud.
+**BiCROS**: same routing, plus amplification / mix on the better ear when that ear also needs help — including mix of CROS mic + phone A2DP/HFP into the good bud.
 
 This project is **experimental consumer firmware**, not a regulated hearing instrument. Latency, gain, and safety limiting must be treated as engineering constraints, not clinical claims.
 
