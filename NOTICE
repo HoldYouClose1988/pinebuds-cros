@@ -1,0 +1,16 @@
+NOTICE
+======
+
+This repository’s own documentation and scripts are MIT-licensed (see LICENSE).
+
+The PineBuds Pro firmware SDK packaged by OpenPineBuds / Bestechnic (“Little Whale”)
+is **not** open source. OpenPineBuds states the SDK should be treated as
+All Rights Reserved / shared source until licensing is resolved.
+
+Do not copy `vendor/OpenPineBuds` (or other BES SDK trees) into public mirrors
+of this project. Bootstrap clones it locally for builds only.
+
+Trademarks and hardware designs belong to their respective owners (PINE64, BES, etc.).
+
+CROS / hearing features in this project are experimental engineering work and are
+not medical devices or certified hearing protection.

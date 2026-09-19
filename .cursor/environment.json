@@ -1,0 +1,3 @@
+{
+  "install": "chmod +x scripts/*.sh\nSKIP_BESTOOL=1 ./scripts/bootstrap-sdk.sh\n./scripts/build.sh"
+}

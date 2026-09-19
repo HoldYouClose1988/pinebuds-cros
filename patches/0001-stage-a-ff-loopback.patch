@@ -1,0 +1,130 @@
+diff --git a/apps/Makefile b/apps/Makefile
+index bfef2e6..cf4ea73 100644
+--- a/apps/Makefile
++++ b/apps/Makefile
+@@ -25,6 +25,10 @@ ifeq ($(VOICE_DETECTOR_EN),1)
+ obj-y += voice_detector/
+ endif
+ 
++ifeq ($(CROS_STAGE_A),1)
++obj-y += cros_loopback/
++endif
++
+ ifeq ($(PC_CMD_UART),1)
+ obj-y += cmd/
+ endif
+diff --git a/apps/main/Makefile b/apps/main/Makefile
+index cb9f317..d9f6956 100644
+--- a/apps/main/Makefile
++++ b/apps/main/Makefile
+@@ -32,6 +32,7 @@ ccflags-y +=  \
+     -Iapps/audioplayers/rbplay \
+     -Itests/anc_usb \
+     -Iapps/anc/inc \
++    -Iapps/cros_loopback \
+     -Iapps/ota \
+     -Ithirdparty/userapi \
+     -Iservices/voicepath \
+diff --git a/apps/main/apps.cpp b/apps/main/apps.cpp
+index 04ea58e..f204946 100644
+--- a/apps/main/apps.cpp
++++ b/apps/main/apps.cpp
+@@ -27,6 +27,9 @@
+ #ifdef ANC_APP
+ #include "app_anc.h"
+ #endif
++#ifdef CROS_STAGE_A
++#include "cros_loopback.h"
++#endif
+ 
+ #ifdef __THIRDPARTY
+ #include "app_thirdparty.h"
+@@ -2409,6 +2412,14 @@ int app_init(void) {
+       nRet = -1;
+     }
+   }
++#ifdef CROS_STAGE_A
++  if (nRet == 0) {
++    TRACE(0, "CROS_STAGE_A: starting FF mic loopback");
++    cros_loopback_init();
++    cros_loopback_start();
++  }
++#endif
++
+ exit:
+ 
+ #ifdef IS_MULTI_AI_ENABLED
+diff --git a/apps/main/key_handler.cpp b/apps/main/key_handler.cpp
+index 14cd130..dad8e9b 100644
+--- a/apps/main/key_handler.cpp
++++ b/apps/main/key_handler.cpp
+@@ -13,6 +13,9 @@
+ #include "app_tws_ibrt_cmd_handler.h"
+ #include "app_utils.h"
+ #include "apps.h"
++#ifdef CROS_STAGE_A
++#include "cros_loopback.h"
++#endif
+ #include "audio_process.h"
+ #include "audioflinger.h"
+ #include "besbt.h"
+@@ -190,6 +193,12 @@ void app_key_triple_tap(APP_KEY_STATUS *status, void *param) {
+ void app_key_quad_tap(APP_KEY_STATUS *status, void *param) {
+   TRACE(2, "%s event %d", __func__, status->event);
+ 
++#ifdef CROS_STAGE_A
++  TRACE(0, "CROS_STAGE_A: quad-tap toggles FF loopback");
++  cros_loopback_toggle();
++  return;
++#endif
++
+   if (!app_tws_ibrt_tws_link_connected()) {
+     // No other bud paired
+     TRACE(0, "Handling %s in single bud mode", __func__);
+diff --git a/config/open_source/target.mk b/config/open_source/target.mk
+index e12478e..568a50c 100644
+--- a/config/open_source/target.mk
++++ b/config/open_source/target.mk
+@@ -89,6 +89,13 @@ APP_ANC_TEST ?= 0
+ export ANC_ASSIST_ENABLED ?= 0
+ ##### ANC DEFINE END ######
+ 
++#### CROS / Stage A ######
++# 1 = FF mic → speaker loopback (Monday bring-up)
++export CROS_STAGE_A ?= 0
++ifeq ($(CROS_STAGE_A),1)
++KBUILD_CPPFLAGS += -DCROS_STAGE_A
++endif
++
+ # Allow test commands via bluetooth
+ TEST_OVER_THE_AIR ?= 0
+ 
+diff --git a/config/open_source/tgt_hardware.c b/config/open_source/tgt_hardware.c
+index a3c41a5..07d869b 100644
+--- a/config/open_source/tgt_hardware.c
++++ b/config/open_source/tgt_hardware.c
+@@ -210,9 +210,15 @@ const struct CODEC_DAC_VOL_T codec_dac_vol[TGT_VOLUME_LEVEL_QTY] = {
+ #define CFG_HW_AUD_INPUT_PATH_VADMIC_DEV                                       \
+   (AUD_CHANNEL_MAP_CH4 | AUD_VMIC_MAP_VMIC1)
+ #else
++#ifdef CROS_STAGE_A
++/* Stage A / CROS: expose FF ambient mic (MIC1 + VMIC2) as ASRMIC path */
++#define CFG_HW_AUD_INPUT_PATH_ASRMIC_DEV                                       \
++  (AUD_CHANNEL_MAP_CH0 | AUD_VMIC_MAP_VMIC2)
++#else
+ #define CFG_HW_AUD_INPUT_PATH_ASRMIC_DEV                                       \
+   (AUD_CHANNEL_MAP_CH4 | AUD_VMIC_MAP_VMIC3)
+ #endif
++#endif
+ 
+ const struct AUD_IO_PATH_CFG_T
+     cfg_audio_input_path_cfg[CFG_HW_AUD_INPUT_PATH_NUM] = {
+@@ -232,7 +238,7 @@ const struct AUD_IO_PATH_CFG_T
+ #else
+         {
+             AUD_INPUT_PATH_ASRMIC,
+-            CFG_HW_AUD_INPUT_PATH_MAINMIC_DEV,
++            CFG_HW_AUD_INPUT_PATH_ASRMIC_DEV,
+         },
+ #endif
+ };

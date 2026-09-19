@@ -1,0 +1,12 @@
+# Local toolchain + vendored BES SDK (not redistributed from this repo)
+.tools/
+vendor/
+backups/
+build.log
+*.bin
+!flash-packages/**/*.bin
+*.o
+*.elf
+*.map
+.DS_Store
+agent-tools/
