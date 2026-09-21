@@ -5,6 +5,12 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.1.5] — 2026-09-21
+
+### Package
+- New flash zip with ASCII-safe `backup.ps1` (fixes Windows PowerShell parse error)
+- Same experimental firmware bin as v0.1.3/v0.1.4
+
 ## [0.1.4] — 2026-09-21
 
 ### Package
