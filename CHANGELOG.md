@@ -3,7 +3,12 @@
 All notable flash-package / firmware iterations for PineBuds Pro CROS + SITE.
 Format: version, date (UTC), then user-facing changes.
 
-**This project is a work in progress and is not a functional CROS product.** DIY / own-risk — not a hearing aid or PPE.
+**This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
+
+## [0.1.4] — 2026-09-21
+
+### Package
+- Fix `backup.ps1` parse error on Windows PowerShell (non-ASCII em dash in throw string)
 
 ## [0.1.3] — 2026-09-19
 

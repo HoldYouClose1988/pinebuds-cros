@@ -22,7 +22,7 @@ function Resolve-Bestool([string]$Hint) {
 
 $bestoolPath = Resolve-Bestool $Bestool
 if (-not $bestoolPath) {
-  throw "bestool not found. See BESTOOL.md — build from https://github.com/Ralim/bestool"
+  throw "bestool not found. See BESTOOL.md - build from https://github.com/Ralim/bestool"
 }
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
