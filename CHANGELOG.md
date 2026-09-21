@@ -5,6 +5,13 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.1.6] — 2026-09-21
+
+### Package
+- Fix backup/flash Sync hang: scripts prompt **out → start bestool → reseat** per bud (BES2300 bootloader must ACK Sync during reset)
+- Same experimental firmware bin as v0.1.3–v0.1.5
+- Docs (`BESTOOL.md` / windows-flash) match the correct Sync order
+
 ## [0.1.5] — 2026-09-21
 
 ### Package

@@ -1,7 +1,9 @@
-version=0.1.5
-zip=pinebuds-cros-v0.1.5.zip
-download=flash-packages/pinebuds-cros-LATEST.zip
-b64_sidecar=flash-packages/pinebuds-cros-LATEST.zip.b64
-decode_script=flash-packages/DECODE-LATEST.ps1
-note=If the .zip download is stale, download the .b64 + DECODE-LATEST.ps1 and run the script.
+version=0.1.6
+zip=pinebuds-cros-v0.1.6.zip
+alias=pinebuds-cros-v0.1.6-20260921-b8f39bd.zip
+stage=stage-a
+git_sha=b8f39bd
+built_utc=2026-09-21T23:05:20Z
 bin_sha256=58ac1da5566e04cb6a7decfac4081762a61bc49b90f0b064a33f5ec856ab8d1a
+download=flash-packages/pinebuds-cros-LATEST.zip
+versioned=flash-packages/pinebuds-cros-v0.1.6.zip

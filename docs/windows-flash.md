@@ -57,8 +57,17 @@ Do **not** expect the Cloud Agent to reach your COM ports.
 
 ## Backup before first custom flash (strongly recommended)
 
+BES2300 bootloader Sync only works if the bud **resets after** bestool starts. Per bud: out (LED on) → start bestool → **immediately reseat**. Details: [bestool-windows.md](bestool-windows.md).
+
 ```powershell
-# Replace COM5 / COM6 with your ports
+# From unzipped flash package (prompts Sync order for each port)
+.\backup.ps1 -Port0 COM5 -Port1 COM6
+```
+
+Or manually (same Sync order for each port):
+
+```powershell
+# Bud OUT -> run -> IMMEDIATELY reseat
 bestool.exe read-image backup-left.bin --port COM5
 bestool.exe read-image backup-right.bin --port COM6
 ```
@@ -67,23 +76,22 @@ Keep those files somewhere safe. Factory images are also on the PINE64 wiki if a
 
 ## Flash community firmware (`bestool`)
 
-1. Seat both buds in the case; case plugged into USB.
-2. Wake programmer window: remove buds ~3 seconds, reseat — **or** long-hold the rear button in-case (~5 s) on OpenPineBuds builds.
-3. Flash **each** port (same image to both):
-
-```powershell
-bestool.exe write-image open_source.bin --port COM5
-bestool.exe write-image open_source.bin --port COM6
-```
-
-Or use the helper:
+1. Case plugged into USB; note both COM ports.
+2. Flash **each** port with Sync order (out → start → reseat). Same image to both:
 
 ```powershell
 .\flash.ps1 -Port0 COM5 -Port1 COM6
 # (from an unzipped flash-packages zip; BinPath defaults to .\open_source.bin)
 ```
 
-4. After success: leave buds in case ~30s for TWS re-pair (LEDs / behavior per upstream docs).
+Manual equivalent:
+
+```powershell
+bestool.exe write-image open_source.bin --port COM5
+bestool.exe write-image open_source.bin --port COM6
+```
+
+3. After success: leave buds in case ~30s for TWS re-pair (LEDs / behavior per upstream docs).
 
 ## Flash with official `dld_main`
 
@@ -101,7 +109,8 @@ On-chip flash is rated for a limited number of erase cycles (~500). Treat each s
 | Symptom | Try |
 |---------|-----|
 | No COM ports | CH342 driver; try another cable (data-capable); different USB port |
-| bestool times out | Reseat / wake buds; confirm correct COM pair; close other serial apps |
+| Hangs on `Sent message type Sync` | Bud seated too early. Ctrl+C; out → start bestool → reseat |
+| bestool times out | Confirm COM pair; close other serial apps; retry Sync order |
 | Only one bud updates | Flash the other COM explicitly; don’t assume “All Start” hit both |
 | Soft-brick | Restore factory APP (+ OTA if required) with `dld_main` + wiki images |
 | WSL2 can’t see COM | Prefer **native Windows** bestool/`dld_main`; WSL serial passthrough is unreliable |

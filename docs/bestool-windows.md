@@ -61,18 +61,41 @@ Verify:
 bestool.exe --help
 ```
 
+## Critical: bootloader Sync order
+
+The BES2300 only stays in the programmer bootloader if bestool’s **Sync** is ACKed **during reset**.  
+If the bud is already seated when Sync starts, bestool hangs on:
+
+```text
+Sent message type Sync
+```
+
+Correct order **per bud**:
+
+1. Bud **out** of the case (LED shows awake).
+2. Start `bestool` / press Enter in `backup.ps1` / `flash.ps1` (Sync begins).
+3. **Immediately reseat** that bud (case pogopins reset the chip so Sync catches boot).
+
+Do **one COM port at a time**. `backup.ps1` and `flash.ps1` prompt for this.
+
+If Sync hangs: **Ctrl+C**, then retry that port with reseat-after-start.
+
 ## Backup stock firmware (do this once)
 
-Seat both buds, plug the case in, note your two COM ports.
+Case on USB; note your two COM ports.
 
 ```powershell
 .\backup.ps1 -Port0 COM5 -Port1 COM6 -Bestool .\bestool.exe
 ```
 
-Or manually:
+Follow the on-screen prompts (out → Enter → reseat) for LEFT then RIGHT.
+
+Or manually (same Sync order):
 
 ```powershell
+# LEFT: bud out -> run this -> reseat immediately
 .\bestool.exe read-image backup-left.bin --port COM5
+# RIGHT: same
 .\bestool.exe read-image backup-right.bin --port COM6
 ```
 
@@ -80,36 +103,33 @@ Keep those files safe. Factory images also live on the [PINE64 wiki](https://wik
 
 ## Flash this package
 
-1. Seat both buds; case on USB.
-2. Wake the programmer window: remove buds ~3 seconds and reseat, **or** long-hold the rear button in-case (~5 seconds).
-3. From the unzipped package folder:
-
 ```powershell
 .\flash.ps1 -Port0 COM5 -Port1 COM6 -Bestool .\bestool.exe
 ```
 
-Equivalent manual commands:
+Same Sync prompts as backup. Equivalent manual commands:
 
 ```powershell
 .\bestool.exe write-image open_source.bin --port COM5
 .\bestool.exe write-image open_source.bin --port COM6
 ```
 
-4. Leave buds in the case ~30 seconds for TWS re-pair.
+Leave buds in the case ~30 seconds for TWS re-pair.
 
 ## Troubleshooting
 
 | Symptom | What to try |
 |---------|-------------|
+| Hangs on `Sent message type Sync` | Bud was seated too early. Ctrl+C; bud out → start bestool → reseat |
 | `bestool not found` | Pass `-Bestool .\bestool.exe` or add it to PATH; new PowerShell window after PATH change |
 | Cargo / link errors | Install VS Build Tools (C++), then `rustup default stable` and rebuild |
-| Timeout on write/read | Wake buds again; confirm COM numbers; close other serial apps; try the other USB port |
-| Only one bud updates | Flash the quiet COM port again explicitly |
+| Timeout mid-read | Watchdog on large dumps; rerun `read-image` (bestool reads in chunks) |
+| Only one bud updates | Flash the quiet COM port again with Sync order |
 | Soft-brick | Restore with PINE64 `dld_main` + factory APP (+ OTA if required) |
 
 ## Optional: official programmer
 
-If bestool misbehaves, use PINE64 `dld_main` (APP only for community bins). See `FLASH.md` and the [programmer user manual](https://files.pine64.org/os/PineBudsPro/PineBuds%20Pro%20programmer%20user%20manual.pdf).
+If bestool misbehaves, use PINE64 `dld_main` (APP only for community bins). See `FLASH.md` and the [programmer user manual](https://files.pine64.org/os/PineBudsPro/PineBuds%20Pro%20programmer%20user%20manual.pdf). Official tool also wants buds **out**, then Start, then reseat.
 
 ## Flash budget
 
