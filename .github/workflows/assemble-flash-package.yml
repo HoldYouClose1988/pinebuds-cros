@@ -1,0 +1,35 @@
+name: Assemble flash package
+on:
+  push:
+    paths:
+      - 'flash-packages/v015-parts/**'
+      - '.github/workflows/assemble-flash-package.yml'
+  workflow_dispatch:
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble zip from b64 parts
+        run: |
+          set -euo pipefail
+          cd flash-packages/v015-parts
+          cat part-*.b64 | tr -d '\n' | base64 -d > ../pinebuds-cros-v0.1.5.zip
+          cp ../pinebuds-cros-v0.1.5.zip ../pinebuds-cros-LATEST.zip
+          ls -lh ../pinebuds-cros-*.zip
+          # quick sanity: backup.ps1 must be ASCII-hyphen version
+          unzip -p ../pinebuds-cros-v0.1.5.zip '*/backup.ps1' | grep -F 'BESTOOL.md - build'
+      - name: Commit assembled zips
+        run: |
+          set -euo pipefail
+          git config user.name "PineBuds CROS contributors"
+          git config user.email "noreply@users.noreply.github.com"
+          git add flash-packages/pinebuds-cros-v0.1.5.zip flash-packages/pinebuds-cros-LATEST.zip
+          if git diff --cached --quiet; then
+            echo "No zip changes"
+            exit 0
+          fi
+          git commit -m "Assemble v0.1.5 flash zip from parts (Windows-safe backup.ps1)"
+          git push
