@@ -5,6 +5,19 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.4] — 2026-09-22
+
+### Firmware
+- **Deferred BESAUD extra L2CAP probe:** create CID `0x0b0e` only on CROS activate (+500 ms), never on BESAUD-up (that killed TWS in v0.3.0)
+- Prefer extra for audio when OPEN; **cmd-path fallback** if not
+- On OPEN: exchange a small PING; continuous 50 ms ADPCM otherwise
+- Prior-art survey: no open CROS recipe; OPPO RE confirms extra CIDs are for non-control traffic
+
+### Test
+1. Flash both → case RESET if needed → wait for TWS.
+2. Quad-tap CROS. Link should stay up.
+3. If delay/chop improves vs v0.3.3 → extra is carrying audio. If identical → still on cmd fallback.
+
 ## [0.3.3] — 2026-09-22
 
 ### Firmware

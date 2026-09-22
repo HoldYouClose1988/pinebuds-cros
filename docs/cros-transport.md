@@ -48,9 +48,22 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
 ## Status
 
-- **Now (v0.3.3):** cmd-path **50 ms** ADPCM; no activate cue; same flow as working v0.2.7.
-  Extra L2CAP code remains behind `CROS_EXTRA_L2CAP=1` (off).
-- **Next:** safer deferred extra-channel probe (not on BESAUD-connected hot path).
+- **Now (v0.3.4):** deferred extra-L2CAP create on CROS activate; cmd fallback; 50 ms ADPCM.
+- **Prior art:** no public CROS guide; commercial BES keeps extra-channel API (see Prior art).
+
+## Prior art (web / GitHub survey, 2026-09-22)
+
+**No published PineBuds / OpenPineBuds CROS or bud↔bud mic-relay recipe.** Closest community thread ([OpenPineBuds #69](https://github.com/pine64/OpenPineBuds/discussions/69)) is about recording a mic *to the phone*, not peer playback.
+
+| Source | What it teaches |
+|--------|-----------------|
+| OpenPineBuds / forks | `tws_besaud_create_extra_channel` / `L2CAP_BESAUD_EXTRA_CHAN_ID` appear in headers only — **no open `.c` callers** found |
+| Newer BES dumps (2600/2700) | Same API; CID often **`0xbbee`** instead of our **`0x0b0e`** |
+| [OPPO ENCO firmware RE](https://github.com/GreenTeodoro839/OPPOEarPhoneForHyperOS/blob/main/.research/firmware-analysis/20_multi_link.md) | Shipping BES product: BESAUD = bud↔bud control PSM; `l2cap_create_besaud_extra_channel` explicitly described as **extra CIDs for non-control traffic** on top of primary BESAUD |
+| Chinese BES blogs (52Bluetooth / CSDN) | Custom IBRT cmds for UI sync (same cmd-path pattern we already maxed out); music is phone ACL sniff + IBRT, not mic relay |
+| Commercial “translate earbuds” marketing | Phone in the loop (HFP/A2DP), not a low-latency bud↔bud CROS pipe |
+
+**Takeaway:** We are likely first on the open side for CROS. Extra L2CAP is still the right bet — commercial firmware keeps the API for non-control traffic — but there is no copy-paste guide. Probe carefully (deferred create).
 
 ## Options for next session
 

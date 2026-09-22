@@ -1,7 +1,8 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.3 — working v0.2.7 cmd-path flow at 50 ms ADPCM. No alert cue.
+ * v0.3.4 — deferred BESAUD extra L2CAP probe on CROS activate (not on
+ *  BESAUD-up). 50 ms ADPCM; cmd-path fallback if extra not open.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -11,6 +12,7 @@
 #include "app_utils.h"
 #include "audioflinger.h"
 #include "cmsis_os.h"
+#include "cros_besaud_extra.h"
 #include "hal_trace.h"
 #include "string.h"
 #include "tgt_hardware.h"
@@ -74,11 +76,16 @@ static bool rx_have_seq;
 static uint8_t jitter_target_frames;
 static uint16_t healthy_ticks;
 static uint32_t tx_frames;
+static uint32_t tx_extra;
+static uint32_t tx_cmd;
 static uint32_t rx_pkts;
 static uint32_t tx_drops;
 static uint32_t underruns;
 static uint32_t rx_drops;
 static uint32_t rx_resyncs;
+
+#define CROS_TX_STUCK_TICKS 4
+static uint8_t tx_stuck_ticks;
 
 static void cros_tick(void const *arg);
 osTimerDef(CROS_TICK, cros_tick);
@@ -254,13 +261,26 @@ static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
 
 static void try_send_latest(void) {
   ima_state_t snap;
+  int busy;
 
   if (!tx_running || !app_tws_ibrt_tws_link_connected()) {
     return;
   }
-  if (tx_pending) {
+
+  busy = cros_besaud_extra_is_open() ? (cros_besaud_extra_tx_busy() ? 1 : 0)
+                                     : (tx_pending ? 1 : 0);
+  if (busy) {
+    tx_stuck_ticks++;
+    if (tx_stuck_ticks >= CROS_TX_STUCK_TICKS) {
+      cros_besaud_extra_force_clear_pending();
+      tx_pending = 0;
+      tx_stuck_ticks = 0;
+      tx_drops++;
+    }
     return;
   }
+  tx_stuck_ticks = 0;
+
   if (!latest_ready) {
     return;
   }
@@ -276,6 +296,20 @@ static void try_send_latest(void) {
   tx_pkt[4] = (uint8_t)((snap.pred >> 8) & 0xFF);
   ima_encode_block(send_pcm, &tx_pkt[CROS_HDR_BYTES]);
 
+  if (cros_besaud_extra_is_open()) {
+    if (cros_besaud_extra_send(tx_pkt, CROS_PKT_BYTES) != 0) {
+      tx_drops++;
+    } else {
+      tx_frames++;
+      tx_extra++;
+      if ((tx_frames & 0x3F) == 0) {
+        TRACE(3, "[cros_tws] tx=%u extra=%u cmd=%u", tx_frames, tx_extra,
+              tx_cmd);
+      }
+    }
+    return;
+  }
+
   tx_pending = 1;
   if (tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, tx_pkt, CROS_PKT_BYTES) !=
       0) {
@@ -283,8 +317,10 @@ static void try_send_latest(void) {
     tx_drops++;
   } else {
     tx_frames++;
+    tx_cmd++;
     if ((tx_frames & 0x3F) == 0) {
-      TRACE(2, "[cros_tws] tx=%u drops=%u", tx_frames, tx_drops);
+      TRACE(3, "[cros_tws] tx=%u extra=%u cmd=%u (fallback)", tx_frames,
+            tx_extra, tx_cmd);
     }
   }
 }
@@ -460,12 +496,14 @@ void cros_tws_init(void) {
   if (inited) {
     return;
   }
+  cros_besaud_extra_init();
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   enabled = false;
   tx_running = rx_running = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
+  tx_stuck_ticks = 0;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.3.3 50ms-cmd (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.3.4 50ms+deferred-extra (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -485,8 +523,10 @@ int cros_tws_start(void) {
 
   enabled = true;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
-  TRACE(1, "[cros_tws] ENABLE (local is %s)",
-        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
+  cros_besaud_extra_ensure();
+  TRACE(2, "[cros_tws] ENABLE (local is %s, extra_open=%d)",
+        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX",
+        cros_besaud_extra_is_open() ? 1 : 0);
   return apply_enabled(true);
 }
 
@@ -520,11 +560,15 @@ void cros_tws_on_peer_mode(uint8_t on) {
   TRACE(1, "[cros_tws] peer mode=%d", (int)want);
   if (want == enabled) {
     if (want) {
+      cros_besaud_extra_ensure();
       apply_enabled(true);
     }
     return;
   }
   enabled = want;
+  if (want) {
+    cros_besaud_extra_ensure();
+  }
   apply_enabled(want);
 }
 

@@ -1,13 +1,12 @@
 /***************************************************************************
- * BESAUD extra L2CAP transport for CROS audio packets.
+ * BESAUD extra L2CAP — deferred create on CROS activate (v0.3.4 probe).
  *
- * DISABLED BY DEFAULT (CROS_EXTRA_L2CAP=0): creating the extra channel on
- * BESAUD-up in v0.3.0 broke TWS pairing (right stuck in pairing flash,
- * left solid/flashing blue, quad-tap dead). Cmd-path audio remains the
- * working pipe until a safer probe lands.
+ * v0.3.0 created on BESAUD-up and broke TWS. Here we only create after the
+ * user (or peer) enables CROS, via BT thread, after a short settle timer.
  ***************************************************************************/
 #include "cros_besaud_extra.h"
 
+#include "cmsis_os.h"
 #include "hal_trace.h"
 #include "string.h"
 
@@ -29,6 +28,8 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 extern void cros_tws_on_peer_audio(uint8_t *data, uint16_t len);
 
 #define CROS_EXTRA_TX_MAX 512
+#define CROS_EXTRA_DEFER_MS 500
+#define CROS_EXTRA_PING_MAGIC 0xC0
 
 static volatile uint32_t extra_handle;
 static volatile uint8_t extra_open;
@@ -39,6 +40,13 @@ static uint16_t tx_scratch_len;
 static uint32_t tx_ok;
 static uint32_t tx_fail;
 static uint32_t rx_ok;
+static uint32_t rx_ping;
+
+static void cros_extra_defer(void const *arg);
+osTimerDef(CROS_EXTRA_DEFER, cros_extra_defer);
+static osTimerId cros_extra_defer_id;
+
+static void cros_extra_send_ping_bt(void *a, void *b);
 
 static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
                              void *pdata, uint8 reason) {
@@ -50,7 +58,9 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
     extra_handle = l2cap_handle;
     extra_open = 1;
     tx_busy = 0;
-    TRACE(2, "[cros_extra] OPEN handle=0x%08x", (unsigned)l2cap_handle);
+    TRACE(2, "[cros_extra] OPEN handle=0x%08x — ping", (unsigned)l2cap_handle);
+    app_bt_start_custom_function_in_bt_thread(0, 0,
+                                              (uint32_t)cros_extra_send_ping_bt);
     break;
   case L2CAP_CHANNEL_TX_HANDLED:
     tx_busy = 0;
@@ -75,8 +85,18 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
   if (!ppb || !ppb->data || ppb->len == 0) {
     return;
   }
+  if (ppb->data[0] == CROS_EXTRA_PING_MAGIC) {
+    rx_ping++;
+    TRACE(2, "[cros_extra] PING rx len=%u count=%u", (unsigned)ppb->len,
+          (unsigned)rx_ping);
+    return;
+  }
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
   rx_ok++;
+  if ((rx_ok & 0x3F) == 0) {
+    TRACE(3, "[cros_extra] audio_rx=%u ping_rx=%u", (unsigned)rx_ok,
+          (unsigned)rx_ping);
+  }
 }
 
 static void *cros_extra_peer_addr(void) {
@@ -96,14 +116,16 @@ static void cros_extra_create_bt(void *a, void *b) {
   }
   remote = cros_extra_peer_addr();
   if (!remote) {
+    TRACE(0, "[cros_extra] create skipped — no peer");
     create_issued = 0;
     return;
   }
   if (!tws_besaud_is_connected() && !app_tws_ibrt_tws_link_connected()) {
+    TRACE(0, "[cros_extra] create skipped — TWS/BESAUD down");
     create_issued = 0;
     return;
   }
-  TRACE(0, "[cros_extra] l2cap_create_besaud_extra_channel 0x0b0e");
+  TRACE(0, "[cros_extra] CREATE deferred 0x0b0e (activate path)");
   l2cap_create_besaud_extra_channel(remote, L2CAP_BESAUD_EXTRA_CHAN_ID,
                                     cros_extra_notify, cros_extra_datarecv);
 }
@@ -122,7 +144,32 @@ static void cros_extra_send_bt(void *a, void *b) {
     tx_fail++;
   } else {
     tx_ok++;
+    if ((tx_ok & 0x3F) == 0) {
+      TRACE(2, "[cros_extra] tx=%u fail=%u", (unsigned)tx_ok, (unsigned)tx_fail);
+    }
   }
+}
+
+static void cros_extra_send_ping_bt(void *a, void *b) {
+  static const uint8_t ping[8] = {CROS_EXTRA_PING_MAGIC, 0x52, 0x4f, 0x53,
+                                  0x50, 0x49, 0x4e, 0x47};
+  (void)a;
+  (void)b;
+  if (!extra_open || !extra_handle) {
+    return;
+  }
+  if (l2cap_send_data(extra_handle, (uint8_t *)ping, sizeof(ping), NULL) != 0) {
+    TRACE(0, "[cros_extra] ping send fail");
+  }
+}
+
+static void cros_extra_defer(void const *arg) {
+  (void)arg;
+  if (extra_open || !create_issued) {
+    return;
+  }
+  app_bt_start_custom_function_in_bt_thread(0, 0,
+                                            (uint32_t)cros_extra_create_bt);
 }
 #endif /* CROS_EXTRA_L2CAP */
 
@@ -133,7 +180,12 @@ void cros_besaud_extra_init(void) {
   create_issued = 0;
   tx_busy = 0;
   tx_scratch_len = 0;
-  tx_ok = tx_fail = rx_ok = 0;
+  tx_ok = tx_fail = rx_ok = rx_ping = 0;
+  if (!cros_extra_defer_id) {
+    cros_extra_defer_id =
+        osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
+  }
+  TRACE(0, "[cros_extra] init (deferred-activate probe)");
 #endif
 }
 
@@ -143,15 +195,27 @@ void cros_besaud_extra_ensure(void) {
     return;
   }
   create_issued = 1;
-  app_bt_start_custom_function_in_bt_thread(0, 0,
-                                            (uint32_t)cros_extra_create_bt);
+  if (!cros_extra_defer_id) {
+    cros_extra_defer_id =
+        osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
+  }
+  if (cros_extra_defer_id) {
+    TRACE(1, "[cros_extra] schedule create in %dms", CROS_EXTRA_DEFER_MS);
+    osTimerStart(cros_extra_defer_id, CROS_EXTRA_DEFER_MS);
+  } else {
+    app_bt_start_custom_function_in_bt_thread(0, 0,
+                                              (uint32_t)cros_extra_create_bt);
+  }
 #else
-  /* Intentionally idle — v0.3.0 create broke TWS. */
+  (void)0;
 #endif
 }
 
 void cros_besaud_extra_on_besaud_down(void) {
 #if CROS_EXTRA_L2CAP
+  if (cros_extra_defer_id) {
+    osTimerStop(cros_extra_defer_id);
+  }
   extra_handle = 0;
   extra_open = 0;
   create_issued = 0;

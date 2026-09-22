@@ -4,9 +4,13 @@ ifeq ($(CROS_STAGE_B),1)
 obj-y := cros_tws.o cros_besaud_extra.o
 endif
 
+# Deferred extra-L2CAP probe on by default for Stage B flash packages.
+CROS_EXTRA_L2CAP ?= 1
+
 ccflags-y += \
 	$(BT_IF_INCLUDES) \
 	$(BT_PROFILES_INCLUDES) \
+	-DCROS_EXTRA_L2CAP=$(CROS_EXTRA_L2CAP) \
 	-Iapps/cros_tws \
 	-Iapps/audioplayers \
 	-Iapps/audioplayers/a2dp_decoder \

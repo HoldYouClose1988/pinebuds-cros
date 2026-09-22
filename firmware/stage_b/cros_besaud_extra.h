@@ -4,6 +4,10 @@
  * Stock tws_besaud_* wrappers register TRACE-and-discard RX stubs — do not
  * use them. We call l2cap_create_besaud_extra_channel with our own notify /
  * datarecv. MODE sync stays on the IBRT custom-cmd path.
+ *
+ * Create is DEFERRED to CROS activate (never on BESAUD-up — that killed TWS
+ * in v0.3.0). Commercial BES firmware (OPPO RE) keeps this API for
+ * non-control traffic; no open CROS recipe exists.
  ***************************************************************************/
 #ifndef CROS_BESAUD_EXTRA_H
 #define CROS_BESAUD_EXTRA_H
@@ -16,7 +20,7 @@ extern "C" {
 #endif
 
 void cros_besaud_extra_init(void);
-/* Create channel once BESAUD/TWS is up (both buds). Safe to call repeatedly. */
+/* Schedule create after a short settle (CROS activate path). Idempotent. */
 void cros_besaud_extra_ensure(void);
 void cros_besaud_extra_on_besaud_down(void);
 
@@ -26,7 +30,6 @@ bool cros_besaud_extra_is_open(void);
  * Clears pending via L2CAP_CHANNEL_TX_HANDLED (or immediate fail). */
 int cros_besaud_extra_send(const uint8_t *data, uint16_t len);
 
-/* TX-done for the pending gate (true while a send is in flight). */
 bool cros_besaud_extra_tx_busy(void);
 void cros_besaud_extra_force_clear_pending(void);
 
