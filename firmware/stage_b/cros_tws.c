@@ -1,11 +1,11 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.2.2: stop flooding the IBRT cmd queue (was ~1s backlog + chop).
- *  - Exactly 1 packet in flight; never queue ahead of tx_done
- *  - 10 ms ADPCM frames
- *  - Hard RX latency clamp (~60 ms max buffered)
- *  - Soft limiter so loud nail scrapes don't spike the link
+ * v0.2.3: fix chop from false TX gating.
+ *  Direct BESAUD send does not invoke our tx_done callback, so the old
+ *  "wait for tx_done" gate only released every ~30 ms and dropped most
+ *  frames. Now: one send per capture frame, light fail backoff, 20 ms
+ *  ADPCM frames, RX latency clamp, and simple underrun PLC (repeat).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -25,7 +25,6 @@
 
 extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length);
 extern bool app_tws_ibrt_tws_link_connected(void);
-/* Direct path from customif — avoids tws_ctrl mailbox backlog. */
 extern int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length);
 
 #ifndef CROS_POOR_IS_RIGHT
@@ -34,16 +33,16 @@ extern int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length);
 
 #define CROS_SAMPLE_RATE AUD_SAMPRATE_16000
 #define CROS_BITS AUD_BITS_16
-#define CROS_FRAME_SAMPLES 160 /* 10 ms */
+#define CROS_FRAME_SAMPLES 320 /* 20 ms — half the packet rate of 10 ms */
 #define CROS_FRAME_BYTES (CROS_FRAME_SAMPLES * 2)
 #define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2)
 #define CROS_PKT_BYTES (4 + CROS_ADPCM_BYTES)
 #define CROS_DMA_BYTES (CROS_FRAME_BYTES * 2)
-#define CROS_RING_BYTES (CROS_FRAME_BYTES * 10)
-#define CROS_PREBUF_BYTES (CROS_FRAME_BYTES * 2)  /* ~20 ms */
-#define CROS_MAX_BUF_BYTES (CROS_FRAME_BYTES * 6) /* ~60 ms latency clamp */
+#define CROS_RING_BYTES (CROS_FRAME_BYTES * 8)
+#define CROS_PREBUF_BYTES (CROS_FRAME_BYTES * 2)  /* ~40 ms */
+#define CROS_MAX_BUF_BYTES (CROS_FRAME_BYTES * 4) /* ~80 ms clamp */
 
-#define CROS_GAIN_Q15 16000 /* ~0.49 — quieter to reduce spike dropouts */
+#define CROS_GAIN_Q15 16000
 #define CROS_LIM_THRESH 20000
 #define CROS_PLAY_VOL 12
 #define CROS_STREAM_ID AUD_STREAM_ID_0
@@ -56,20 +55,19 @@ static uint8_t tx_pkt[CROS_PKT_BYTES];
 static int16_t pcm_acc[CROS_FRAME_SAMPLES];
 static uint16_t pcm_acc_count;
 static int16_t decode_pcm[CROS_FRAME_SAMPLES];
+static int16_t last_play[CROS_FRAME_SAMPLES]; /* PLC */
 
 static bool inited;
 static bool enabled;
 static bool tx_running;
 static bool rx_running;
-static volatile uint8_t tx_busy;
-static uint8_t tx_busy_age;
+static uint8_t send_fail_backoff;
 static uint32_t tx_frames;
 static uint32_t rx_pkts;
 static uint32_t tx_drops;
 static uint32_t underruns;
 static uint32_t rx_drops;
 
-/* ---- IMA ADPCM (mono) ---- */
 static const int16_t ima_step_table[89] = {
     7,     8,     9,     10,    11,    12,    13,    14,    16,    17,
     19,    21,    23,    25,    28,    31,    34,    37,    41,    45,
@@ -179,7 +177,6 @@ static void ima_decode_block(const uint8_t *in, int16_t *pcm) {
 
 static int16_t process_sample(int16_t s) {
   int32_t v = ((int32_t)s * CROS_GAIN_Q15) >> 15;
-  /* Soft knee toward lim threshold — loud nail scrapes were killing the link. */
   if (v > CROS_LIM_THRESH) {
     v = CROS_LIM_THRESH + ((v - CROS_LIM_THRESH) >> 2);
   } else if (v < -CROS_LIM_THRESH) {
@@ -199,8 +196,7 @@ bool cros_tws_is_poor_side(void) {
 bool cros_tws_is_enabled(void) { return enabled; }
 
 void cros_tws_on_audio_tx_done(void) {
-  tx_busy = 0;
-  tx_busy_age = 0;
+  /* Unused with direct send_now; kept for table compatibility. */
 }
 
 static void send_adpcm_frame(const int16_t *pcm) {
@@ -208,14 +204,11 @@ static void send_adpcm_frame(const int16_t *pcm) {
     tx_drops++;
     return;
   }
-  /* One packet in flight. If tx_done is missed, age out after ~30 ms. */
-  if (tx_busy) {
-    if (++tx_busy_age < 3) {
-      tx_drops++;
-      return;
-    }
-    tx_busy = 0;
-    tx_busy_age = 0;
+  /* After a failed send, skip one frame so we don't hammer a full BESAUD TX. */
+  if (send_fail_backoff) {
+    send_fail_backoff--;
+    tx_drops++;
+    return;
   }
 
   tx_pkt[0] = CROS_PKT_MAGIC;
@@ -224,10 +217,8 @@ static void send_adpcm_frame(const int16_t *pcm) {
   tx_pkt[3] = (uint8_t)((enc_state.pred >> 8) & 0xFF);
   ima_encode_block(pcm, &tx_pkt[4]);
 
-  tx_busy = 1;
-  tx_busy_age = 0;
   if (app_ibrt_cros_audio_send_now(tx_pkt, CROS_PKT_BYTES) != 0) {
-    tx_busy = 0;
+    send_fail_backoff = 1;
     tx_drops++;
   } else {
     tx_frames++;
@@ -254,8 +245,22 @@ static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
 static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
   if (app_audio_pcmbuff_length() >= (int)len) {
     app_audio_pcmbuff_get(buf, (uint16_t)len);
+    if (len >= sizeof(last_play)) {
+      memcpy(last_play, buf + len - sizeof(last_play), sizeof(last_play));
+    } else {
+      memcpy(last_play, buf, len);
+    }
   } else {
-    memset(buf, 0, len);
+    /* PLC: repeat last frame instead of hard silence (less “choppy”). */
+    uint32_t filled = 0;
+    while (filled < len) {
+      uint32_t chunk = sizeof(last_play);
+      if (chunk > len - filled) {
+        chunk = len - filled;
+      }
+      memcpy(buf + filled, last_play, chunk);
+      filled += chunk;
+    }
     underruns++;
   }
   return len;
@@ -271,7 +276,7 @@ static int start_tx(void) {
 
   memset(&enc_state, 0, sizeof(enc_state));
   pcm_acc_count = 0;
-  tx_busy = 0;
+  send_fail_backoff = 0;
 
   memset(&cfg, 0, sizeof(cfg));
   cfg.bits = CROS_BITS;
@@ -293,7 +298,7 @@ static int start_tx(void) {
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = true;
   tx_frames = tx_drops = 0;
-  TRACE(0, "[cros_tws] TX gated-ADPCM START");
+  TRACE(0, "[cros_tws] TX START (20ms ADPCM, no false gate)");
   return 0;
 }
 
@@ -306,6 +311,7 @@ static int start_rx(void) {
   }
 
   memset(&dec_state, 0, sizeof(dec_state));
+  memset(last_play, 0, sizeof(last_play));
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   {
     static uint8_t silence[CROS_PREBUF_BYTES];
@@ -333,7 +339,7 @@ static int start_rx(void) {
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   rx_running = true;
   rx_pkts = underruns = rx_drops = 0;
-  TRACE(0, "[cros_tws] RX latency-clamped START");
+  TRACE(0, "[cros_tws] RX START (PLC + latency clamp)");
   return 0;
 }
 
@@ -344,7 +350,6 @@ static void stop_tx(void) {
   af_stream_stop(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   af_stream_close(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = false;
-  tx_busy = 0;
   TRACE(0, "[cros_tws] TX STOP");
 }
 
@@ -390,9 +395,8 @@ void cros_tws_init(void) {
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   enabled = false;
   tx_running = rx_running = false;
-  tx_busy = 0;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.2.2 (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.2.3 (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -462,7 +466,6 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
     return;
   }
 
-  /* Latency clamp: if we already have >60 ms queued, drop this packet. */
   buffered = app_audio_pcmbuff_length();
   if (buffered > (int)CROS_MAX_BUF_BYTES) {
     app_audio_pcmbuff_discard(

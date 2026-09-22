@@ -5,6 +5,12 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.2.3] — 2026-09-22
+
+### Firmware
+- Stage B: fix remaining chop — direct send never fired `tx_done`, so most frames were dropped; send every capture frame again
+- 20 ms ADPCM frames (lower packet rate); RX underrun PLC (repeat last frame)
+
 ## [0.2.2] — 2026-09-22
 
 ### Firmware
