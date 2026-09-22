@@ -1,14 +1,11 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.2.5 — rate-ceiling experiment (Claude review):
- *  Custom IBRT cmds are a control channel, not an isochronous audio pipe.
- *  If the hard limit is cmds/sec (not bytes/sec), fewer larger packets should
- *  sound smoother. This build: 60 ms ADPCM per send (~484 B < 672 B ctrl
- *  max), 60 ms ticker, AF still copy-only.
- *
- *  If this is smooth → rate ceiling confirmed; tune cadence further or accept.
- *  If still choppy → need a real TWS audio relay path (#3), not more cmd tuning.
+ * v0.2.6 — sweet spot after rate-ceiling confirmation (v0.2.5):
+ *  - 40 ms ADPCM packets (~17.5 cmds/s): between choppy-20ms and laggy-60ms
+ *  - Continuous ADPCM state across sequential packets (fixes "robotic" resets)
+ *  - Seq byte; RX only resyncs predictor on gaps
+ *  - Direct BESAUD send; tight jitter (40–80 ms)
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -28,6 +25,7 @@
 
 extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length);
 extern bool app_tws_ibrt_tws_link_connected(void);
+extern int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length);
 
 #ifndef CROS_POOR_IS_RIGHT
 #define CROS_POOR_IS_RIGHT 1
@@ -35,12 +33,12 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 
 #define CROS_SAMPLE_RATE AUD_SAMPRATE_16000
 #define CROS_BITS AUD_BITS_16
-/* Capture quantum 10 ms; packet = 60 ms (rate-ceiling test). */
-#define CROS_CAP_SAMPLES 160
-#define CROS_FRAME_SAMPLES 960 /* 60 ms @ 16 kHz */
+#define CROS_CAP_SAMPLES 160   /* 10 ms capture quantum */
+#define CROS_FRAME_SAMPLES 640 /* 40 ms packet */
 #define CROS_FRAME_BYTES (CROS_FRAME_SAMPLES * 2)
-#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2) /* 480 */
-#define CROS_PKT_BYTES (4 + CROS_ADPCM_BYTES)     /* 484 < 672 ctrl max */
+#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2) /* 320 */
+#define CROS_HDR_BYTES 5
+#define CROS_PKT_BYTES (CROS_HDR_BYTES + CROS_ADPCM_BYTES) /* 325 < 672 */
 #define CROS_DMA_BYTES (CROS_CAP_SAMPLES * 2 * 2)
 #define CROS_RING_BYTES (CROS_FRAME_BYTES * 6)
 
@@ -50,16 +48,15 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_STREAM_ID AUD_STREAM_ID_0
 #define CROS_PKT_MAGIC 0xA5
 
-#define CROS_JITTER_MIN_FRAMES 1 /* 60 ms */
-#define CROS_JITTER_MAX_FRAMES 3 /* 180 ms */
-#define CROS_TICK_MS 60
+#define CROS_JITTER_MIN_FRAMES 1 /* 40 ms */
+#define CROS_JITTER_MAX_FRAMES 2 /* 80 ms */
+#define CROS_TICK_MS 40
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
 static uint8_t playback_dma_buf[CROS_DMA_BYTES];
 static uint8_t pcm_ring[CROS_RING_BYTES];
 static uint8_t tx_pkt[CROS_PKT_BYTES];
 
-/* Latest-frame slot filled by capture; consumed by ticker. */
 static int16_t latest_pcm[CROS_FRAME_SAMPLES];
 static volatile uint8_t latest_ready;
 static int16_t cap_acc[CROS_FRAME_SAMPLES];
@@ -72,14 +69,18 @@ static bool inited;
 static bool enabled;
 static bool tx_running;
 static bool rx_running;
-static volatile uint8_t tx_pending; /* 1 = tws_ctrl has our cmd in flight */
+static uint8_t tx_seq;
+static uint8_t rx_expect_seq;
+static bool rx_have_seq;
 static uint8_t jitter_target_frames;
 static uint16_t healthy_ticks;
+static uint8_t send_fail_backoff;
 static uint32_t tx_frames;
 static uint32_t rx_pkts;
 static uint32_t tx_drops;
 static uint32_t underruns;
 static uint32_t rx_drops;
+static uint32_t rx_resyncs;
 
 static void cros_tick(void const *arg);
 osTimerDef(CROS_TICK, cros_tick);
@@ -212,9 +213,8 @@ bool cros_tws_is_poor_side(void) {
 
 bool cros_tws_is_enabled(void) { return enabled; }
 
-void cros_tws_on_audio_tx_done(void) { tx_pending = 0; }
+void cros_tws_on_audio_tx_done(void) {}
 
-/* AF capture: copy only — no BT. */
 static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
   int16_t *pcm = (int16_t *)buf;
   uint32_t samples = len / sizeof(int16_t);
@@ -247,10 +247,8 @@ static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
     }
     underruns++;
     healthy_ticks = 0;
-    /* Grow jitter target on underrun (VoIP-style). */
     if (jitter_target_frames < CROS_JITTER_MAX_FRAMES) {
       jitter_target_frames++;
-      TRACE(1, "[cros_tws] jitter -> %u frames", jitter_target_frames);
     }
   }
   return len;
@@ -258,12 +256,14 @@ static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
 
 static void try_send_latest(void) {
   int16_t local[CROS_FRAME_SAMPLES];
+  ima_state_t snap;
 
   if (!tx_running || !app_tws_ibrt_tws_link_connected()) {
     return;
   }
-  if (tx_pending) {
-    return; /* wait for ctrl-thread tx_done — keeps mailbox depth = 1 */
+  if (send_fail_backoff) {
+    send_fail_backoff--;
+    return;
   }
   if (!latest_ready) {
     return;
@@ -272,20 +272,21 @@ static void try_send_latest(void) {
   latest_ready = 0;
   memcpy(local, latest_pcm, sizeof(local));
 
+  /* Header carries pre-encode state for RX resync on gaps only. */
+  snap = enc_state;
   tx_pkt[0] = CROS_PKT_MAGIC;
-  tx_pkt[1] = (uint8_t)enc_state.index;
-  tx_pkt[2] = (uint8_t)(enc_state.pred & 0xFF);
-  tx_pkt[3] = (uint8_t)((enc_state.pred >> 8) & 0xFF);
-  ima_encode_block(local, &tx_pkt[4]);
+  tx_pkt[1] = tx_seq++;
+  tx_pkt[2] = (uint8_t)snap.index;
+  tx_pkt[3] = (uint8_t)(snap.pred & 0xFF);
+  tx_pkt[4] = (uint8_t)((snap.pred >> 8) & 0xFF);
+  ima_encode_block(local, &tx_pkt[CROS_HDR_BYTES]);
 
-  tx_pending = 1;
-  if (tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, tx_pkt, CROS_PKT_BYTES) !=
-      0) {
-    tx_pending = 0;
+  if (app_ibrt_cros_audio_send_now(tx_pkt, CROS_PKT_BYTES) != 0) {
+    send_fail_backoff = 1;
     tx_drops++;
   } else {
     tx_frames++;
-    if ((tx_frames & 0x7F) == 0) {
+    if ((tx_frames & 0x3F) == 0) {
       TRACE(2, "[cros_tws] tx=%u drops=%u", tx_frames, tx_drops);
     }
   }
@@ -300,13 +301,11 @@ static void cros_tick(void const *arg) {
     try_send_latest();
   }
   if (rx_running) {
-    /* Slowly shrink jitter buffer when stable. */
     healthy_ticks++;
-    if (healthy_ticks > 100 && /* ~6 s at 60 ms */
+    if (healthy_ticks > 150 &&
         jitter_target_frames > CROS_JITTER_MIN_FRAMES) {
       jitter_target_frames--;
       healthy_ticks = 0;
-      TRACE(1, "[cros_tws] jitter <- %u frames", jitter_target_frames);
     }
   }
 }
@@ -337,7 +336,8 @@ static int start_tx(void) {
   memset(&enc_state, 0, sizeof(enc_state));
   cap_acc_count = 0;
   latest_ready = 0;
-  tx_pending = 0;
+  tx_seq = 0;
+  send_fail_backoff = 0;
 
   memset(&cfg, 0, sizeof(cfg));
   cfg.bits = CROS_BITS;
@@ -360,7 +360,7 @@ static int start_tx(void) {
   tx_running = true;
   tx_frames = tx_drops = 0;
   tick_start();
-  TRACE(0, "[cros_tws] TX START (AF copy + ticker send)");
+  TRACE(0, "[cros_tws] TX START (40ms continuous ADPCM)");
   return 0;
 }
 
@@ -374,6 +374,7 @@ static int start_rx(void) {
 
   memset(&dec_state, 0, sizeof(dec_state));
   memset(last_play, 0, sizeof(last_play));
+  rx_have_seq = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   healthy_ticks = 0;
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
@@ -405,9 +406,9 @@ static int start_rx(void) {
   }
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   rx_running = true;
-  rx_pkts = underruns = rx_drops = 0;
+  rx_pkts = underruns = rx_drops = rx_resyncs = 0;
   tick_start();
-  TRACE(0, "[cros_tws] RX START (adaptive jitter)");
+  TRACE(0, "[cros_tws] RX START (40ms, seq-continuous ADPCM)");
   return 0;
 }
 
@@ -419,7 +420,6 @@ static void stop_tx(void) {
   af_stream_stop(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   af_stream_close(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = false;
-  tx_pending = 0;
   TRACE(0, "[cros_tws] TX STOP");
 }
 
@@ -468,7 +468,7 @@ void cros_tws_init(void) {
   tx_running = rx_running = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.2.5 60ms-batch (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.2.6 40ms-continuous (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -530,6 +530,8 @@ void cros_tws_on_peer_mode(uint8_t on) {
 void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   int buffered;
   int max_bytes;
+  uint8_t seq;
+  bool gap;
 
   if (!enabled || cros_tws_is_poor_side() || !rx_running || !data) {
     return;
@@ -548,22 +550,30 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
     rx_drops++;
   }
 
-  dec_state.index = (int8_t)data[1];
-  if (dec_state.index < 0)
-    dec_state.index = 0;
-  if (dec_state.index > 88)
-    dec_state.index = 88;
-  dec_state.pred = (int16_t)(data[2] | (data[3] << 8));
+  seq = data[1];
+  gap = !rx_have_seq || seq != rx_expect_seq;
+  if (gap) {
+    /* Lost packet(s): reload predictor from header. */
+    dec_state.index = (int8_t)data[2];
+    if (dec_state.index < 0)
+      dec_state.index = 0;
+    if (dec_state.index > 88)
+      dec_state.index = 88;
+    dec_state.pred = (int16_t)(data[3] | (data[4] << 8));
+    rx_resyncs++;
+  }
+  rx_have_seq = true;
+  rx_expect_seq = (uint8_t)(seq + 1);
 
-  ima_decode_block(&data[4], decode_pcm);
+  ima_decode_block(&data[CROS_HDR_BYTES], decode_pcm);
 
   if (app_audio_pcmbuff_put((uint8_t *)decode_pcm, CROS_FRAME_BYTES) != 0) {
     app_audio_pcmbuff_discard((uint16_t)(CROS_FRAME_BYTES / 2));
     app_audio_pcmbuff_put((uint8_t *)decode_pcm, CROS_FRAME_BYTES);
   }
   rx_pkts++;
-  if ((rx_pkts & 0x7F) == 0) {
-    TRACE(4, "[cros_tws] rx=%u underrun=%u drop=%u jitter=%u", rx_pkts,
-          underruns, rx_drops, jitter_target_frames);
+  if ((rx_pkts & 0x3F) == 0) {
+    TRACE(4, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u", rx_pkts,
+          underruns, rx_resyncs, jitter_target_frames);
   }
 }

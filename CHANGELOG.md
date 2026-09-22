@@ -5,6 +5,13 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.2.6] — 2026-09-22
+
+### Firmware
+- Stage B sweet-spot after rate-ceiling confirm: **40 ms** packets (vs 60 ms robotic/laggy)
+- **Continuous ADPCM** across sequential packets (seq byte; resync only on gaps) — less “robotic”
+- Tighter RX jitter (40–80 ms); direct BESAUD send
+
 ## [0.2.5] — 2026-09-22
 
 ### Firmware
