@@ -13,12 +13,12 @@ diff --git a/services/app_ibrt/inc/app_ibrt_customif_cmd.h b/services/app_ibrt/i
 diff --git a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
 --- a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
 +++ b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
-@@ -210,6 +210,13 @@ static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
+@@ -210,6 +210,14 @@ static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
                                                   uint16_t paramLen) {
    cros_tws_on_audio_tx_done();
  }
 +
-+int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length) {
++extern "C" int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length) {
 +  return app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, p_buff,
 +                                       length)
 +             ? 0
