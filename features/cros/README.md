@@ -2,7 +2,7 @@
 
 **Status: experimental Stage B in tree.** Cross-bud CROS (poor FF mic → good speaker over TWS) is implemented for bring-up; not a finished product.
 
-See [architecture](../../docs/architecture-cros.md).
+See [architecture](../../docs/architecture-cros.md) and [transport notes](../../docs/cros-transport.md).
 
 ## Bring-up roadmap
 
