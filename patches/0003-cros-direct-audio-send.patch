@@ -1,24 +1,30 @@
 diff --git a/services/app_ibrt/inc/app_ibrt_customif_cmd.h b/services/app_ibrt/inc/app_ibrt_customif_cmd.h
 --- a/services/app_ibrt/inc/app_ibrt_customif_cmd.h
 +++ b/services/app_ibrt/inc/app_ibrt_customif_cmd.h
-@@ -50,4 +50,8 @@ void app_ibrt_customif_cmd_test(ibrt_custom_cmd_test_t *cmd_test);
+@@ -50,4 +50,14 @@ void app_ibrt_customif_cmd_test(ibrt_custom_cmd_test_t *cmd_test);
  void app_ibrt_customif_test3_cmd_send(uint8_t *p_buff, uint16_t length);
  void app_ibrt_customif_test4_cmd_send(uint8_t *p_buff, uint16_t length);
 +#ifdef CROS_STAGE_B
 +/* Direct BESAUD send — skips tws_ctrl mailbox backlog. */
++#ifdef __cplusplus
++extern "C" {
++#endif
 +int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length);
++#ifdef __cplusplus
++}
++#endif
 +#endif
  
  #endif
 diff --git a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
 --- a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
 +++ b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
-@@ -210,6 +210,14 @@ static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
+@@ -210,6 +210,13 @@ static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
                                                   uint16_t paramLen) {
    cros_tws_on_audio_tx_done();
  }
 +
-+extern "C" int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length) {
++int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length) {
 +  return app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, p_buff,
 +                                       length)
 +             ? 0
