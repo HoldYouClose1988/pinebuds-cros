@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/.tools/env.sh"
 
 TARGET="${TARGET:-open_source}"
-STAGE="${STAGE:-stage-a}"
+STAGE="${STAGE:-stage-b}"
 STAGE_A="${STAGE_A:-1}"
 BIN_SRC="${BIN_SRC:-$OPENPINEBUDS_ROOT/out/$TARGET/$TARGET.bin}"
 OUT_DIR="${OUT_DIR:-$ROOT/flash-packages}"
@@ -174,15 +174,17 @@ Keep \`backups\\*.bin\` somewhere safe.
 
 5. Leave buds in case ~30s for TWS re-pair.
 
-## Experimental loopback test (if enabled in this build)
+## Experimental CROS / loopback test (this build)
 
-Only if this package was built with the experimental same-bud mic loopback:
+**Stage B CROS (v0.2+):** after both buds re-pair in the case (~30s):
 
-- Wear the bud (open-air desk tests can howl).
-- Avoid playing phone music during the test (A2DP can fight the loopback streams).
-- Sound near the **outer** face (FF mic) may be heard in that ear with delay.
-- **Quad-tap** may toggle loopback off/on.
-- This is **not** CROS to the other ear.
+- Wear **both** buds. **Quad-tap** either bud to toggle CROS on/off (needs TWS link).
+- Default: **RIGHT = mic (poor)**, **LEFT = speaker (good)**.
+- Scratch / speak near the **right** outer face — you should hear it in the **left** ear with delay.
+- Avoid phone music while testing (A2DP fights the CROS stream).
+- DIY / own-risk — **not** a hearing aid.
+
+Stage A same-bud loopback is still in the tree for bring-up builds without Stage B.
 
 ## Flash budget
 

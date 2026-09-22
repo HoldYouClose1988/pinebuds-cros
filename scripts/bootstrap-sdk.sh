@@ -74,6 +74,16 @@ if [[ -d "$ROOT/firmware/stage_a" ]]; then
         "$VENDOR_DIR/OpenPineBuds/apps/cros_loopback/"
 fi
 
+# Sync Stage B cross-bud CROS sources.
+if [[ -d "$ROOT/firmware/stage_b" ]]; then
+  echo "==> Syncing firmware/stage_b -> vendor/OpenPineBuds/apps/cros_tws"
+  mkdir -p "$VENDOR_DIR/OpenPineBuds/apps/cros_tws"
+  cp -f "$ROOT/firmware/stage_b/cros_tws.c" \
+        "$ROOT/firmware/stage_b/cros_tws.h" \
+        "$ROOT/firmware/stage_b/Makefile" \
+        "$VENDOR_DIR/OpenPineBuds/apps/cros_tws/"
+fi
+
 # Apply local patches once we have them.
 
 if [[ -d "$ROOT/patches" ]] && compgen -G "$ROOT/patches/*.patch" >/dev/null; then

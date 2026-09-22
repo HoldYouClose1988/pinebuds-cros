@@ -5,6 +5,18 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.2.0] — 2026-09-22
+
+### Firmware
+- **Stage B CROS (experimental):** poor-side FF mic → good-side speaker over TWS (IBRT custom cmd, raw 16 kHz PCM)
+- Default poor side = **RIGHT** (override with `CROS_POOR_IS_RIGHT=0`)
+- Quad-tap toggles CROS on/off and syncs mode to the peer (requires TWS link)
+- Stage A local loopback remains in tree; Stage B build does not auto-start it
+
+### Package
+- New flash zip with Stage B firmware
+- Docs: CROS feature README + flash notes for quad-tap CROS test
+
 ## [0.1.6] — 2026-09-21
 
 ### Package

@@ -1,0 +1,260 @@
+diff --git a/apps/Makefile b/apps/Makefile
+--- a/apps/Makefile
++++ b/apps/Makefile
+@@ -29,6 +29,10 @@
+ obj-y += cros_loopback/
+ endif
+ 
++ifeq ($(CROS_STAGE_B),1)
++obj-y += cros_tws/
++endif
++
+ ifeq ($(PC_CMD_UART),1)
+ obj-y += cmd/
+ endif
+diff --git a/apps/main/Makefile b/apps/main/Makefile
+--- a/apps/main/Makefile
++++ b/apps/main/Makefile
+@@ -33,6 +33,7 @@
+     -Itests/anc_usb \
+     -Iapps/anc/inc \
+     -Iapps/cros_loopback \
++    -Iapps/cros_tws \
+     -Iapps/ota \
+     -Ithirdparty/userapi \
+     -Iservices/voicepath \
+diff --git a/apps/main/apps.cpp b/apps/main/apps.cpp
+--- a/apps/main/apps.cpp
++++ b/apps/main/apps.cpp
+@@ -30,6 +30,9 @@
+ #ifdef CROS_STAGE_A
+ #include "cros_loopback.h"
+ #endif
++#ifdef CROS_STAGE_B
++#include "cros_tws.h"
++#endif
+ 
+ #ifdef __THIRDPARTY
+ #include "app_thirdparty.h"
+@@ -2412,7 +2415,12 @@
+       nRet = -1;
+     }
+   }
+-#ifdef CROS_STAGE_A
++#ifdef CROS_STAGE_B
++  if (nRet == 0) {
++    TRACE(0, "CROS_STAGE_B: init cross-bud CROS (quad-tap toggles)");
++    cros_tws_init();
++  }
++#elif defined(CROS_STAGE_A)
+   if (nRet == 0) {
+     TRACE(0, "CROS_STAGE_A: starting FF mic loopback");
+     cros_loopback_init();
+diff --git a/apps/main/key_handler.cpp b/apps/main/key_handler.cpp
+--- a/apps/main/key_handler.cpp
++++ b/apps/main/key_handler.cpp
+@@ -16,6 +16,9 @@
+ #ifdef CROS_STAGE_A
+ #include "cros_loopback.h"
+ #endif
++#ifdef CROS_STAGE_B
++#include "cros_tws.h"
++#endif
+ #include "audio_process.h"
+ #include "audioflinger.h"
+ #include "besbt.h"
+@@ -193,7 +196,11 @@
+ void app_key_quad_tap(APP_KEY_STATUS *status, void *param) {
+   TRACE(2, "%s event %d", __func__, status->event);
+ 
+-#ifdef CROS_STAGE_A
++#ifdef CROS_STAGE_B
++  TRACE(0, "CROS_STAGE_B: quad-tap toggles cross-bud CROS");
++  cros_tws_toggle();
++  return;
++#elif defined(CROS_STAGE_A)
+   TRACE(0, "CROS_STAGE_A: quad-tap toggles FF loopback");
+   cros_loopback_toggle();
+   return;
+diff --git a/config/open_source/target.mk b/config/open_source/target.mk
+--- a/config/open_source/target.mk
++++ b/config/open_source/target.mk
+@@ -89,9 +89,18 @@
+ export ANC_ASSIST_ENABLED ?= 0
+ ##### ANC DEFINE END ######
+ 
+-#### CROS / Stage A ######
+-# 1 = experimental FF mic → speaker loopback (bring-up)
++#### CROS / Stage A + B ######
++# Stage A: experimental FF mic → local speaker loopback
++# Stage B: experimental cross-bud CROS (poor FF mic → good speaker over TWS)
+ export CROS_STAGE_A ?= 0
++export CROS_STAGE_B ?= 0
++# Default poor side for Stage B: RIGHT bud (1). Set 0 for LEFT.
++export CROS_POOR_IS_RIGHT ?= 1
++ifeq ($(CROS_STAGE_B),1)
++# Stage B needs FF→ASRMIC remap and larger TWS ctrl packets
++export CROS_STAGE_A := 1
++KBUILD_CPPFLAGS += -DCROS_STAGE_B -DCROS_POOR_IS_RIGHT=$(CROS_POOR_IS_RIGHT)
++endif
+ ifeq ($(CROS_STAGE_A),1)
+ KBUILD_CPPFLAGS += -DCROS_STAGE_A
+ endif
+diff --git a/config/open_source/tgt_hardware.c b/config/open_source/tgt_hardware.c
+--- a/config/open_source/tgt_hardware.c
++++ b/config/open_source/tgt_hardware.c
+@@ -210,8 +210,8 @@
+ #define CFG_HW_AUD_INPUT_PATH_VADMIC_DEV                                       \
+   (AUD_CHANNEL_MAP_CH4 | AUD_VMIC_MAP_VMIC1)
+ #else
+-#ifdef CROS_STAGE_A
+-/* Stage A / CROS: expose FF ambient mic (MIC1 + VMIC2) as ASRMIC path */
++#if defined(CROS_STAGE_A) || defined(CROS_STAGE_B)
++/* Stage A/B CROS: expose FF ambient mic (MIC1 + VMIC2) as ASRMIC path */
+ #define CFG_HW_AUD_INPUT_PATH_ASRMIC_DEV                                       \
+   (AUD_CHANNEL_MAP_CH0 | AUD_VMIC_MAP_VMIC2)
+ #else
+diff --git a/services/app_ibrt/inc/app_ibrt_customif_cmd.h b/services/app_ibrt/inc/app_ibrt_customif_cmd.h
+--- a/services/app_ibrt/inc/app_ibrt_customif_cmd.h
++++ b/services/app_ibrt/inc/app_ibrt_customif_cmd.h
+@@ -34,6 +34,10 @@
+ #ifdef __DUAL_MIC_RECORDING__
+     APP_IBRT_CUSTOM_CMD_DMA_AUDIO     = APP_IBRT_CMD_BASE | APP_IBRT_CUSTOM_CMD_PREFIX | 0x05,
+ #endif
++#ifdef CROS_STAGE_B
++    APP_IBRT_CUSTOM_CMD_CROS_MODE     = APP_IBRT_CMD_BASE | APP_IBRT_CUSTOM_CMD_PREFIX | 0x06,
++    APP_IBRT_CUSTOM_CMD_CROS_AUDIO    = APP_IBRT_CMD_BASE | APP_IBRT_CUSTOM_CMD_PREFIX | 0x07,
++#endif
+     //new customer cmd add here
+ } app_ibrt_custom_cmd_code_e;
+ 
+diff --git a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
+--- a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
++++ b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
+@@ -27,6 +27,9 @@
+ #include "ai_control.h"
+ #include "app_recording_handle.h"
+ #endif
++#ifdef CROS_STAGE_B
++#include "cros_tws.h"
++#endif
+ #include "apps.h"
+ #if defined(IBRT)
+ /*
+@@ -52,6 +55,20 @@
+                                                  uint8_t *p_buff,
+                                                  uint16_t length);
+ #endif
++#ifdef CROS_STAGE_B
++static void app_ibrt_customif_cros_mode_send(uint8_t *p_buff, uint16_t length);
++static void app_ibrt_customif_cros_mode_handler(uint16_t rsp_seq,
++                                                uint8_t *p_buff,
++                                                uint16_t length);
++static void app_ibrt_customif_cros_audio_send(uint8_t *p_buff, uint16_t length);
++static void app_ibrt_customif_cros_audio_handler(uint16_t rsp_seq,
++                                                 uint8_t *p_buff,
++                                                 uint16_t length);
++static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
++                                                 uint16_t rsp_seq,
++                                                 uint8_t *ptrParam,
++                                                 uint16_t paramLen);
++#endif
+ void app_ibrt_customif_test1_cmd_send(uint8_t *p_buff, uint16_t length);
+ static void app_ibrt_customif_test1_cmd_send_handler(uint16_t rsp_seq,
+                                                      uint8_t *p_buff,
+@@ -99,6 +116,28 @@
+         app_ibrt_customif_audio_send_done,
+     },
+ #endif
++#ifdef CROS_STAGE_B
++    {
++        APP_IBRT_CUSTOM_CMD_CROS_MODE,
++        "TWS_CMD_CROS_MODE",
++        app_ibrt_customif_cros_mode_send,
++        app_ibrt_customif_cros_mode_handler,
++        0,
++        app_ibrt_custom_cmd_rsp_timeout_handler_null,
++        app_ibrt_custom_cmd_rsp_handler_null,
++        0,
++    },
++    {
++        APP_IBRT_CUSTOM_CMD_CROS_AUDIO,
++        "TWS_CMD_CROS_AUDIO",
++        app_ibrt_customif_cros_audio_send,
++        app_ibrt_customif_cros_audio_handler,
++        0,
++        app_ibrt_custom_cmd_rsp_timeout_handler_null,
++        app_ibrt_custom_cmd_rsp_handler_null,
++        app_ibrt_customif_cros_audio_tx_done,
++    },
++#endif
+     {APP_IBRT_CUSTOM_CMD_TEST1, "TWS_CMD_TEST1",
+      app_ibrt_customif_test1_cmd_send, app_ibrt_customif_test1_cmd_send_handler,
+      0, app_ibrt_custom_cmd_rsp_timeout_handler_null,
+@@ -154,6 +193,36 @@
+   app_recording_audio_send_done();
+ }
+ #endif
++#ifdef CROS_STAGE_B
++static void app_ibrt_customif_cros_mode_send(uint8_t *p_buff, uint16_t length) {
++  app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_MODE, p_buff, length);
++}
++
++static void app_ibrt_customif_cros_mode_handler(uint16_t rsp_seq,
++                                                uint8_t *p_buff,
++                                                uint16_t length) {
++  if (p_buff && length >= 1) {
++    cros_tws_on_peer_mode(p_buff[0]);
++  }
++}
++
++static void app_ibrt_customif_cros_audio_send(uint8_t *p_buff, uint16_t length) {
++  app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, p_buff, length);
++}
++
++static void app_ibrt_customif_cros_audio_handler(uint16_t rsp_seq,
++                                                 uint8_t *p_buff,
++                                                 uint16_t length) {
++  cros_tws_on_peer_audio(p_buff, length);
++}
++
++static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
++                                                 uint16_t rsp_seq,
++                                                 uint8_t *ptrParam,
++                                                 uint16_t paramLen) {
++  cros_tws_on_audio_tx_done();
++}
++#endif
+ void app_ibrt_customif_cmd_test(ibrt_custom_cmd_test_t *cmd_test) {
+   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_TEST1, (uint8_t *)cmd_test,
+                     sizeof(ibrt_custom_cmd_test_t));
+diff --git a/services/app_ibrt/Makefile b/services/app_ibrt/Makefile
+--- a/services/app_ibrt/Makefile
++++ b/services/app_ibrt/Makefile
+@@ -36,6 +36,7 @@
+ 	-Iapps/key \
+ 	-Iapps/main \
+ 	-Iapps/common \
++	-Iapps/cros_tws \
+ 	-Iapps/audioplayers \
+ 	-Iapps/audioplayers/a2dp_decoder \
+ 	-Iapps/anc/inc \
+@@ -99,4 +100,4 @@
+ subdir-ccflags-y += \
+     -Iservices/voicepath/gsound/gsound_custom/inc \
+ 	-Iservices/voicepath/gsound/gsound_target_api_read_only
+-endif
++endif
+\ No newline at end of file
+diff --git a/services/ibrt_core/inc/app_tws_ctrl_thread.h b/services/ibrt_core/inc/app_tws_ctrl_thread.h
+--- a/services/ibrt_core/inc/app_tws_ctrl_thread.h
++++ b/services/ibrt_core/inc/app_tws_ctrl_thread.h
+@@ -20,7 +20,7 @@
+ #include "app_tws_ibrt_cmd_handler.h"
+ #include "app_ibrt_custom_cmd.h"
+ 
+-#if (defined IBRT_OTA || defined __GMA_OTA_TWS__ || defined OTA_ENABLED) || defined __DUAL_MIC_RECORDING__
++#if (defined IBRT_OTA || defined __GMA_OTA_TWS__ || defined OTA_ENABLED) || defined __DUAL_MIC_RECORDING__ || defined CROS_STAGE_B
+ #define APP_TWS_CTRL_BUFFER_MAX_LEN 672
+ #else
+ #if (defined TILE_DATAPATH && defined GFPS_ENABLED)

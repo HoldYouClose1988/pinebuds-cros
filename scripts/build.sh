@@ -9,9 +9,13 @@ cd "$OPENPINEBUDS_ROOT"
 JOBS="${JOBS:-$(nproc)}"
 TARGET="${TARGET:-open_source}"
 STAGE_A="${STAGE_A:-1}"
+STAGE_B="${STAGE_B:-1}"
 
 EXTRA=()
-if [[ "$STAGE_A" == "1" ]]; then
+if [[ "$STAGE_B" == "1" ]]; then
+  EXTRA+=(CROS_STAGE_B=1 CROS_STAGE_A=1)
+  echo "==> Experimental cross-bud CROS enabled (CROS_STAGE_B=1, poor=RIGHT)"
+elif [[ "$STAGE_A" == "1" ]]; then
   EXTRA+=(CROS_STAGE_A=1)
   echo "==> Experimental FF mic loopback enabled (CROS_STAGE_A=1)"
 fi
