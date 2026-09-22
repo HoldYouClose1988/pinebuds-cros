@@ -5,6 +5,16 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.1] — 2026-09-22
+
+### Firmware
+- **Fix TWS break from v0.3.0:** creating BESAUD extra L2CAP on connect left buds unpaired (right pairing flash, left blue flash, quad-tap dead)
+- Extra L2CAP **gated off** (`CROS_EXTRA_L2CAP=0`); audio back on **cmd-path 50 ms ADPCM** (known-good)
+- **Triple warning-beep cue** when CROS activates (local + peer)
+
+### Recovering from v0.3.0
+- Flash **both** buds with v0.3.1, leave in case ~30–60s until TWS re-pairs (LEDs settle), then quad-tap
+
 ## [0.3.0] — 2026-09-22
 
 ### Firmware

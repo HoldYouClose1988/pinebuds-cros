@@ -48,5 +48,6 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
 ## Status
 
-- **Now (v0.3.0):** extra L2CAP primary for audio; cmd fallback; 50 ms ADPCM; MODE on cmd.
-- **Ear test:** confirm activate still works; note delay/chop vs v0.2.7; if extra fails to open you still get cmd fallback.
+- **Now (v0.3.1):** cmd-path 50 ms ADPCM restored after v0.3.0 extra-create broke TWS.
+  Triple-beep on activate. Extra L2CAP code remains behind `CROS_EXTRA_L2CAP=1` (off).
+- **Next:** safer deferred extra-channel probe (not on BESAUD-connected hot path).

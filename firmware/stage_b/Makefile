@@ -8,6 +8,7 @@ ccflags-y += \
 	$(BT_IF_INCLUDES) \
 	$(BT_PROFILES_INCLUDES) \
 	-Iapps/cros_tws \
+	-Iapps/main \
 	-Iapps/audioplayers \
 	-Iapps/audioplayers/a2dp_decoder \
 	-Iservices/audioflinger \

@@ -1,18 +1,18 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.0 — BESAUD extra L2CAP for audio; MODE stays on cmd path.
- *  - Prefer CID 0x0b0e with our notify/recv (stock stubs discard RX)
- *  - Fallback to tws_ctrl CROS_AUDIO if extra channel not open
- *  - 50 ms continuous ADPCM (ear-tuned sweet spot on cmd; keep for extra)
- *  - Send via BT thread mail (never raw L2CAP from osTimer)
+ * v0.3.1 — restore TWS after v0.3.0 extra-L2CAP create broke pairing;
+ *  cmd-path 50 ms ADPCM; triple-beep cue on activate. Extra L2CAP gated
+ *  off (CROS_EXTRA_L2CAP=0) until a safer probe.
  ***************************************************************************/
 #include "cros_tws.h"
 
 #include "app_audio.h"
 #include "app_ibrt_customif_cmd.h"
+#include "app_status_ind.h"
 #include "app_tws_if.h"
 #include "app_utils.h"
+#include "apps.h"
 #include "audioflinger.h"
 #include "cmsis_os.h"
 #include "cros_besaud_extra.h"
@@ -219,6 +219,17 @@ bool cros_tws_is_poor_side(void) {
 bool cros_tws_is_enabled(void) { return enabled; }
 
 void cros_tws_on_audio_tx_done(void) { tx_pending = 0; }
+
+/* Short triple beep when CROS turns on (local prompt queue). */
+static void cros_cue_active(void) {
+#ifdef MEDIA_PLAYER_SUPPORT
+  app_voice_report_generic(APP_STATUS_INDICATION_WARNING, 0, 0);
+  app_voice_report_generic(APP_STATUS_INDICATION_WARNING, 0, 0);
+  app_voice_report_generic(APP_STATUS_INDICATION_WARNING, 0, 0);
+#else
+  TRACE(0, "[cros_tws] cue skipped (no MEDIA_PLAYER_SUPPORT)");
+#endif
+}
 
 static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
   int16_t *pcm = (int16_t *)buf;
@@ -512,11 +523,8 @@ void cros_tws_init(void) {
   tx_running = rx_running = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.3.0 50ms+extra (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.3.1 50ms-cmd (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
-  if (app_tws_ibrt_tws_link_connected()) {
-    cros_besaud_extra_ensure();
-  }
 }
 
 int cros_tws_start(void) {
@@ -533,12 +541,11 @@ int cros_tws_start(void) {
     return -1;
   }
 
-  cros_besaud_extra_ensure();
   enabled = true;
+  cros_cue_active();
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
-  TRACE(2, "[cros_tws] ENABLE (local is %s, extra=%d)",
-        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX",
-        cros_besaud_extra_is_open() ? 1 : 0);
+  TRACE(1, "[cros_tws] ENABLE (local is %s)",
+        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
   return apply_enabled(true);
 }
 
@@ -577,6 +584,9 @@ void cros_tws_on_peer_mode(uint8_t on) {
     return;
   }
   enabled = want;
+  if (want) {
+    cros_cue_active();
+  }
   apply_enabled(want);
 }
 

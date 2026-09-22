@@ -1,23 +1,31 @@
 /***************************************************************************
  * BESAUD extra L2CAP transport for CROS audio packets.
+ *
+ * DISABLED BY DEFAULT (CROS_EXTRA_L2CAP=0): creating the extra channel on
+ * BESAUD-up in v0.3.0 broke TWS pairing (right stuck in pairing flash,
+ * left solid/flashing blue, quad-tap dead). Cmd-path audio remains the
+ * working pipe until a safer probe lands.
  ***************************************************************************/
 #include "cros_besaud_extra.h"
 
+#include "hal_trace.h"
+#include "string.h"
+
+#ifndef CROS_EXTRA_L2CAP
+#define CROS_EXTRA_L2CAP 0
+#endif
+
+#if CROS_EXTRA_L2CAP
 #include "app_tws_besaud.h"
 #include "besaud_api.h"
 #include "co_ppbuff.h"
-#include "hal_trace.h"
 #include "l2cap_i.h"
 #include "me_api.h"
-#include "string.h"
 
-/* Avoid app_bt_func.h (pulls a2dp_api → codec_sbc). */
 extern int app_bt_start_custom_function_in_bt_thread(uint32_t param0,
                                                      uint32_t param1,
                                                      uint32_t funcPtr);
 extern bool app_tws_ibrt_tws_link_connected(void);
-
-/* Forward: delivered from cros_tws.c */
 extern void cros_tws_on_peer_audio(uint8_t *data, uint16_t len);
 
 #define CROS_EXTRA_TX_MAX 512
@@ -67,12 +75,8 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
   if (!ppb || !ppb->data || ppb->len == 0) {
     return;
   }
-  /* Stack owns ppb — copy out, do not ppb_free (matches stock stub). */
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
   rx_ok++;
-  if ((rx_ok & 0x3F) == 0) {
-    TRACE(2, "[cros_extra] rx=%u", (unsigned)rx_ok);
-  }
 }
 
 static void *cros_extra_peer_addr(void) {
@@ -92,12 +96,10 @@ static void cros_extra_create_bt(void *a, void *b) {
   }
   remote = cros_extra_peer_addr();
   if (!remote) {
-    TRACE(0, "[cros_extra] create skipped — no peer addr");
     create_issued = 0;
     return;
   }
   if (!tws_besaud_is_connected() && !app_tws_ibrt_tws_link_connected()) {
-    TRACE(0, "[cros_extra] create skipped — BESAUD/TWS down");
     create_issued = 0;
     return;
   }
@@ -118,47 +120,69 @@ static void cros_extra_send_bt(void *a, void *b) {
   if (ret != 0) {
     tx_busy = 0;
     tx_fail++;
-    TRACE(2, "[cros_extra] send fail %d (fail=%u)", (int)ret, (unsigned)tx_fail);
   } else {
     tx_ok++;
-    if ((tx_ok & 0x3F) == 0) {
-      TRACE(2, "[cros_extra] tx=%u fail=%u", (unsigned)tx_ok, (unsigned)tx_fail);
-    }
   }
 }
+#endif /* CROS_EXTRA_L2CAP */
 
 void cros_besaud_extra_init(void) {
+#if CROS_EXTRA_L2CAP
   extra_handle = 0;
   extra_open = 0;
   create_issued = 0;
   tx_busy = 0;
   tx_scratch_len = 0;
   tx_ok = tx_fail = rx_ok = 0;
+#endif
 }
 
 void cros_besaud_extra_ensure(void) {
+#if CROS_EXTRA_L2CAP
   if (extra_open || create_issued) {
     return;
   }
   create_issued = 1;
   app_bt_start_custom_function_in_bt_thread(0, 0,
                                             (uint32_t)cros_extra_create_bt);
+#else
+  /* Intentionally idle — v0.3.0 create broke TWS. */
+#endif
 }
 
 void cros_besaud_extra_on_besaud_down(void) {
+#if CROS_EXTRA_L2CAP
   extra_handle = 0;
   extra_open = 0;
   create_issued = 0;
   tx_busy = 0;
+#endif
 }
 
-bool cros_besaud_extra_is_open(void) { return extra_open != 0; }
+bool cros_besaud_extra_is_open(void) {
+#if CROS_EXTRA_L2CAP
+  return extra_open != 0;
+#else
+  return false;
+#endif
+}
 
-bool cros_besaud_extra_tx_busy(void) { return tx_busy != 0; }
+bool cros_besaud_extra_tx_busy(void) {
+#if CROS_EXTRA_L2CAP
+  return tx_busy != 0;
+#else
+  return false;
+#endif
+}
 
-void cros_besaud_extra_force_clear_pending(void) { tx_busy = 0; }
+void cros_besaud_extra_force_clear_pending(void) {
+#if CROS_EXTRA_L2CAP
+  tx_busy = 0;
+#endif
+}
 
 int cros_besaud_extra_send(const uint8_t *data, uint16_t len) {
+#if CROS_EXTRA_L2CAP
   if (!extra_open || !data || len == 0 || len > CROS_EXTRA_TX_MAX) {
     return -1;
   }
@@ -170,4 +194,9 @@ int cros_besaud_extra_send(const uint8_t *data, uint16_t len) {
   tx_busy = 1;
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_extra_send_bt);
   return 0;
+#else
+  (void)data;
+  (void)len;
+  return -1;
+#endif
 }

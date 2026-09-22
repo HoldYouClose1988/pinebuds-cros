@@ -12,17 +12,7 @@ diff --git a/services/app_ibrt/src/app_ibrt_customif_ui.cpp b/services/app_ibrt/
  #ifdef MEDIA_PLAYER_SUPPORT
  #include "app_media_player.h"
  #endif
-@@ -251,6 +255,9 @@
-       }
- 
-       app_tws_if_tws_connected_handler();
-+#ifdef CROS_STAGE_B
-+      cros_besaud_extra_ensure();
-+#endif
-     }
- 
-   } break;
-@@ -258,6 +265,9 @@
+@@ -258,6 +262,9 @@
  
    case BTIF_BTEVENT_BES_AUD_DISCONNECTED:
      app_tws_if_tws_disconnected_handler();
