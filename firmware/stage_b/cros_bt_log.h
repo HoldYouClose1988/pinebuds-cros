@@ -2,8 +2,13 @@
  * CROS Bluetooth log tee — ring buffer → TOTA SPP (tota_printf).
  *
  * Always mirrors to UART TRACE. When TEST_OVER_THE_AIR_ENANBLED (TOTA=1),
- * also queues lines for phone capture. Never call SPP from ISR context;
- * enqueue only, flush from the timer.
+ * also queues lines for phone capture.
+ *
+ * Enqueue from any task; never send from ISR. A periodic timer only
+ * schedules work onto the BT thread (same pattern as extra L2CAP TX).
+ * The BT-thread flush skips if SPP is down, and sends at most a few lines
+ * per tick so a slow phone drops/delays logs instead of blocking forever
+ * on tota's internal osSemaphoreWait.
  ***************************************************************************/
 #ifndef CROS_BT_LOG_H
 #define CROS_BT_LOG_H

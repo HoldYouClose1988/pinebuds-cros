@@ -5,6 +5,13 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.6] — 2026-09-22
+
+### Firmware
+- **cros_bt_log flush safety:** timer only schedules; send runs on BT thread via
+  `app_bt_start_custom_function_in_bt_thread`, skips when SPP down, **max 2 lines/tick**
+  (avoids `tota_printf`'s forever semaphore wait on a general OS timer)
+
 ## [0.3.5] — 2026-09-22
 
 ### Docs / tooling (no flash required yet)

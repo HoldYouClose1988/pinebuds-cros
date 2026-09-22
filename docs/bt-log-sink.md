@@ -56,7 +56,11 @@ Stock `TRACE()` → `hal_trace_output` → **UART only**. There is no stock “m
 
 So “capture logs over Bluetooth” means one of:
 
-1. **Selective tee (recommended):** `cros_bt_logf(...)` → ring buffer → flush via `tota_printf` / raw SPP when connected. Call from CROS paths (and any other lines we care about). Do **not** call SPP from UART ISR / hardfault.
+1. **Selective tee (recommended):** `cros_bt_logf(...)` → ring buffer → timer schedules
+   BT-thread flush (`app_bt_start_custom_function_in_bt_thread`) → ≤2× `tota_printf` per
+   tick when `app_is_in_tota_mode()` (SPP up). Skip if phone disconnected; drop when ring
+   full. Do **not** call `tota_printf` from a general OS timer (it `osSemaphoreWait`s forever).
+   Do **not** call SPP from UART ISR / hardfault.
 2. **Full TRACE hijack:** wrap `hal_trace_output` — high volume, risk of deadlocks/recursion (`TOTA_LOG_*` itself uses `TRACE`). Skip for v0.
 3. **Audio dump / stream path:** `OP_TOTA_STREAM_DATA` / `app_tota_audio_dump_*` — for PCM dumps, not text logs.
 
@@ -110,7 +114,8 @@ One flash package:
 
 - Build with **`TOTA=1`** (sets `TEST_OVER_THE_AIR_ENANBLED`).
 - Keep current CROS behavior (v0.3.4 cmd path + deferred extra still optional/off for this flash if desired).
-- Add thin helper [`firmware/stage_b/cros_bt_log.*`](../firmware/stage_b/cros_bt_log.h): ring + `tota_printf` flush from BT/app thread.
+- Add thin helper [`firmware/stage_b/cros_bt_log.*`](../firmware/stage_b/cros_bt_log.h):
+  ring + BT-thread capped `tota_printf` flush (not from the OS timer directly).
 - Tee existing `[cros_tws]` / `[cros_extra]` sites through `cros_bt_logf` (still `TRACE` to UART if pads ever used).
 
 Acceptable risk: SDP gains an SPP record; sniff blocked while the log app is connected. Disconnect the app when measuring glass-to-glass latency.
