@@ -5,6 +5,12 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.2.1] — 2026-09-22
+
+### Firmware
+- Stage B CROS: switch mic relay from raw PCM to **IMA-ADPCM** (~4:1) over TWS
+- 20 ms frames, 2-packet TX pipeline, ~60 ms RX prebuffer — targets choppiness / early drop
+
 ## [0.2.0] — 2026-09-22
 
 ### Firmware
