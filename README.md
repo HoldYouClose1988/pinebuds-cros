@@ -31,7 +31,7 @@ Current experimental builds may enable a **same-bud FF mic loopback** for audio-
 **Flash host: Windows** — see [Windows flashing](docs/windows-flash.md) and [bestool setup](docs/bestool-windows.md).
 
 ```powershell
-# After building bestool.exe and noting your two COM ports:
+# After noting your two COM ports (bestool.exe is inside the flash zip):
 .\backup.ps1 -Port0 COM5 -Port1 COM6
 .\flash.ps1 -Port0 COM5 -Port1 COM6
 ```

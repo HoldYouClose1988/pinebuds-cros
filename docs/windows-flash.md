@@ -23,17 +23,9 @@ The case uses a WCH **CH342** dual-UART chip. Plug the case in (USB-C) and check
 
 Full walkthrough: [bestool-windows.md](bestool-windows.md) (also shipped as `BESTOOL.md` inside every flash zip).
 
-1. Install [Rust](https://rustup.rs/) (MSVC toolchain is fine).
-2. Build:
+**Flash packages already include `bestool.exe`.** Unzip and run `flash.ps1` / `backup.ps1` — no Rust build needed.
 
-```powershell
-git clone https://github.com/Ralim/bestool.git
-cd bestool\bestool
-cargo build --release
-# binary: target\release\bestool.exe
-```
-
-3. Put `bestool.exe` on your PATH, copy it next to the flash scripts, or pass `-Bestool`.
+Optional: rebuild from [Ralim/bestool](https://github.com/Ralim/bestool) if you want a newer upstream binary, then replace `.\bestool.exe` or pass `-Bestool`.
 
 #### Option B — Official Windows programmer
 

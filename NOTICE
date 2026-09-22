@@ -12,5 +12,11 @@ of this project. Bootstrap clones it locally for builds only.
 
 Trademarks and hardware designs belong to their respective owners (PINE64, BES, etc.).
 
+## Redistributed host tools
+
+`tools/windows/bestool.exe` is a Windows build of [Ralim/bestool](https://github.com/Ralim/bestool).
+Upstream states the Rust tool and notes are MIT-licensed; the embedded BES programmer
+payload (`programmer.bin`) remains Bestechnic copyright. See that project’s README.
+
 CROS / hearing features in this project are experimental engineering work and are
 not medical devices or certified hearing protection.

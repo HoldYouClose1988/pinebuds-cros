@@ -20,6 +20,8 @@ DO_BUILD="${DO_BUILD:-1}"
 VERSION_FILE="$ROOT/VERSION"
 CHANGELOG_FILE="$ROOT/CHANGELOG.md"
 BESTOOL_DOC="$ROOT/docs/bestool-windows.md"
+BESTOOL_EXE="${BESTOOL_EXE:-$ROOT/tools/windows/bestool.exe}"
+NOTICE_FILE="$ROOT/NOTICE"
 
 bump_semver() {
   local ver="$1" part="$2"
@@ -62,6 +64,11 @@ if [[ ! -f "$BESTOOL_DOC" ]]; then
   echo "Missing bestool instructions: $BESTOOL_DOC" >&2
   exit 1
 fi
+if [[ ! -f "$BESTOOL_EXE" ]]; then
+  echo "Missing Windows bestool.exe: $BESTOOL_EXE" >&2
+  echo "Place a built binary at tools/windows/bestool.exe (see tools/windows/README.md)." >&2
+  exit 1
+fi
 
 if [[ "$DO_BUILD" == "1" ]]; then
   echo "==> Building firmware for package v$VERSION (TOTA=$TOTA)"
@@ -90,9 +97,15 @@ cp -f "$ROOT/scripts/backup.ps1" "$PKG/backup.ps1"
 cp -f "$VERSION_FILE" "$PKG/VERSION"
 cp -f "$CHANGELOG_FILE" "$PKG/CHANGELOG.md"
 cp -f "$BESTOOL_DOC" "$PKG/BESTOOL.md"
+cp -f "$BESTOOL_EXE" "$PKG/bestool.exe"
+if [[ -f "$NOTICE_FILE" ]]; then
+  cp -f "$NOTICE_FILE" "$PKG/NOTICE"
+fi
 
 SIZE="$(wc -c <"$PKG/open_source.bin" | tr -d ' ')"
 SHA256="$(sha256sum "$PKG/open_source.bin" | awk '{print $1}')"
+BESTOOL_SHA256="$(sha256sum "$PKG/bestool.exe" | awk '{print $1}')"
+BESTOOL_BYTES="$(wc -c <"$PKG/bestool.exe" | tr -d ' ')"
 BUILT_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Extract this version's changelog section for a short RELEASE_NOTES.txt
@@ -118,12 +131,16 @@ tota:        $TOTA
 bin:         open_source.bin
 bin_bytes:   $SIZE
 bin_sha256:  $SHA256
+bestool:     bestool.exe
+bestool_bytes: $BESTOOL_BYTES
+bestool_sha256: $BESTOOL_SHA256
 repo:        (clone of this project; no absolute owner URL embedded)
-files:       open_source.bin flash.ps1 backup.ps1 FLASH.md BESTOOL.md CHANGELOG.md RELEASE_NOTES.txt VERSION MANIFEST.txt SHA256SUMS
+files:       open_source.bin bestool.exe flash.ps1 backup.ps1 FLASH.md BESTOOL.md CHANGELOG.md RELEASE_NOTES.txt VERSION MANIFEST.txt SHA256SUMS NOTICE
 EOF
 
 cat >"$PKG/SHA256SUMS" <<EOF
 $SHA256  open_source.bin
+$BESTOOL_SHA256  bestool.exe
 EOF
 
 cat >"$PKG/FLASH.md" <<EOF
@@ -131,7 +148,7 @@ cat >"$PKG/FLASH.md" <<EOF
 
 DIY / own-risk. **Work in progress — not a functional CROS product.** Not a hearing aid or PPE.
 
-Start here → read **\`BESTOOL.md\`** (install flasher) and **\`RELEASE_NOTES.txt\`** (what changed).
+Start here → read **\`BESTOOL.md\`** (flasher notes) and **\`RELEASE_NOTES.txt\`** (what changed).
 
 ## What’s in this zip
 
@@ -140,25 +157,31 @@ Start here → read **\`BESTOOL.md\`** (install flasher) and **\`RELEASE_NOTES.t
 | \`VERSION\` | Package version (\`$VERSION\`) |
 | \`CHANGELOG.md\` | Full project changelog |
 | \`RELEASE_NOTES.txt\` | Notes for **this** version only |
-| \`BESTOOL.md\` | Install + use \`bestool.exe\` on Windows |
+| \`BESTOOL.md\` | How to use the bundled \`bestool.exe\` |
+| \`bestool.exe\` | Windows flasher ([Ralim/bestool](https://github.com/Ralim/bestool), MIT + BES programmer blob) |
+| \`NOTICE\` | Third-party / SDK notices |
 | \`open_source.bin\` | Firmware image (flash to **both** buds) |
 | \`flash.ps1\` | Write image via \`bestool\` |
 | \`backup.ps1\` | Read stock images before first custom flash |
 | \`MANIFEST.txt\` | Build id, git sha, checksum |
-| \`SHA256SUMS\` | SHA-256 of the bin |
+| \`SHA256SUMS\` | SHA-256 of bin + bestool |
 
 ## One-time Windows setup
 
 1. Install WCH **CH342** driver → Device Manager shows **two** COM ports.
-2. Follow **\`BESTOOL.md\`** to build \`bestool.exe\` and put it on PATH (or copy next to these scripts).
+2. Unzip this folder — \`bestool.exe\` is already included (no Rust build needed).
 3. Optional restore tool: PINE64 \`dld_main\` + [factory images](https://wiki.pine64.org/wiki/PineBuds_Pro#Firmware_images).
+
+If Windows Defender quarantines \`bestool.exe\`, restore it or allow the folder (unsigned Rust binary).
 
 ## Backup once (before any custom flash)
 
 \`\`\`powershell
 # Replace COM5 / COM6 with your ports
-.\\backup.ps1 -Port0 COM5 -Port1 COM6 -Bestool .\\bestool.exe
+.\\backup.ps1 -Port0 COM5 -Port1 COM6
 \`\`\`
+
+(\`flash.ps1\` / \`backup.ps1\` auto-find \`.\\bestool.exe\`.)
 
 Keep \`backups\\*.bin\` somewhere safe.
 
@@ -170,7 +193,7 @@ Keep \`backups\\*.bin\` somewhere safe.
 4. Run:
 
 \`\`\`powershell
-.\\flash.ps1 -Port0 COM5 -Port1 COM6 -Bestool .\\bestool.exe
+.\\flash.ps1 -Port0 COM5 -Port1 COM6
 \`\`\`
 
 (\`BinPath\` defaults to \`.\\open_source.bin\`.)

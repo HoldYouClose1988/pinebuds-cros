@@ -5,6 +5,13 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.7] — 2026-09-22
+
+### Flash package
+- **Bundle `bestool.exe`** in every zip (`tools/windows/bestool.exe` → package root)
+- `flash.ps1` / `backup.ps1` find it automatically — no separate Rust build for Windows flash
+- NOTICE updated for Ralim/bestool redistribution
+
 ## [0.3.6] — 2026-09-22
 
 ### Firmware
@@ -15,6 +22,7 @@ Format: version, date (UTC), then user-facing changes.
 
 ### Android
 - **Capture logs** toggle: on opens TOTA SPP; off closes it so TWS sniff is free for ear tests
+- **Share log** exports `.txt` for chat review
 
 ## [0.3.5] — 2026-09-22
 

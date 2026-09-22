@@ -1,65 +1,18 @@
 # Installing and using bestool (Windows)
 
-`bestool` is the community flasher for PineBuds Pro / BES2300 images.  
-This flash package does **not** bundle `bestool.exe` (it is a Windows host binary you build once).
+`bestool` is the community flasher for PineBuds Pro / BES2300 images.
 
-Source: [github.com/Ralim/bestool](https://github.com/Ralim/bestool)
+Source: [github.com/Ralim/bestool](https://github.com/Ralim/bestool) (MIT tool + BES programmer blob — see `NOTICE`).
+
+**Flash packages ship `bestool.exe` in the zip.** You do **not** need Rust unless you want to rebuild it yourself.
 
 ## Prerequisites
 
 1. **WCH CH342 driver** — plug the case in USB-C; Device Manager → **Ports (COM & LPT)** should show **two** COM ports (e.g. COM5 and COM6).  
    Driver: [WCH CH342/CH343](http://www.wch-ic.com/downloads/CH343SER_EXE.html)
-2. **Rust (MSVC toolchain)** — install from [rustup.rs](https://rustup.rs/). In the installer, choose the default host triple for 64-bit Windows (`x86_64-pc-windows-msvc`). You may need [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with “Desktop development with C++”.
-3. Git for Windows (to clone bestool).
+2. Unzip the flash package so `bestool.exe`, `flash.ps1`, and `open_source.bin` are in the same folder.
 
-## Build bestool.exe (one-time)
-
-Open **PowerShell**:
-
-```powershell
-git clone https://github.com/Ralim/bestool.git
-cd bestool\bestool
-cargo build --release
-```
-
-Binary path:
-
-```text
-bestool\bestool\target\release\bestool.exe
-```
-
-### Put it on PATH (pick one)
-
-**Option A — copy next to this flash package** (simple for one-off flashes):
-
-```powershell
-Copy-Item .\path\to\bestool.exe .
-# Then from the unzipped package folder, flash.ps1 / backup.ps1 find it as .\bestool.exe
-```
-
-If you keep `bestool.exe` in the same folder as `flash.ps1`, call:
-
-```powershell
-.\flash.ps1 -Port0 COM5 -Port1 COM6 -Bestool .\bestool.exe
-```
-
-**Option B — user PATH:**
-
-```powershell
-# Example: permanent user PATH entry
-[Environment]::SetEnvironmentVariable(
-  "Path",
-  $env:Path + ";C:\Tools\bestool",
-  "User"
-)
-# Copy bestool.exe into C:\Tools\bestool, then open a new PowerShell
-```
-
-Verify:
-
-```powershell
-bestool.exe --help
-```
+If Windows Defender quarantines `bestool.exe`, restore/allow it (unsigned Rust binary).
 
 ## Critical: bootloader Sync order
 
@@ -78,59 +31,43 @@ Correct order **per bud**:
 
 Do **one COM port at a time**. `backup.ps1` and `flash.ps1` prompt for this.
 
-If Sync hangs: **Ctrl+C**, then retry that port with reseat-after-start.
-
-## Backup stock firmware (do this once)
-
-Case on USB; note your two COM ports.
+## Backup once
 
 ```powershell
-.\backup.ps1 -Port0 COM5 -Port1 COM6 -Bestool .\bestool.exe
+.\backup.ps1 -Port0 COM5 -Port1 COM6
 ```
 
-Follow the on-screen prompts (out → Enter → reseat) for LEFT then RIGHT.
+Scripts auto-find `.\bestool.exe`. Keep `backups\*.bin` safe.
 
-Or manually (same Sync order):
+## Flash
 
 ```powershell
-# LEFT: bud out -> run this -> reseat immediately
-.\bestool.exe read-image backup-left.bin --port COM5
-# RIGHT: same
-.\bestool.exe read-image backup-right.bin --port COM6
+.\flash.ps1 -Port0 COM5 -Port1 COM6
 ```
 
-Keep those files safe. Factory images also live on the [PINE64 wiki](https://wiki.pine64.org/wiki/PineBuds_Pro#Firmware_images).
+## Optional: rebuild bestool yourself
 
-## Flash this package
+Only needed if you want a newer upstream binary:
 
 ```powershell
-.\flash.ps1 -Port0 COM5 -Port1 COM6 -Bestool .\bestool.exe
+git clone https://github.com/Ralim/bestool.git
+cd bestool\bestool
+cargo build --release
+# → target\release\bestool.exe
 ```
 
-Same Sync prompts as backup. Equivalent manual commands:
-
-```powershell
-.\bestool.exe write-image open_source.bin --port COM5
-.\bestool.exe write-image open_source.bin --port COM6
-```
-
-Leave buds in the case ~30 seconds for TWS re-pair.
+Copy over the shipped `bestool.exe`, or put it on PATH / pass `-Bestool`.
 
 ## Troubleshooting
 
-| Symptom | What to try |
-|---------|-------------|
+| Symptom | Fix |
+|---------|-----|
 | Hangs on `Sent message type Sync` | Bud was seated too early. Ctrl+C; bud out → start bestool → reseat |
-| `bestool not found` | Pass `-Bestool .\bestool.exe` or add it to PATH; new PowerShell window after PATH change |
-| Cargo / link errors | Install VS Build Tools (C++), then `rustup default stable` and rebuild |
-| Timeout mid-read | Watchdog on large dumps; rerun `read-image` (bestool reads in chunks) |
-| Only one bud updates | Flash the quiet COM port again with Sync order |
-| Soft-brick | Restore with PINE64 `dld_main` + factory APP (+ OTA if required) |
+| `bestool not found` | Unzip so `bestool.exe` sits next to `flash.ps1`, or pass `-Bestool .\bestool.exe` |
+| Defender deleted the exe | Allow / restore; re-download the zip if needed |
+| Timeout mid-read | Watchdog on large dumps; rerun `read-image` |
+| Wrong COM | Confirm the CH342 pair in Device Manager |
 
-## Optional: official programmer
+## Factory programmer fallback
 
 If bestool misbehaves, use PINE64 `dld_main` (APP only for community bins). See `FLASH.md` and the [programmer user manual](https://files.pine64.org/os/PineBudsPro/PineBuds%20Pro%20programmer%20user%20manual.pdf). Official tool also wants buds **out**, then Start, then reseat.
-
-## Flash budget
-
-On-chip flash has limited erase cycles (~500). Prefer validating builds in software; flash only when you intend to.
