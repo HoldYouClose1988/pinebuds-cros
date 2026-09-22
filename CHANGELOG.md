@@ -11,6 +11,7 @@ Format: version, date (UTC), then user-facing changes.
 - **cros_bt_log flush safety:** timer only schedules; send runs on BT thread via
   `app_bt_start_custom_function_in_bt_thread`, skips when SPP down, **max 2 lines/tick**
   (avoids `tota_printf`'s forever semaphore wait on a general OS timer)
+- **Flash package:** Stage B CROS + **`TOTA=1`** log sink (first logging-enabled zip)
 
 ### Android
 - **Capture logs** toggle: on opens TOTA SPP; off closes it so TWS sniff is free for ear tests

@@ -13,12 +13,29 @@ See [docs/bt-log-sink.md](../../docs/bt-log-sink.md) for the firmware side.
 
 ## Build / run
 
-1. Open this folder in Android Studio (`android/cros-log`).
-2. Sync Gradle, run on a physical device (emulator has no classic BT).
-3. Pair PineBuds in system Bluetooth settings first.
-4. In the app: pick the device → flip **Capture logs** on.
-5. Quad-tap CROS / poke the buds — `[cros_*]` lines should scroll in.
-6. Flip **Capture logs** off before a clean latency ear-test (drops SPP so TWS sniff can resume). Flip on again when you need lines.
+I can’t produce an APK in this cloud environment (no Android SDK). Build on your machine:
+
+1. Install [Android Studio](https://developer.android.com/studio) (Ladybug+ / AGP 8.x is fine).
+2. **File → Open** → this folder: `android/cros-log`.
+3. Let Gradle sync; if prompted, install the suggested SDK / Build-Tools.
+4. Plug in a phone (emulator has no classic Bluetooth), enable USB debugging.
+5. Run ▶ on the device.
+6. Pair PineBuds in system Bluetooth first, then in the app: pick the device → **Capture logs** on.
+
+Debug APK output (after a local build):
+
+```text
+android/cros-log/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Or from a terminal with SDK installed:
+
+```bash
+cd android/cros-log
+./gradlew :app:assembleDebug   # needs gradle wrapper jar from Studio’s first sync
+```
+
+Buds need firmware **v0.3.6+** (`TOTA=1`) or SPP connect will fail.
 
 ## Wire format
 

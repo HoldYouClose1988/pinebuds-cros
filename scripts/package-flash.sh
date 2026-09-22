@@ -12,6 +12,8 @@ source "$ROOT/.tools/env.sh"
 TARGET="${TARGET:-open_source}"
 STAGE="${STAGE:-stage-b}"
 STAGE_A="${STAGE_A:-1}"
+# Logging flash packages enable TOTA SPP by default (phone log sink).
+TOTA="${TOTA:-1}"
 BIN_SRC="${BIN_SRC:-$OPENPINEBUDS_ROOT/out/$TARGET/$TARGET.bin}"
 OUT_DIR="${OUT_DIR:-$ROOT/flash-packages}"
 DO_BUILD="${DO_BUILD:-1}"
@@ -62,8 +64,8 @@ if [[ ! -f "$BESTOOL_DOC" ]]; then
 fi
 
 if [[ "$DO_BUILD" == "1" ]]; then
-  echo "==> Building firmware for package v$VERSION"
-  STAGE_A="$STAGE_A" bash "$ROOT/scripts/build.sh"
+  echo "==> Building firmware for package v$VERSION (TOTA=$TOTA)"
+  STAGE_A="$STAGE_A" TOTA="$TOTA" bash "$ROOT/scripts/build.sh"
 fi
 
 if [[ ! -f "$BIN_SRC" ]]; then
@@ -112,6 +114,7 @@ git_sha:     $GIT_SHA
 built_utc:   $BUILT_UTC
 target:      $TARGET
 stage_a:     $STAGE_A
+tota:        $TOTA
 bin:         open_source.bin
 bin_bytes:   $SIZE
 bin_sha256:  $SHA256
@@ -192,6 +195,11 @@ Quad-tap needs the **bud↔bud** link. If one LED stays in pairing flash:
 - Scratch / speak near the **right** outer face — you should hear it in the **left** ear with delay.
 - Avoid phone music while testing (A2DP fights the CROS stream).
 - DIY / own-risk — **not** a hearing aid.
+
+**Phone log capture (v0.3.5+, TOTA=1):** this image advertises TOTA SPP (RFCOMM 12).
+Open the \`android/cros-log\` app → pick PineBuds → **Capture logs** on to stream
+\`[cros_*]\` lines from the master bud. Flip the toggle **off** before a clean latency
+ear-test (drops SPP so TWS sniff can resume).
 
 Stage A same-bud loopback is still in the tree for bring-up builds without Stage B.
 
