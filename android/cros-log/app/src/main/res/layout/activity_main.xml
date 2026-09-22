@@ -73,14 +73,29 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/controlRow" />
 
-    <Button
-        android:id="@+id/clearButton"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/actionRow"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="@string/clear"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/loggingHint" />
+        app:layout_constraintTop_toBottomOf="@id/loggingHint">
+
+        <Button
+            android:id="@+id/shareButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/share" />
+
+        <Button
+            android:id="@+id/clearButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/clear" />
+    </LinearLayout>
 
     <ScrollView
         android:id="@+id/logScroll"
@@ -93,7 +108,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/clearButton">
+        app:layout_constraintTop_toBottomOf="@id/actionRow">
 
         <TextView
             android:id="@+id/logView"

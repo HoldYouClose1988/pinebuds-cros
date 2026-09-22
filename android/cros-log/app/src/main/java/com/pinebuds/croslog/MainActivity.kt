@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +14,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.pinebuds.croslog.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +22,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
@@ -46,6 +52,7 @@ class MainActivity : AppCompatActivity() {
             logLines.clear()
             binding.logView.text = ""
         }
+        binding.shareButton.setOnClickListener { shareLog() }
         binding.loggingSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressSwitchCallback) return@setOnCheckedChangeListener
             if (checked) {
@@ -229,6 +236,54 @@ class MainActivity : AppCompatActivity() {
             repeat(4 + len) { acc.removeAt(0) }
             val text = textBytes.toString(Charsets.UTF_8)
             withContext(Dispatchers.Main) { appendUi(text) }
+        }
+    }
+
+    private fun shareLog() {
+        if (logLines.isEmpty()) {
+            toast(getString(R.string.share_empty))
+            return
+        }
+        val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        val body = buildString {
+            appendLine("CROS Log export $stamp")
+            appendLine("device=${selectedDeviceLabel()}")
+            appendLine("---")
+            logLines.forEach { appendLine(it) }
+        }
+        try {
+            val dir = File(cacheDir, "exports").apply { mkdirs() }
+            val file = File(dir, "cros-log-$stamp.txt")
+            file.writeText(body)
+            val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_title))
+                putExtra(Intent.EXTRA_TEXT, body)
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(send, getString(R.string.share)))
+        } catch (e: Exception) {
+            // Fallback: text-only share (no file attachment).
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_title))
+                putExtra(Intent.EXTRA_TEXT, body)
+            }
+            startActivity(Intent.createChooser(send, getString(R.string.share)))
+            appendUi("Share file failed (${e.message}); sent as plain text")
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun selectedDeviceLabel(): String {
+        val idx = binding.deviceSpinner.selectedItemPosition
+        return if (idx in bonded.indices) {
+            val d = bonded[idx]
+            "${d.name ?: "?"} ${d.address}"
+        } else {
+            "(none)"
         }
     }
 

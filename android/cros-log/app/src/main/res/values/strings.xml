@@ -8,4 +8,7 @@
     <string name="logging_toggle">Capture logs</string>
     <string name="logging_hint">Off drops SPP so TWS sniff can resume. On again reconnects to the selected bud.</string>
     <string name="clear">Clear</string>
+    <string name="share">Share log</string>
+    <string name="share_title">CROS bud log</string>
+    <string name="share_empty">Nothing to share yet</string>
 </resources>
