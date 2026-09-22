@@ -1,8 +1,11 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.2.1: IMA-ADPCM over IBRT (≈4:1) + small TX pipeline + RX prebuffer.
- * Raw 16 kHz PCM saturated the TWS ACL (choppy / ~20s drop).
+ * v0.2.2: stop flooding the IBRT cmd queue (was ~1s backlog + chop).
+ *  - Exactly 1 packet in flight; never queue ahead of tx_done
+ *  - 10 ms ADPCM frames
+ *  - Hard RX latency clamp (~60 ms max buffered)
+ *  - Soft limiter so loud nail scrapes don't spike the link
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -22,6 +25,8 @@
 
 extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length);
 extern bool app_tws_ibrt_tws_link_connected(void);
+/* Direct path from customif — avoids tws_ctrl mailbox backlog. */
+extern int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length);
 
 #ifndef CROS_POOR_IS_RIGHT
 #define CROS_POOR_IS_RIGHT 1
@@ -29,19 +34,19 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 
 #define CROS_SAMPLE_RATE AUD_SAMPRATE_16000
 #define CROS_BITS AUD_BITS_16
-/* 20 ms @ 16 kHz → 320 PCM bytes → 160 ADPCM bytes (+4 hdr) */
-#define CROS_FRAME_SAMPLES 320
+#define CROS_FRAME_SAMPLES 160 /* 10 ms */
 #define CROS_FRAME_BYTES (CROS_FRAME_SAMPLES * 2)
 #define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2)
 #define CROS_PKT_BYTES (4 + CROS_ADPCM_BYTES)
 #define CROS_DMA_BYTES (CROS_FRAME_BYTES * 2)
-#define CROS_RING_BYTES (CROS_FRAME_BYTES * 16)
-#define CROS_PREBUF_BYTES (CROS_FRAME_BYTES * 3) /* ~60 ms before underruns */
+#define CROS_RING_BYTES (CROS_FRAME_BYTES * 10)
+#define CROS_PREBUF_BYTES (CROS_FRAME_BYTES * 2)  /* ~20 ms */
+#define CROS_MAX_BUF_BYTES (CROS_FRAME_BYTES * 6) /* ~60 ms latency clamp */
 
-#define CROS_GAIN_Q15 20000 /* ~0.61 */
-#define CROS_PLAY_VOL 13
+#define CROS_GAIN_Q15 16000 /* ~0.49 — quieter to reduce spike dropouts */
+#define CROS_LIM_THRESH 20000
+#define CROS_PLAY_VOL 12
 #define CROS_STREAM_ID AUD_STREAM_ID_0
-#define CROS_TX_MAX_INFLIGHT 2
 #define CROS_PKT_MAGIC 0xA5
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
@@ -56,11 +61,13 @@ static bool inited;
 static bool enabled;
 static bool tx_running;
 static bool rx_running;
-static volatile uint8_t tx_inflight;
+static volatile uint8_t tx_busy;
+static uint8_t tx_busy_age;
 static uint32_t tx_frames;
 static uint32_t rx_pkts;
 static uint32_t tx_drops;
 static uint32_t underruns;
+static uint32_t rx_drops;
 
 /* ---- IMA ADPCM (mono) ---- */
 static const int16_t ima_step_table[89] = {
@@ -170,8 +177,14 @@ static void ima_decode_block(const uint8_t *in, int16_t *pcm) {
   }
 }
 
-static int16_t apply_gain_clip(int16_t s) {
+static int16_t process_sample(int16_t s) {
   int32_t v = ((int32_t)s * CROS_GAIN_Q15) >> 15;
+  /* Soft knee toward lim threshold — loud nail scrapes were killing the link. */
+  if (v > CROS_LIM_THRESH) {
+    v = CROS_LIM_THRESH + ((v - CROS_LIM_THRESH) >> 2);
+  } else if (v < -CROS_LIM_THRESH) {
+    v = -CROS_LIM_THRESH - ((-CROS_LIM_THRESH - v) >> 2);
+  }
   return clamp16(v);
 }
 
@@ -186,9 +199,8 @@ bool cros_tws_is_poor_side(void) {
 bool cros_tws_is_enabled(void) { return enabled; }
 
 void cros_tws_on_audio_tx_done(void) {
-  if (tx_inflight > 0) {
-    tx_inflight--;
-  }
+  tx_busy = 0;
+  tx_busy_age = 0;
 }
 
 static void send_adpcm_frame(const int16_t *pcm) {
@@ -196,38 +208,31 @@ static void send_adpcm_frame(const int16_t *pcm) {
     tx_drops++;
     return;
   }
-  /* If tx_done was missed, don't stall forever. */
-  if (tx_inflight >= CROS_TX_MAX_INFLIGHT) {
-    static uint8_t stuck;
-    if (++stuck >= 8) {
-      tx_inflight = 0;
-      stuck = 0;
-      TRACE(0, "[cros_tws] tx_inflight reset");
-    } else {
+  /* One packet in flight. If tx_done is missed, age out after ~30 ms. */
+  if (tx_busy) {
+    if (++tx_busy_age < 3) {
       tx_drops++;
       return;
     }
+    tx_busy = 0;
+    tx_busy_age = 0;
   }
 
-  /* Header carries encoder state *before* this block so RX can resync. */
   tx_pkt[0] = CROS_PKT_MAGIC;
   tx_pkt[1] = (uint8_t)enc_state.index;
   tx_pkt[2] = (uint8_t)(enc_state.pred & 0xFF);
   tx_pkt[3] = (uint8_t)((enc_state.pred >> 8) & 0xFF);
   ima_encode_block(pcm, &tx_pkt[4]);
 
-  tx_inflight++;
-  if (tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, tx_pkt, CROS_PKT_BYTES) !=
-      0) {
-    if (tx_inflight > 0) {
-      tx_inflight--;
-    }
+  tx_busy = 1;
+  tx_busy_age = 0;
+  if (app_ibrt_cros_audio_send_now(tx_pkt, CROS_PKT_BYTES) != 0) {
+    tx_busy = 0;
     tx_drops++;
   } else {
     tx_frames++;
-    if ((tx_frames & 0x3F) == 0) {
-      TRACE(3, "[cros_tws] tx=%u drops=%u inflight=%u", tx_frames, tx_drops,
-            (unsigned)tx_inflight);
+    if ((tx_frames & 0x7F) == 0) {
+      TRACE(2, "[cros_tws] tx=%u drops=%u", tx_frames, tx_drops);
     }
   }
 }
@@ -237,7 +242,7 @@ static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
   uint32_t samples = len / sizeof(int16_t);
 
   for (uint32_t i = 0; i < samples; i++) {
-    pcm_acc[pcm_acc_count++] = apply_gain_clip(pcm[i]);
+    pcm_acc[pcm_acc_count++] = process_sample(pcm[i]);
     if (pcm_acc_count >= CROS_FRAME_SAMPLES) {
       send_adpcm_frame(pcm_acc);
       pcm_acc_count = 0;
@@ -266,7 +271,7 @@ static int start_tx(void) {
 
   memset(&enc_state, 0, sizeof(enc_state));
   pcm_acc_count = 0;
-  tx_inflight = 0;
+  tx_busy = 0;
 
   memset(&cfg, 0, sizeof(cfg));
   cfg.bits = CROS_BITS;
@@ -288,7 +293,7 @@ static int start_tx(void) {
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = true;
   tx_frames = tx_drops = 0;
-  TRACE(0, "[cros_tws] TX ADPCM START");
+  TRACE(0, "[cros_tws] TX gated-ADPCM START");
   return 0;
 }
 
@@ -302,7 +307,6 @@ static int start_rx(void) {
 
   memset(&dec_state, 0, sizeof(dec_state));
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
-  /* Prime with silence so first nail-scratch isn't pure underrun chop. */
   {
     static uint8_t silence[CROS_PREBUF_BYTES];
     memset(silence, 0, sizeof(silence));
@@ -328,8 +332,8 @@ static int start_rx(void) {
   }
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   rx_running = true;
-  rx_pkts = underruns = 0;
-  TRACE(0, "[cros_tws] RX ADPCM START");
+  rx_pkts = underruns = rx_drops = 0;
+  TRACE(0, "[cros_tws] RX latency-clamped START");
   return 0;
 }
 
@@ -340,7 +344,7 @@ static void stop_tx(void) {
   af_stream_stop(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   af_stream_close(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = false;
-  tx_inflight = 0;
+  tx_busy = 0;
   TRACE(0, "[cros_tws] TX STOP");
 }
 
@@ -386,9 +390,9 @@ void cros_tws_init(void) {
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   enabled = false;
   tx_running = rx_running = false;
-  tx_inflight = 0;
+  tx_busy = 0;
   inited = true;
-  TRACE(1, "[cros_tws] init ADPCM CROS (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.2.2 (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -448,15 +452,24 @@ void cros_tws_on_peer_mode(uint8_t on) {
 }
 
 void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
+  int buffered;
+
   if (!enabled || cros_tws_is_poor_side() || !rx_running || !data) {
     return;
   }
   if (len < CROS_PKT_BYTES || data[0] != CROS_PKT_MAGIC) {
-    tx_drops++; /* reuse counter as bad-pkt on RX side via TRACE */
+    rx_drops++;
     return;
   }
 
-  /* Resync decoder from packet header each frame (tolerates drops). */
+  /* Latency clamp: if we already have >60 ms queued, drop this packet. */
+  buffered = app_audio_pcmbuff_length();
+  if (buffered > (int)CROS_MAX_BUF_BYTES) {
+    app_audio_pcmbuff_discard(
+        (uint16_t)(buffered - (int)(CROS_FRAME_BYTES * 2)));
+    rx_drops++;
+  }
+
   dec_state.index = (int8_t)data[1];
   if (dec_state.index < 0)
     dec_state.index = 0;
@@ -471,7 +484,8 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
     app_audio_pcmbuff_put((uint8_t *)decode_pcm, CROS_FRAME_BYTES);
   }
   rx_pkts++;
-  if ((rx_pkts & 0x3F) == 0) {
-    TRACE(2, "[cros_tws] rx=%u underrun=%u", rx_pkts, underruns);
+  if ((rx_pkts & 0x7F) == 0) {
+    TRACE(3, "[cros_tws] rx=%u underrun=%u drop=%u", rx_pkts, underruns,
+          rx_drops);
   }
 }

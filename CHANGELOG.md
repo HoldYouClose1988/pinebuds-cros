@@ -5,6 +5,13 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.2.2] — 2026-09-22
+
+### Firmware
+- Stage B: fix ~1s delay / chop from TWS cmd queue backlog — **direct BESAUD send**, 1-packet inflight gate
+- Soft limiter for loud mic spikes (nail-on-grille was dropping CROS)
+- RX latency clamp (~60 ms max); shorter 10 ms ADPCM frames; quieter default gain
+
 ## [0.2.1] — 2026-09-22
 
 ### Firmware

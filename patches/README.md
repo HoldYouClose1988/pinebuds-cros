@@ -10,6 +10,7 @@ Keep patches minimal and feature-scoped.
 |-------|---------|
 | `0001-stage-a-ff-loopback.patch` | Wire experimental `CROS_STAGE_A`: local FF mic loopback, quad-tap, FF mic as ASRMIC |
 | `0002-stage-b-cros-tws.patch` | Wire experimental `CROS_STAGE_B`: cross-bud CROS over IBRT custom cmds, larger TWS ctrl buf |
+| `0003-cros-direct-audio-send.patch` | Direct BESAUD send helper (skip tws_ctrl mailbox backlog) |
 
 Sources:
 - Stage A: `firmware/stage_a/` → `apps/cros_loopback/`
