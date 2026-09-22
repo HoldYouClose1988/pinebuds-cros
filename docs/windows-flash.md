@@ -104,18 +104,22 @@ If one bud stays in **pairing flash** (red+blue or rapid blue) and the other won
 3. Take **both** out together for ~5s, reseat together, wait another ~60s.
 4. Look for: both LEDs calm / matching (not one stuck in phone-pairing flash).
 
-### B. Full earbud reset (clears paired-device list)
+### B. Case RESET (preferred — what fixed link loss on hardware)
+
+1. Both buds in the case, USB plugged, lid open.
+2. Hold the **RESET** button under the lid (between seats) **~5 seconds**.
+3. Leave buds seated **30–60s** for peer re-pair.
+4. Purple blink is **not required** on all units/firmware — settled LEDs / working quad-tap are enough.
+
+### C. Full earbud reset (manual §6.8 — if case RESET isn’t enough)
 
 From the [PineBuds Pro user manual](https://files.pine64.org/doc/PineBudsPro/PineBuds%20Pro%20User%20manual-20220920-8pages-20221116.pdf) §6.8:
 
 1. Remove **one** bud; hold its touch/button **~5s** until red → shut down. Repeat on the other.
-2. Hold both until LEDs flash **red+blue**, then **tap each 5 times** until **purple** flash → off.
+2. Hold both until LEDs flash **red+blue**, then **tap each 5 times** (manual mentions purple; skip if your LEDs never go purple).
 3. Seat **both** in the case **30s+** before reuse.
-4. Re-pair to the phone only after the two buds have peer-linked (manual §5.1: during peer pairing left is red+blue, right blue every ~5s; when peer OK **both** blink blue every ~5s).
 
-Some cases also have a **RESET** under the lid (between seats) — hold ~5s with buds in, then close lid (purple blink = success).
-
-### C. Still dead after reset
+### D. Still dead after reset
 
 Restore **factory** APP (+ OTA if required) with PINE64 `dld_main` + [wiki images](https://wiki.pine64.org/wiki/PineBuds_Pro#Firmware_images), confirm stock TWS works, then re-flash custom **v0.3.1**.
 
@@ -139,6 +143,7 @@ On-chip flash is rated for a limited number of erase cycles (~500). Treat each s
 | bestool times out | Confirm COM pair; close other serial apps; retry Sync order |
 | Only one bud updates | Flash the other COM explicitly; don’t assume “All Start” hit both |
 | Soft-brick | Restore factory APP (+ OTA if required) with `dld_main` + wiki images |
+| Lost TWS / no quad-tap | **Case RESET ~5s** (preferred); forget phone pair; see [Lost TWS link](#lost-tws-link-after-a-flash-reset--re-pair) |
 | WSL2 can’t see COM | Prefer **native Windows** bestool/`dld_main`; WSL serial passthrough is unreliable |
 
 ## What stays on Windows vs cloud

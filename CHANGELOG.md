@@ -5,6 +5,15 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.2] — 2026-09-22
+
+### Firmware
+- **Fix cue killing CROS audio:** triple warning beep was racing the AF mic/speaker streams; play cue first, start streams after **1.2 s** settle
+- Same cmd-path 50 ms ADPCM as v0.3.1
+
+### Docs
+- Prefer **case RESET ~5s** for lost TWS (purple LED not always present)
+
 ## [0.3.1] — 2026-09-22
 
 ### Firmware

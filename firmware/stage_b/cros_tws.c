@@ -1,9 +1,8 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.1 — restore TWS after v0.3.0 extra-L2CAP create broke pairing;
- *  cmd-path 50 ms ADPCM; triple-beep cue on activate. Extra L2CAP gated
- *  off (CROS_EXTRA_L2CAP=0) until a safer probe.
+ * v0.3.2 — cue before streams (settle 1.2s) so media prompt doesn't kill
+ *  CROS AF; cmd-path 50 ms ADPCM; extra L2CAP still gated off.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -90,6 +89,15 @@ static uint32_t rx_resyncs;
 static void cros_tick(void const *arg);
 osTimerDef(CROS_TICK, cros_tick);
 static osTimerId cros_tick_id;
+
+/* Media prompts steal the codec — delay AF start until cue finishes. */
+#define CROS_CUE_SETTLE_MS 1200
+static void cros_start_after_cue(void const *arg);
+osTimerDef(CROS_CUE_DELAY, cros_start_after_cue);
+static osTimerId cros_cue_delay_id;
+static volatile uint8_t start_pending;
+
+static int apply_enabled(bool on);
 
 static const int16_t ima_step_table[89] = {
     7,     8,     9,     10,    11,    12,    13,    14,    16,    17,
@@ -229,6 +237,39 @@ static void cros_cue_active(void) {
 #else
   TRACE(0, "[cros_tws] cue skipped (no MEDIA_PLAYER_SUPPORT)");
 #endif
+}
+
+static void cue_delay_cancel(void) {
+  start_pending = 0;
+  if (cros_cue_delay_id) {
+    osTimerStop(cros_cue_delay_id);
+  }
+}
+
+static void cue_then_start_streams(void) {
+  cros_cue_active();
+  if (!cros_cue_delay_id) {
+    cros_cue_delay_id =
+        osTimerCreate(osTimer(CROS_CUE_DELAY), osTimerOnce, NULL);
+  }
+  start_pending = 1;
+  if (cros_cue_delay_id) {
+    osTimerStart(cros_cue_delay_id, CROS_CUE_SETTLE_MS);
+  } else {
+    /* No timer — start immediately (cue may still fight AF). */
+    start_pending = 0;
+    apply_enabled(true);
+  }
+}
+
+static void cros_start_after_cue(void const *arg) {
+  (void)arg;
+  if (!start_pending || !enabled) {
+    return;
+  }
+  start_pending = 0;
+  TRACE(0, "[cros_tws] cue settle done — starting streams");
+  apply_enabled(true);
 }
 
 static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
@@ -523,7 +564,7 @@ void cros_tws_init(void) {
   tx_running = rx_running = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.3.1 50ms-cmd (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.3.2 50ms-cmd (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -542,20 +583,21 @@ int cros_tws_start(void) {
   }
 
   enabled = true;
-  cros_cue_active();
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
-  TRACE(1, "[cros_tws] ENABLE (local is %s)",
+  TRACE(1, "[cros_tws] ENABLE (local is %s) — cue then streams",
         cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
-  return apply_enabled(true);
+  cue_then_start_streams();
+  return 0;
 }
 
 int cros_tws_stop(void) {
   uint8_t mode = 0;
 
-  if (!enabled) {
+  if (!enabled && !start_pending) {
     return 0;
   }
   enabled = false;
+  cue_delay_cancel();
   if (app_tws_ibrt_tws_link_connected()) {
     tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
   }
@@ -564,7 +606,7 @@ int cros_tws_stop(void) {
 }
 
 int cros_tws_toggle(void) {
-  if (enabled) {
+  if (enabled || start_pending) {
     return cros_tws_stop();
   }
   if (!app_tws_ibrt_tws_link_connected()) {
@@ -577,17 +619,20 @@ int cros_tws_toggle(void) {
 void cros_tws_on_peer_mode(uint8_t on) {
   bool want = (on != 0);
   TRACE(1, "[cros_tws] peer mode=%d", (int)want);
-  if (want == enabled) {
+  if (want == enabled && !start_pending) {
     if (want) {
       apply_enabled(true);
     }
     return;
   }
-  enabled = want;
-  if (want) {
-    cros_cue_active();
+  if (!want) {
+    enabled = false;
+    cue_delay_cancel();
+    apply_enabled(false);
+    return;
   }
-  apply_enabled(want);
+  enabled = true;
+  cue_then_start_streams();
 }
 
 void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {

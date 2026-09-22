@@ -179,10 +179,9 @@ Keep \`backups\\*.bin\` somewhere safe.
 Quad-tap needs the **bud↔bud** link. If one LED stays in pairing flash:
 
 1. Forget PineBuds Pro on the phone.
-2. Both in case + USB ~60s; out together ~5s; reseat; wait ~60s.
-3. Full reset (manual §6.8): power each off (hold ~5s to red), then both red+blue → **tap 5×** until **purple**, seat 30s+.
-4. Case **RESET** button (under lid, between seats) ~5s is also valid on some units.
-5. Last resort: factory restore via \`dld_main\`, confirm stock TWS, re-flash this zip.
+2. Both in case + USB: hold **case RESET ~5s**, wait 30–60s (purple LED not required).
+3. If still unpaired: power each off (hold ~5s to red), both red+blue → tap 5×, seat 30s+.
+4. Last resort: factory restore via \`dld_main\`, confirm stock TWS, re-flash this zip.
 
 ## Experimental CROS / loopback test (this build)
 
