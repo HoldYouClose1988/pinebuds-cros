@@ -30,6 +30,8 @@ class MainActivity : AppCompatActivity() {
     private val logLines = ArrayDeque<String>(MAX_LINES)
     private lateinit var deviceAdapter: ArrayAdapter<String>
     private var bonded: List<BluetoothDevice> = emptyList()
+    /** Ignore programmatic switch updates while we sync UI after connect/fail. */
+    private var suppressSwitchCallback = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,11 +42,17 @@ class MainActivity : AppCompatActivity() {
         binding.deviceSpinner.adapter = deviceAdapter
 
         binding.refreshButton.setOnClickListener { refreshDevices() }
-        binding.connectButton.setOnClickListener { connectSelected() }
-        binding.disconnectButton.setOnClickListener { disconnect() }
         binding.clearButton.setOnClickListener {
             logLines.clear()
             binding.logView.text = ""
+        }
+        binding.loggingSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressSwitchCallback) return@setOnCheckedChangeListener
+            if (checked) {
+                startLogging()
+            } else {
+                stopLogging(userMessage = "Logging off — SPP closed (sniff free for ear test)")
+            }
         }
 
         ensurePermissions()
@@ -52,7 +60,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        disconnect()
+        stopLogging(userMessage = null)
         super.onDestroy()
     }
 
@@ -98,19 +106,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun connectSelected() {
+    private fun startLogging() {
         val idx = binding.deviceSpinner.selectedItemPosition
         if (idx < 0 || idx >= bonded.size) {
             toast("Pick a bonded device")
+            setSwitchChecked(false)
             return
         }
         if (!hasConnectPermission()) {
             toast("Bluetooth permission required")
+            setSwitchChecked(false)
             return
         }
-        disconnect()
+        // Drop any half-open session before opening again (keep switch ON).
+        closeSession()
+
         val device = bonded[idx]
-        appendUi("Connecting SPP to ${device.name} (${device.address})…")
+        binding.statusText.text = getString(R.string.status_connecting)
+        appendUi("Logging on — connecting SPP to ${device.name} (${device.address})…")
         readerJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val sock = openSpp(device)
@@ -124,15 +137,37 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     appendUi("Connect failed: ${e.message}")
                     binding.statusText.text = getString(R.string.status_idle)
+                    setSwitchChecked(false)
                 }
                 closeQuietly()
             }
         }
     }
 
+    private fun stopLogging(userMessage: String?) {
+        closeSession()
+        binding.statusText.text = getString(R.string.status_idle)
+        setSwitchChecked(false)
+        if (userMessage != null) {
+            appendUi(userMessage)
+        }
+    }
+
+    private fun closeSession() {
+        readerJob?.cancel()
+        readerJob = null
+        closeQuietly()
+    }
+
+    private fun setSwitchChecked(checked: Boolean) {
+        if (binding.loggingSwitch.isChecked == checked) return
+        suppressSwitchCallback = true
+        binding.loggingSwitch.isChecked = checked
+        suppressSwitchCallback = false
+    }
+
     @SuppressLint("MissingPermission")
     private suspend fun openSpp(device: BluetoothDevice): BluetoothSocket {
-        // Prefer SDP resolution of Serial Port UUID (0x1101).
         val viaSdp = device.createRfcommSocketToServiceRecord(SPP_UUID)
         return try {
             getSystemService(BluetoothManager::class.java)?.adapter?.cancelDiscovery()
@@ -140,7 +175,6 @@ class MainActivity : AppCompatActivity() {
             viaSdp
         } catch (first: IOException) {
             viaSdp.close()
-            // Fallback: BES TOTA is RFCOMM channel 12 (RFCOMM_CHANNEL_3 = 10+2).
             withContext(Dispatchers.Main) {
                 appendUi("SDP SPP failed (${first.message}); trying channel $TOTA_RFCOMM_CHANNEL")
             }
@@ -168,6 +202,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     appendUi("SPP closed by peer")
                     binding.statusText.text = getString(R.string.status_idle)
+                    setSwitchChecked(false)
                 }
                 break
             }
@@ -182,7 +217,6 @@ class MainActivity : AppCompatActivity() {
             val cmd = u16le(acc[0], acc[1])
             val len = u16le(acc[2], acc[3])
             if (cmd != OP_TOTA_STRING) {
-                // Resync: drop one byte (unknown framing / encrypted junk).
                 acc.removeAt(0)
                 continue
             }
@@ -196,13 +230,6 @@ class MainActivity : AppCompatActivity() {
             val text = textBytes.toString(Charsets.UTF_8)
             withContext(Dispatchers.Main) { appendUi(text) }
         }
-    }
-
-    private fun disconnect() {
-        readerJob?.cancel()
-        readerJob = null
-        closeQuietly()
-        binding.statusText.text = getString(R.string.status_idle)
     }
 
     private fun closeQuietly() {

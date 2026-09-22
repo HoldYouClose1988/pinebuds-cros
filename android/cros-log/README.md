@@ -16,8 +16,9 @@ See [docs/bt-log-sink.md](../../docs/bt-log-sink.md) for the firmware side.
 1. Open this folder in Android Studio (`android/cros-log`).
 2. Sync Gradle, run on a physical device (emulator has no classic BT).
 3. Pair PineBuds in system Bluetooth settings first.
-4. In the app: pick the device → **Connect**.
+4. In the app: pick the device → flip **Capture logs** on.
 5. Quad-tap CROS / poke the buds — `[cros_*]` lines should scroll in.
+6. Flip **Capture logs** off before a clean latency ear-test (drops SPP so TWS sniff can resume). Flip on again when you need lines.
 
 ## Wire format
 

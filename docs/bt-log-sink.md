@@ -118,7 +118,8 @@ One flash package:
   ring + BT-thread capped `tota_printf` flush (not from the OS timer directly).
 - Tee existing `[cros_tws]` / `[cros_extra]` sites through `cros_bt_logf` (still `TRACE` to UART if pads ever used).
 
-Acceptable risk: SDP gains an SPP record; sniff blocked while the log app is connected. Disconnect the app when measuring glass-to-glass latency.
+Acceptable risk: SDP gains an SPP record; sniff blocked while the log app’s **Capture logs**
+toggle is on. Flip it off (drops SPP) before measuring glass-to-glass latency.
 
 ### 3. Use logs for the next CROS probe
 

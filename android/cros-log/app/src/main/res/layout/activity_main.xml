@@ -36,10 +36,11 @@
         app:layout_constraintTop_toBottomOf="@id/statusText" />
 
     <LinearLayout
-        android:id="@+id/buttonRow"
+        android:id="@+id/controlRow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -47,27 +48,30 @@
 
         <Button
             android:id="@+id/refreshButton"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/refresh" />
 
-        <Button
-            android:id="@+id/connectButton"
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/loggingSwitch"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="12dp"
             android:layout_weight="1"
-            android:text="@string/connect" />
-
-        <Button
-            android:id="@+id/disconnectButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="@string/disconnect" />
+            android:checked="false"
+            android:text="@string/logging_toggle" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/loggingHint"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/logging_hint"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/controlRow" />
 
     <Button
         android:id="@+id/clearButton"
@@ -76,7 +80,7 @@
         android:layout_marginTop="4dp"
         android:text="@string/clear"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonRow" />
+        app:layout_constraintTop_toBottomOf="@id/loggingHint" />
 
     <ScrollView
         android:id="@+id/logScroll"

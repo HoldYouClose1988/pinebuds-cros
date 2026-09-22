@@ -12,6 +12,9 @@ Format: version, date (UTC), then user-facing changes.
   `app_bt_start_custom_function_in_bt_thread`, skips when SPP down, **max 2 lines/tick**
   (avoids `tota_printf`'s forever semaphore wait on a general OS timer)
 
+### Android
+- **Capture logs** toggle: on opens TOTA SPP; off closes it so TWS sniff is free for ear tests
+
 ## [0.3.5] — 2026-09-22
 
 ### Docs / tooling (no flash required yet)
