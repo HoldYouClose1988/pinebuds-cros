@@ -5,6 +5,14 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.3] — 2026-09-22
+
+### Firmware
+- **Remove activate alert completely** (cue was killing CROS AF after ~1s)
+- Back to **v0.2.7-style** immediate start/stop on cmd path
+- Packet cadence **50 ms** continuous ADPCM (only change vs the working 40 ms build)
+- Extra L2CAP still gated off
+
 ## [0.3.2] — 2026-09-22
 
 ### Firmware

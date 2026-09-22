@@ -48,6 +48,6 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
 ## Status
 
-- **Now (v0.3.1):** cmd-path 50 ms ADPCM restored after v0.3.0 extra-create broke TWS.
-  Triple-beep on activate. Extra L2CAP code remains behind `CROS_EXTRA_L2CAP=1` (off).
+- **Now (v0.3.3):** cmd-path **50 ms** ADPCM; no activate cue; same flow as working v0.2.7.
+  Extra L2CAP code remains behind `CROS_EXTRA_L2CAP=1` (off).
 - **Next:** safer deferred extra-channel probe (not on BESAUD-connected hot path).
