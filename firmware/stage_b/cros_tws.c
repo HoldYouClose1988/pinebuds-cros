@@ -1,16 +1,14 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.2.4 — rethink chop:
- *  Problem: BESAUD custom-cmd is not isochronous, and calling send from the
- *  AF capture DMA callback contends with audio. Result: uneven packet gaps
- *  (chop) even when average latency is fine.
+ * v0.2.5 — rate-ceiling experiment (Claude review):
+ *  Custom IBRT cmds are a control channel, not an isochronous audio pipe.
+ *  If the hard limit is cmds/sec (not bytes/sec), fewer larger packets should
+ *  sound smoother. This build: 60 ms ADPCM per send (~484 B < 672 B ctrl
+ *  max), 60 ms ticker, AF still copy-only.
  *
- *  Approach:
- *   - Capture callback ONLY copies PCM (no BT calls)
- *   - 20 ms ticker encodes + sends via tws_ctrl (RF work on ctrl thread)
- *   - Single "latest frame" slot — never backlog, always freshest audio
- *   - Adaptive RX jitter buffer: grow on underrun, slowly shrink when stable
+ *  If this is smooth → rate ceiling confirmed; tune cadence further or accept.
+ *  If still choppy → need a real TWS audio relay path (#3), not more cmd tuning.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -37,12 +35,14 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 
 #define CROS_SAMPLE_RATE AUD_SAMPRATE_16000
 #define CROS_BITS AUD_BITS_16
-#define CROS_FRAME_SAMPLES 320 /* 20 ms */
+/* Capture quantum 10 ms; packet = 60 ms (rate-ceiling test). */
+#define CROS_CAP_SAMPLES 160
+#define CROS_FRAME_SAMPLES 960 /* 60 ms @ 16 kHz */
 #define CROS_FRAME_BYTES (CROS_FRAME_SAMPLES * 2)
-#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2)
-#define CROS_PKT_BYTES (4 + CROS_ADPCM_BYTES)
-#define CROS_DMA_BYTES (CROS_FRAME_BYTES * 2)
-#define CROS_RING_BYTES (CROS_FRAME_BYTES * 12)
+#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2) /* 480 */
+#define CROS_PKT_BYTES (4 + CROS_ADPCM_BYTES)     /* 484 < 672 ctrl max */
+#define CROS_DMA_BYTES (CROS_CAP_SAMPLES * 2 * 2)
+#define CROS_RING_BYTES (CROS_FRAME_BYTES * 6)
 
 #define CROS_GAIN_Q15 16000
 #define CROS_LIM_THRESH 20000
@@ -50,9 +50,9 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_STREAM_ID AUD_STREAM_ID_0
 #define CROS_PKT_MAGIC 0xA5
 
-#define CROS_JITTER_MIN_FRAMES 2  /* 40 ms */
-#define CROS_JITTER_MAX_FRAMES 6  /* 120 ms */
-#define CROS_TICK_MS 20
+#define CROS_JITTER_MIN_FRAMES 1 /* 60 ms */
+#define CROS_JITTER_MAX_FRAMES 3 /* 180 ms */
+#define CROS_TICK_MS 60
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
 static uint8_t playback_dma_buf[CROS_DMA_BYTES];
@@ -302,7 +302,7 @@ static void cros_tick(void const *arg) {
   if (rx_running) {
     /* Slowly shrink jitter buffer when stable. */
     healthy_ticks++;
-    if (healthy_ticks > 250 && /* ~5 s at 20 ms */
+    if (healthy_ticks > 100 && /* ~6 s at 60 ms */
         jitter_target_frames > CROS_JITTER_MIN_FRAMES) {
       jitter_target_frames--;
       healthy_ticks = 0;
@@ -468,7 +468,7 @@ void cros_tws_init(void) {
   tx_running = rx_running = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.2.4 (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.2.5 60ms-batch (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
