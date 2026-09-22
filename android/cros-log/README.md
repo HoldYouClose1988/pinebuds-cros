@@ -21,6 +21,8 @@ I can’t produce an APK in this cloud environment (no Android SDK). Build on yo
 4. Plug in a phone (emulator has no classic Bluetooth), enable USB debugging.
 5. Run ▶ on the device.
 6. Pair PineBuds in system Bluetooth first, then in the app: pick the device → **Capture logs** on.
+7. Flip **Capture logs** off before a clean latency ear-test. Use **Share log** to export a
+   `.txt` (and plain text) via the system share sheet — save to Drive/Files or paste into chat.
 
 Debug APK output (after a local build):
 
