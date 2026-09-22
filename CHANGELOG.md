@@ -5,6 +5,13 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.2.4] — 2026-09-22
+
+### Firmware
+- Stage B chop rethink: **no BT work in AF DMA callback** — capture only copies PCM; 20 ms ticker encodes/sends
+- Single latest-frame slot via `tws_ctrl` (depth 1, freshest audio, tx_done paced)
+- Adaptive RX jitter buffer (40–120 ms) grows on underrun, shrinks when stable
+
 ## [0.2.3] — 2026-09-22
 
 ### Firmware
