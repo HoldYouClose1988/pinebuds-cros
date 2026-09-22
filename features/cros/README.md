@@ -10,12 +10,12 @@ See [architecture](../../docs/architecture-cros.md) and [transport notes](../../
 |-----------|------|--------|
 | Local loopback | Same-bud FF mic → speaker (path proof) | Stage A — validated on hardware |
 | Mode sync | Mode bit + TWS sync | Stage B — mode byte over IBRT custom cmd |
-| Cross-bud CROS | Poor-ear TX → good-ear RX over TWS | Stage B — raw 16 kHz PCM over IBRT (v0) |
+| Cross-bud CROS | Poor-ear TX → good-ear RX over TWS | Stage B — **extra L2CAP** (v0.3) + cmd fallback |
 
-## Stage B usage (v0.2)
+## Stage B usage (v0.3)
 
 1. Flash **both** buds with the same package (`CROS_STAGE_B=1`).
-2. Leave in case ~30s so TWS re-pairs.
+2. Leave in case ~30s so TWS re-pairs (also creates BESAUD extra channel).
 3. Wear both. **Quad-tap either bud** to toggle CROS on/off (synced to peer).
 4. Default: **RIGHT = poor (mic)**, **LEFT = good (speaker)**. Scratch/outer sound at the right bud should be heard in the left ear.
 

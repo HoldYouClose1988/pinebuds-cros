@@ -1,10 +1,11 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.2.7 — fix right-bud hang from v0.2.6:
- *  send_now() from osTimer is unsafe (crashed/hung TX side → solid blue,
- *  quad-tap dead). Back to tws_ctrl_send_cmd from ticker + pending gate.
- *  Keep 40 ms continuous ADPCM; static frame scratch (no big stack alloc).
+ * v0.3.0 — BESAUD extra L2CAP for audio; MODE stays on cmd path.
+ *  - Prefer CID 0x0b0e with our notify/recv (stock stubs discard RX)
+ *  - Fallback to tws_ctrl CROS_AUDIO if extra channel not open
+ *  - 50 ms continuous ADPCM (ear-tuned sweet spot on cmd; keep for extra)
+ *  - Send via BT thread mail (never raw L2CAP from osTimer)
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -14,6 +15,7 @@
 #include "app_utils.h"
 #include "audioflinger.h"
 #include "cmsis_os.h"
+#include "cros_besaud_extra.h"
 #include "hal_trace.h"
 #include "string.h"
 #include "tgt_hardware.h"
@@ -24,8 +26,6 @@
 
 extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length);
 extern bool app_tws_ibrt_tws_link_connected(void);
-/* Do NOT call app_ibrt_cros_audio_send_now from osTimer — needs BT/ctrl
- * context. v0.2.6 did that and hung the TX (right) bud. */
 
 #ifndef CROS_POOR_IS_RIGHT
 #define CROS_POOR_IS_RIGHT 1
@@ -34,11 +34,11 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_SAMPLE_RATE AUD_SAMPRATE_16000
 #define CROS_BITS AUD_BITS_16
 #define CROS_CAP_SAMPLES 160   /* 10 ms capture quantum */
-#define CROS_FRAME_SAMPLES 640 /* 40 ms packet */
+#define CROS_FRAME_SAMPLES 800 /* 50 ms packet */
 #define CROS_FRAME_BYTES (CROS_FRAME_SAMPLES * 2)
-#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2) /* 320 */
+#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2) /* 400 */
 #define CROS_HDR_BYTES 5
-#define CROS_PKT_BYTES (CROS_HDR_BYTES + CROS_ADPCM_BYTES) /* 325 < 672 */
+#define CROS_PKT_BYTES (CROS_HDR_BYTES + CROS_ADPCM_BYTES) /* 405 < 679 */
 #define CROS_DMA_BYTES (CROS_CAP_SAMPLES * 2 * 2)
 #define CROS_RING_BYTES (CROS_FRAME_BYTES * 6)
 
@@ -48,15 +48,16 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_STREAM_ID AUD_STREAM_ID_0
 #define CROS_PKT_MAGIC 0xA5
 
-#define CROS_JITTER_MIN_FRAMES 1 /* 40 ms */
-#define CROS_JITTER_MAX_FRAMES 2 /* 80 ms */
-#define CROS_TICK_MS 40
+#define CROS_JITTER_MIN_FRAMES 1 /* 50 ms */
+#define CROS_JITTER_MAX_FRAMES 2 /* 100 ms */
+#define CROS_TICK_MS 50
+#define CROS_TX_STUCK_TICKS 4 /* clear pending if no TX done ~200 ms */
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
 static uint8_t playback_dma_buf[CROS_DMA_BYTES];
 static uint8_t pcm_ring[CROS_RING_BYTES];
 static uint8_t tx_pkt[CROS_PKT_BYTES];
-static int16_t send_pcm[CROS_FRAME_SAMPLES]; /* ticker scratch — not on stack */
+static int16_t send_pcm[CROS_FRAME_SAMPLES];
 
 static int16_t latest_pcm[CROS_FRAME_SAMPLES];
 static volatile uint8_t latest_ready;
@@ -70,13 +71,16 @@ static bool inited;
 static bool enabled;
 static bool tx_running;
 static bool rx_running;
-static volatile uint8_t tx_pending;
+static volatile uint8_t tx_pending; /* cmd-path inflight only */
+static uint8_t tx_stuck_ticks;
 static uint8_t tx_seq;
 static uint8_t rx_expect_seq;
 static bool rx_have_seq;
 static uint8_t jitter_target_frames;
 static uint16_t healthy_ticks;
 static uint32_t tx_frames;
+static uint32_t tx_extra;
+static uint32_t tx_cmd;
 static uint32_t rx_pkts;
 static uint32_t tx_drops;
 static uint32_t underruns;
@@ -255,15 +259,34 @@ static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
   return len;
 }
 
+static int path_busy(void) {
+  if (cros_besaud_extra_is_open()) {
+    return cros_besaud_extra_tx_busy() ? 1 : 0;
+  }
+  return tx_pending ? 1 : 0;
+}
+
 static void try_send_latest(void) {
   ima_state_t snap;
 
   if (!tx_running || !app_tws_ibrt_tws_link_connected()) {
     return;
   }
-  if (tx_pending) {
+
+  cros_besaud_extra_ensure();
+
+  if (path_busy()) {
+    tx_stuck_ticks++;
+    if (tx_stuck_ticks >= CROS_TX_STUCK_TICKS) {
+      cros_besaud_extra_force_clear_pending();
+      tx_pending = 0;
+      tx_stuck_ticks = 0;
+      tx_drops++;
+    }
     return;
   }
+  tx_stuck_ticks = 0;
+
   if (!latest_ready) {
     return;
   }
@@ -279,6 +302,21 @@ static void try_send_latest(void) {
   tx_pkt[4] = (uint8_t)((snap.pred >> 8) & 0xFF);
   ima_encode_block(send_pcm, &tx_pkt[CROS_HDR_BYTES]);
 
+  if (cros_besaud_extra_is_open()) {
+    if (cros_besaud_extra_send(tx_pkt, CROS_PKT_BYTES) != 0) {
+      tx_drops++;
+    } else {
+      tx_frames++;
+      tx_extra++;
+      if ((tx_frames & 0x3F) == 0) {
+        TRACE(3, "[cros_tws] tx=%u extra=%u cmd=%u", tx_frames, tx_extra,
+              tx_cmd);
+      }
+    }
+    return;
+  }
+
+  /* Fallback: control-channel audio (rate-limited). */
   tx_pending = 1;
   if (tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, tx_pkt, CROS_PKT_BYTES) !=
       0) {
@@ -286,8 +324,10 @@ static void try_send_latest(void) {
     tx_drops++;
   } else {
     tx_frames++;
+    tx_cmd++;
     if ((tx_frames & 0x3F) == 0) {
-      TRACE(2, "[cros_tws] tx=%u drops=%u", tx_frames, tx_drops);
+      TRACE(3, "[cros_tws] tx=%u extra=%u cmd=%u (fallback)", tx_frames,
+            tx_extra, tx_cmd);
     }
   }
 }
@@ -338,6 +378,8 @@ static int start_tx(void) {
   latest_ready = 0;
   tx_seq = 0;
   tx_pending = 0;
+  tx_stuck_ticks = 0;
+  cros_besaud_extra_ensure();
 
   memset(&cfg, 0, sizeof(cfg));
   cfg.bits = CROS_BITS;
@@ -358,9 +400,9 @@ static int start_tx(void) {
   }
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = true;
-  tx_frames = tx_drops = 0;
+  tx_frames = tx_drops = tx_extra = tx_cmd = 0;
   tick_start();
-  TRACE(0, "[cros_tws] TX START (40ms continuous ADPCM)");
+  TRACE(0, "[cros_tws] TX START (50ms ADPCM, prefer extra L2CAP)");
   return 0;
 }
 
@@ -377,6 +419,7 @@ static int start_rx(void) {
   rx_have_seq = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   healthy_ticks = 0;
+  cros_besaud_extra_ensure();
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   {
     uint32_t pre = jitter_target_frames * CROS_FRAME_BYTES;
@@ -408,7 +451,7 @@ static int start_rx(void) {
   rx_running = true;
   rx_pkts = underruns = rx_drops = rx_resyncs = 0;
   tick_start();
-  TRACE(0, "[cros_tws] RX START (40ms, seq-continuous ADPCM)");
+  TRACE(0, "[cros_tws] RX START (50ms, extra L2CAP + cmd fallback)");
   return 0;
 }
 
@@ -463,13 +506,17 @@ void cros_tws_init(void) {
   if (inited) {
     return;
   }
+  cros_besaud_extra_init();
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   enabled = false;
   tx_running = rx_running = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.2.7 40ms (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.3.0 50ms+extra (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+  if (app_tws_ibrt_tws_link_connected()) {
+    cros_besaud_extra_ensure();
+  }
 }
 
 int cros_tws_start(void) {
@@ -486,10 +533,12 @@ int cros_tws_start(void) {
     return -1;
   }
 
+  cros_besaud_extra_ensure();
   enabled = true;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
-  TRACE(1, "[cros_tws] ENABLE (local is %s)",
-        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
+  TRACE(2, "[cros_tws] ENABLE (local is %s, extra=%d)",
+        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX",
+        cros_besaud_extra_is_open() ? 1 : 0);
   return apply_enabled(true);
 }
 
@@ -557,7 +606,6 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   seq = data[1];
   gap = !rx_have_seq || seq != rx_expect_seq;
   if (gap) {
-    /* Lost packet(s): reload predictor from header. */
     dec_state.index = (int8_t)data[2];
     if (dec_state.index < 0)
       dec_state.index = 0;
@@ -577,7 +625,8 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   }
   rx_pkts++;
   if ((rx_pkts & 0x3F) == 0) {
-    TRACE(4, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u", rx_pkts,
-          underruns, rx_resyncs, jitter_target_frames);
+    TRACE(5, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u extra_open=%d",
+          rx_pkts, underruns, rx_resyncs, jitter_target_frames,
+          cros_besaud_extra_is_open() ? 1 : 0);
   }
 }

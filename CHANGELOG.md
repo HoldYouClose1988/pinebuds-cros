@@ -5,6 +5,15 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.0] — 2026-09-22
+
+### Firmware
+- **BESAUD extra L2CAP** (CID `0x0b0e`) for CROS audio — dedicated pipe off the cmd queue
+- Own notify/recv (stock wrappers TRACE-and-discard RX); create on BESAUD up, both buds
+- Audio send via **BT-thread mail** + `l2cap_send_data` (not from osTimer); TX paced by `TX_HANDLED`
+- **MODE sync stays on IBRT custom cmd**; audio falls back to cmd path if extra channel not open
+- Packet cadence **50 ms** continuous ADPCM (ear-tuned; 405 B < ~679 MTU)
+
 ## [0.2.7] — 2026-09-22
 
 ### Firmware

@@ -78,8 +78,8 @@ fi
 if [[ -d "$ROOT/firmware/stage_b" ]]; then
   echo "==> Syncing firmware/stage_b -> vendor/OpenPineBuds/apps/cros_tws"
   mkdir -p "$VENDOR_DIR/OpenPineBuds/apps/cros_tws"
-  cp -f "$ROOT/firmware/stage_b/cros_tws.c" \
-        "$ROOT/firmware/stage_b/cros_tws.h" \
+  cp -f "$ROOT/firmware/stage_b/"*.c \
+        "$ROOT/firmware/stage_b/"*.h \
         "$ROOT/firmware/stage_b/Makefile" \
         "$VENDOR_DIR/OpenPineBuds/apps/cros_tws/"
 fi

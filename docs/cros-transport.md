@@ -9,13 +9,13 @@ Custom `APP_IBRT_CUSTOM_CMD_*` over BESAUD **works** for CROS audio, but it is a
 |---------|-------------------|
 | ~20 ms cmds | Audible chop |
 | ~60 ms cmds | Smooth, but robotic + ~1 s delay |
-| ~40 ms continuous ADPCM via `tws_ctrl` (v0.2.7) | Usable bring-up path |
+| ~40 ms continuous ADPCM via `tws_ctrl` (v0.2.7) | Usable; some chop |
+| ~50 ms continuous ADPCM (v0.3.0) | Ear-preferred on cmd path |
 | ~40 ms + `send_now` from osTimer (v0.2.6) | **Hung TX bud** (solid blue, quad-tap dead) |
 
-So the ceiling is largely **cmds/sec**, not room RF. Tuning the sender alone
-cannot turn this into a stock-quality TWS audio link. Audio must leave the
-ticker through **`tws_ctrl_send_cmd`** (or a future dedicated L2CAP), never
-direct BESAUD `send_now` from osTimer context.
+Cmd-path tuning is **done** — that pipe is as good as it gets. Audio must leave
+the ticker through **`tws_ctrl_send_cmd`** (fallback) or the **extra L2CAP**,
+never direct BESAUD `send_now` from osTimer context.
 
 ## Important correction about “TWS audio sync”
 
@@ -24,39 +24,29 @@ Both buds sniff the **phone’s** ACL; BESAUD carries **sync/control**.
 Piggybacking CROS onto `app_tws_ibrt_audio_sync_*` / A2DP decoder inject is the
 wrong model for mic→peer speaker.
 
-## Best next pipe: BESAUD extra L2CAP
-
-Unused extra channel already exists in the tree:
+## Current pipe: BESAUD extra L2CAP (v0.3.0)
 
 | Piece | Where |
 |-------|--------|
 | CID | `L2CAP_BESAUD_EXTRA_CHAN_ID` `0x0b0e` (`l2cap_i.h`) |
-| Create/send wrappers | `tws_besaud_create_extra_channel`, `tws_besaud_extra_channel_send_data` (`app_tws_besaud.h`) |
-| Lower API | `l2cap_create_besaud_extra_channel`, `l2cap_send_data` (closed impl, open decl) |
-| Closed libs | `libtws_ibrt_enhanced_stack*_RTX.a` |
+| Create / send / recv | `firmware/stage_b/cros_besaud_extra.c` via `l2cap_create_besaud_extra_channel` |
+| Hook | `BTIF_BTEVENT_BES_AUD_CONNECTED` / `DISCONNECTED` in `app_ibrt_customif_ui.cpp` |
+| MODE | Still `APP_IBRT_CUSTOM_CMD_CROS_MODE` on cmd path |
+| Audio fallback | `APP_IBRT_CUSTOM_CMD_CROS_AUDIO` via `tws_ctrl` if extra not open |
 
-**Catch:** stock RX callbacks in the closed blob appear to **TRACE and discard**
-payload. A probe must register **our own** L2CAP notify/datarecv via
-`l2cap_create_besaud_extra_channel`, not rely on the stock receive stub.
+Stock `tws_besaud_create_extra_channel` registers TRACE-and-discard RX — **not used**.
 
-MTU is ~679 B (same ballpark as the 672 B cmd max) — the win is a **dedicated
-channel** and hopefully better scheduling than the cmd queue, not magic bitrate.
+MTU ~679 B. Send is posted into the BT thread (`app_bt_start_custom_function_in_bt_thread`);
+inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
-## Smallest probe (after v0.2.7 activate restored)
-
-1. On TWS BESAUD up, both buds: `l2cap_create_besaud_extra_channel(peer, 0x0b0e, notify, recv)`.
-2. On channel open: store handle; TX with `l2cap_send_data`.
-3. Burst counter/ADPCM every 10–20 ms for a few seconds; gate on TX-done if available.
-4. Success = peer `recv` sees steady cadence **without** custom cmds → move CROS onto it.
-
-## Non-starters (for now)
+## Non-starters
 
 - SCO/eSCO between buds (phone call sniffer path)
 - Feeding mic PCM into A2DP SBC store APIs
 - Calling `app_ibrt_send_cmd_without_rsp` / `send_now` from osTimer
-- More cmd-path micro-tuning past a known-good cadence
+- More cmd-path micro-tuning
 
 ## Status
 
-- **Now:** cmd-path CROS via `tws_ctrl` (v0.2.7); activate/quad-tap restored after 0.2.6 hang.
-- **Next:** BESAUD extra L2CAP probe once ear delay/chop on 0.2.7 is characterized.
+- **Now (v0.3.0):** extra L2CAP primary for audio; cmd fallback; 50 ms ADPCM; MODE on cmd.
+- **Ear test:** confirm activate still works; note delay/chop vs v0.2.7; if extra fails to open you still get cmd fallback.

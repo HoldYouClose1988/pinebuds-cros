@@ -1,0 +1,34 @@
+diff --git a/services/app_ibrt/src/app_ibrt_customif_ui.cpp b/services/app_ibrt/src/app_ibrt_customif_ui.cpp
+--- a/services/app_ibrt/src/app_ibrt_customif_ui.cpp
++++ b/services/app_ibrt/src/app_ibrt_customif_ui.cpp
+@@ -36,6 +36,10 @@
+ #include "nvrecord_extension.h"
+ #include <string.h>
+ 
++#ifdef CROS_STAGE_B
++#include "cros_besaud_extra.h"
++#endif
++
+ #ifdef MEDIA_PLAYER_SUPPORT
+ #include "app_media_player.h"
+ #endif
+@@ -251,6 +255,9 @@
+       }
+ 
+       app_tws_if_tws_connected_handler();
++#ifdef CROS_STAGE_B
++      cros_besaud_extra_ensure();
++#endif
+     }
+ 
+   } break;
+@@ -258,6 +265,9 @@
+ 
+   case BTIF_BTEVENT_BES_AUD_DISCONNECTED:
+     app_tws_if_tws_disconnected_handler();
++#ifdef CROS_STAGE_B
++    cros_besaud_extra_on_besaud_down();
++#endif
+     if (!app_poweroff_flag && !IsTwsLinkLossing && !IsMobileLinkLossing) {
+       TRACE(3, "xqd--log: TWS is disconnected and it isn't tws link lossed.");
+     } else {
