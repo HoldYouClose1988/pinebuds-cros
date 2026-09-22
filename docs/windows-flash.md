@@ -91,7 +91,33 @@ bestool.exe write-image open_source.bin --port COM5
 bestool.exe write-image open_source.bin --port COM6
 ```
 
-3. After success: leave buds in case ~30s for TWS re-pair (LEDs / behavior per upstream docs).
+3. After success: leave buds in case ~30–60s for TWS re-pair (LEDs / behavior per upstream docs).
+
+## Lost TWS link after a flash (reset / re-pair)
+
+If one bud stays in **pairing flash** (red+blue or rapid blue) and the other won’t follow — **quad-tap will not work** until the bud↔bud link is back. Do this after flashing **v0.3.1** (or newer):
+
+### A. Soft re-pair (try first)
+
+1. Forget **PineBuds Pro** on the phone (Bluetooth settings).
+2. Both buds **in the case**, USB plugged, lid open ~60s.
+3. Take **both** out together for ~5s, reseat together, wait another ~60s.
+4. Look for: both LEDs calm / matching (not one stuck in phone-pairing flash).
+
+### B. Full earbud reset (clears paired-device list)
+
+From the [PineBuds Pro user manual](https://files.pine64.org/doc/PineBudsPro/PineBuds%20Pro%20User%20manual-20220920-8pages-20221116.pdf) §6.8:
+
+1. Remove **one** bud; hold its touch/button **~5s** until red → shut down. Repeat on the other.
+2. Hold both until LEDs flash **red+blue**, then **tap each 5 times** until **purple** flash → off.
+3. Seat **both** in the case **30s+** before reuse.
+4. Re-pair to the phone only after the two buds have peer-linked (manual §5.1: during peer pairing left is red+blue, right blue every ~5s; when peer OK **both** blink blue every ~5s).
+
+Some cases also have a **RESET** under the lid (between seats) — hold ~5s with buds in, then close lid (purple blink = success).
+
+### C. Still dead after reset
+
+Restore **factory** APP (+ OTA if required) with PINE64 `dld_main` + [wiki images](https://wiki.pine64.org/wiki/PineBuds_Pro#Firmware_images), confirm stock TWS works, then re-flash custom **v0.3.1**.
 
 ## Flash with official `dld_main`
 

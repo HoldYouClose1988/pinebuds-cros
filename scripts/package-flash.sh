@@ -172,7 +172,17 @@ Keep \`backups\\*.bin\` somewhere safe.
 
 (\`BinPath\` defaults to \`.\\open_source.bin\`.)
 
-5. Leave buds in case ~30s for TWS re-pair.
+5. Leave buds in case ~30–60s for TWS re-pair.
+
+## Lost TWS link / no quad-tap
+
+Quad-tap needs the **bud↔bud** link. If one LED stays in pairing flash:
+
+1. Forget PineBuds Pro on the phone.
+2. Both in case + USB ~60s; out together ~5s; reseat; wait ~60s.
+3. Full reset (manual §6.8): power each off (hold ~5s to red), then both red+blue → **tap 5×** until **purple**, seat 30s+.
+4. Case **RESET** button (under lid, between seats) ~5s is also valid on some units.
+5. Last resort: factory restore via \`dld_main\`, confirm stock TWS, re-flash this zip.
 
 ## Experimental CROS / loopback test (this build)
 
