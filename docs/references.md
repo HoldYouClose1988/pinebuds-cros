@@ -25,3 +25,9 @@
 ## Related hobby audio routing
 
 - Phone-side TWS mic relay experiments exist (high latency / SCO call mode); prefer on-bud IBRT path for this project.
+
+## Logging / vendor SPP
+
+- In-tree TOTA/SPP investigation for this project: [bt-log-sink.md](bt-log-sink.md)
+- BES earbuds often expose vendor RFCOMM (commonly channel 12 / SPP 0x1101); Android HCI snoop + Wireshark SPP filter is the usual RE path
+- Example community SPP companions (not PineBuds-specific): Motobuds RFCOMM notes, Soundcore SPP RE writeups

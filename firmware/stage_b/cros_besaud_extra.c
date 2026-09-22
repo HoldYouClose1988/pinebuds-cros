@@ -7,6 +7,7 @@
 #include "cros_besaud_extra.h"
 
 #include "cmsis_os.h"
+#include "cros_bt_log.h"
 #include "hal_trace.h"
 #include "string.h"
 
@@ -58,7 +59,7 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
     extra_handle = l2cap_handle;
     extra_open = 1;
     tx_busy = 0;
-    TRACE(2, "[cros_extra] OPEN handle=0x%08x — ping", (unsigned)l2cap_handle);
+    CROS_LOG(2, "[cros_extra] OPEN handle=0x%08x — ping", (unsigned)l2cap_handle);
     app_bt_start_custom_function_in_bt_thread(0, 0,
                                               (uint32_t)cros_extra_send_ping_bt);
     break;
@@ -66,7 +67,7 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
     tx_busy = 0;
     break;
   case L2CAP_CHANNEL_CLOSED:
-    TRACE(1, "[cros_extra] CLOSED handle=0x%08x", (unsigned)l2cap_handle);
+    CROS_LOG(1, "[cros_extra] CLOSED handle=0x%08x", (unsigned)l2cap_handle);
     if (extra_handle == l2cap_handle) {
       extra_handle = 0;
       extra_open = 0;
@@ -87,14 +88,14 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
   }
   if (ppb->data[0] == CROS_EXTRA_PING_MAGIC) {
     rx_ping++;
-    TRACE(2, "[cros_extra] PING rx len=%u count=%u", (unsigned)ppb->len,
+    CROS_LOG(2, "[cros_extra] PING rx len=%u count=%u", (unsigned)ppb->len,
           (unsigned)rx_ping);
     return;
   }
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
   rx_ok++;
   if ((rx_ok & 0x3F) == 0) {
-    TRACE(3, "[cros_extra] audio_rx=%u ping_rx=%u", (unsigned)rx_ok,
+    CROS_LOG(3, "[cros_extra] audio_rx=%u ping_rx=%u", (unsigned)rx_ok,
           (unsigned)rx_ping);
   }
 }
@@ -116,16 +117,16 @@ static void cros_extra_create_bt(void *a, void *b) {
   }
   remote = cros_extra_peer_addr();
   if (!remote) {
-    TRACE(0, "[cros_extra] create skipped — no peer");
+    CROS_LOG(0, "[cros_extra] create skipped — no peer");
     create_issued = 0;
     return;
   }
   if (!tws_besaud_is_connected() && !app_tws_ibrt_tws_link_connected()) {
-    TRACE(0, "[cros_extra] create skipped — TWS/BESAUD down");
+    CROS_LOG(0, "[cros_extra] create skipped — TWS/BESAUD down");
     create_issued = 0;
     return;
   }
-  TRACE(0, "[cros_extra] CREATE deferred 0x0b0e (activate path)");
+  CROS_LOG(0, "[cros_extra] CREATE deferred 0x0b0e (activate path)");
   l2cap_create_besaud_extra_channel(remote, L2CAP_BESAUD_EXTRA_CHAN_ID,
                                     cros_extra_notify, cros_extra_datarecv);
 }
@@ -145,7 +146,7 @@ static void cros_extra_send_bt(void *a, void *b) {
   } else {
     tx_ok++;
     if ((tx_ok & 0x3F) == 0) {
-      TRACE(2, "[cros_extra] tx=%u fail=%u", (unsigned)tx_ok, (unsigned)tx_fail);
+      CROS_LOG(2, "[cros_extra] tx=%u fail=%u", (unsigned)tx_ok, (unsigned)tx_fail);
     }
   }
 }
@@ -159,7 +160,7 @@ static void cros_extra_send_ping_bt(void *a, void *b) {
     return;
   }
   if (l2cap_send_data(extra_handle, (uint8_t *)ping, sizeof(ping), NULL) != 0) {
-    TRACE(0, "[cros_extra] ping send fail");
+    CROS_LOG(0, "[cros_extra] ping send fail");
   }
 }
 
@@ -185,7 +186,7 @@ void cros_besaud_extra_init(void) {
     cros_extra_defer_id =
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-  TRACE(0, "[cros_extra] init (deferred-activate probe)");
+  CROS_LOG(0, "[cros_extra] init (deferred-activate probe)");
 #endif
 }
 
@@ -200,7 +201,7 @@ void cros_besaud_extra_ensure(void) {
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
   if (cros_extra_defer_id) {
-    TRACE(1, "[cros_extra] schedule create in %dms", CROS_EXTRA_DEFER_MS);
+    CROS_LOG(1, "[cros_extra] schedule create in %dms", CROS_EXTRA_DEFER_MS);
     osTimerStart(cros_extra_defer_id, CROS_EXTRA_DEFER_MS);
   } else {
     app_bt_start_custom_function_in_bt_thread(0, 0,

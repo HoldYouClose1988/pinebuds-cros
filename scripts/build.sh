@@ -10,6 +10,7 @@ JOBS="${JOBS:-$(nproc)}"
 TARGET="${TARGET:-open_source}"
 STAGE_A="${STAGE_A:-1}"
 STAGE_B="${STAGE_B:-1}"
+TOTA="${TOTA:-0}"
 
 EXTRA=()
 if [[ "$STAGE_B" == "1" ]]; then
@@ -18,6 +19,13 @@ if [[ "$STAGE_B" == "1" ]]; then
 elif [[ "$STAGE_A" == "1" ]]; then
   EXTRA+=(CROS_STAGE_A=1)
   echo "==> Experimental FF mic loopback enabled (CROS_STAGE_A=1)"
+fi
+
+if [[ "$TOTA" == "1" ]]; then
+  # TEST_OVER_THE_AIR must be 1 so libtota + -Iservices/tota are linked;
+  # TOTA=1 alone only adds -DTEST_OVER_THE_AIR_ENANBLED (include path stays off).
+  EXTRA+=(TOTA=1 TEST_OVER_THE_AIR=1)
+  echo "==> TOTA SPP log sink enabled (TOTA=1) — phone can capture [cros_*] over RFCOMM 12"
 fi
 
 echo "==> Building T=$TARGET (jobs=$JOBS) ${EXTRA[*]:-}"

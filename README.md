@@ -58,10 +58,14 @@ Always back up stock firmware before flashing. Factory images: [PINE64 wiki](htt
 - [bestool on Windows](docs/bestool-windows.md)
 - [Hardware overview](docs/hardware.md)
 - [Development environment](docs/development.md)
+- [Phone BT log sink (TOTA/SPP)](docs/bt-log-sink.md) — prefer before UART soldering
+- [CROS transport notes](docs/cros-transport.md)
 - [CROS architecture (design)](docs/architecture-cros.md)
 - [Industrial noise damping (design)](docs/architecture-noise-damping.md)
 - [Public git policy](docs/public-git.md)
 - [References](docs/references.md)
+
+Android log reader scaffold: [`android/cros-log/`](android/cros-log/).
 
 ## License
 

@@ -55,7 +55,10 @@ Patches live in `patches/` and are applied onto `vendor/OpenPineBuds` during boo
 
 ## Debugging tips
 
-- UART log: OpenPineBuds `uart_log.sh` / minicom @ 2 Mbaud
+- **Preferred (non-destructive):** phone TOTA SPP log sink — [bt-log-sink.md](bt-log-sink.md),
+  Android app under `android/cros-log/`. Build with `TOTA=1 ./scripts/build.sh`.
+- UART log (destructive / pads): OpenPineBuds `uart_log.sh` / minicom @ 2 Mbaud — defer until
+  CROS latency is acceptable
 - Force reboot for programming: long-hold rear button in case (~5 s) on OpenPineBuds builds
 - If build breaks mysteriously: `rm -rf vendor/OpenPineBuds/out` and rebuild
 - Keep a known-good `open_source.bin` and factory package for brick recovery

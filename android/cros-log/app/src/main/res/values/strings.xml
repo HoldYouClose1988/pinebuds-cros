@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CROS Log</string>
+    <string name="status_idle">Disconnected</string>
+    <string name="status_connected">Connected — TOTA SPP</string>
+    <string name="refresh">Refresh</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="clear">Clear</string>
+</resources>

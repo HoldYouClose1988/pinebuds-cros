@@ -167,7 +167,9 @@ No other proprietary PSMs or extra CIDs appear in open headers. Dynamic PSM regi
 
 ### Suggested order next session
 
+0. **Phone log sink first** — enable stock TOTA SPP + Android reader so CROS probes are not
+   blind. See [bt-log-sink.md](bt-log-sink.md). Do **not** use SPP (7) as the audio pipe.
 1. Deferred extra-L2CAP probe (candidate 1) — smallest delta from known-good cmd path.
 2. If deferred create still kills TWS → dynamic PSM (3) or alternate CID (2), still deferred/manual.
 3. If classic ACL stays hostile → VOB bench (4) as a parallel-radio experiment.
-4. Treat ECC test (5) / BTGATT (6) / SPP (7) as research-only unless 1–3 are exhausted.
+4. Treat ECC test (5) / BTGATT (6) / SPP-as-audio (7) as research-only unless 1–3 are exhausted.

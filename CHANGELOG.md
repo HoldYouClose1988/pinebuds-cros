@@ -5,6 +5,21 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.5] — 2026-09-22
+
+### Docs / tooling (no flash required yet)
+- **TOTA/SPP log-sink investigation:** reuse stock RFCOMM channel **12** + `tota_printf` /
+  `OP_TOTA_STRING` instead of soldering UART or inventing BLE GATT — [docs/bt-log-sink.md](docs/bt-log-sink.md)
+- Android scaffold: [`android/cros-log/`](android/cros-log/) (classic SPP reader)
+- Firmware helper: `cros_bt_log` tees `[cros_*]` to TOTA when built with **`TOTA=1`**
+- Patch `0005`: make `TOTA=1` link on open_source (force `TEST_OVER_THE_AIR`, stub ANC tool)
+- `TOTA=1 ./scripts/build.sh` verified green in CI tree; **hold CROS L2CAP flashes** until phone logs work
+
+### Next flash (when ready)
+1. Build `TOTA=1` (same CROS 0.3.4 behavior + SPP log server).
+2. Install CROS Log app → Connect → confirm `[cros_tws]` / `[cros_extra]` lines.
+3. Only then resume deferred-extra ear tests.
+
 ## [0.3.4] — 2026-09-22
 
 ### Firmware

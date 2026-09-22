@@ -13,6 +13,7 @@
 #include "audioflinger.h"
 #include "cmsis_os.h"
 #include "cros_besaud_extra.h"
+#include "cros_bt_log.h"
 #include "hal_trace.h"
 #include "string.h"
 #include "tgt_hardware.h"
@@ -303,7 +304,7 @@ static void try_send_latest(void) {
       tx_frames++;
       tx_extra++;
       if ((tx_frames & 0x3F) == 0) {
-        TRACE(3, "[cros_tws] tx=%u extra=%u cmd=%u", tx_frames, tx_extra,
+        CROS_LOG(3, "[cros_tws] tx=%u extra=%u cmd=%u", tx_frames, tx_extra,
               tx_cmd);
       }
     }
@@ -319,7 +320,7 @@ static void try_send_latest(void) {
     tx_frames++;
     tx_cmd++;
     if ((tx_frames & 0x3F) == 0) {
-      TRACE(3, "[cros_tws] tx=%u extra=%u cmd=%u (fallback)", tx_frames,
+      CROS_LOG(3, "[cros_tws] tx=%u extra=%u cmd=%u (fallback)", tx_frames,
             tx_extra, tx_cmd);
     }
   }
@@ -386,14 +387,14 @@ static int start_tx(void) {
 
   ret = af_stream_open(CROS_STREAM_ID, AUD_STREAM_CAPTURE, &cfg);
   if (ret) {
-    TRACE(2, "[cros_tws] TX capture open fail %d", ret);
+    CROS_LOG(2, "[cros_tws] TX capture open fail %d", ret);
     return ret;
   }
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = true;
   tx_frames = tx_drops = 0;
   tick_start();
-  TRACE(0, "[cros_tws] TX START (50ms continuous ADPCM)");
+  CROS_LOG(0, "[cros_tws] TX START (50ms continuous ADPCM)");
   return 0;
 }
 
@@ -434,14 +435,14 @@ static int start_rx(void) {
 
   ret = af_stream_open(CROS_STREAM_ID, AUD_STREAM_PLAYBACK, &cfg);
   if (ret) {
-    TRACE(2, "[cros_tws] RX playback open fail %d", ret);
+    CROS_LOG(2, "[cros_tws] RX playback open fail %d", ret);
     return ret;
   }
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   rx_running = true;
   rx_pkts = underruns = rx_drops = rx_resyncs = 0;
   tick_start();
-  TRACE(0, "[cros_tws] RX START (50ms, seq-continuous ADPCM)");
+  CROS_LOG(0, "[cros_tws] RX START (50ms, seq-continuous ADPCM)");
   return 0;
 }
 
@@ -453,7 +454,7 @@ static void stop_tx(void) {
   af_stream_stop(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   af_stream_close(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = false;
-  TRACE(0, "[cros_tws] TX STOP");
+  CROS_LOG(0, "[cros_tws] TX STOP");
 }
 
 static void stop_rx(void) {
@@ -464,7 +465,7 @@ static void stop_rx(void) {
   af_stream_stop(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   af_stream_close(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   rx_running = false;
-  TRACE(0, "[cros_tws] RX STOP");
+  CROS_LOG(0, "[cros_tws] RX STOP");
 }
 
 static int apply_enabled(bool on) {
@@ -473,7 +474,7 @@ static int apply_enabled(bool on) {
     af_set_priority(AF_USER_TEST, osPriorityHigh);
 #ifdef ANC_APP
     if (app_anc_work_status()) {
-      TRACE(0, "[cros_tws] disabling ANC for FF mic access");
+      CROS_LOG(0, "[cros_tws] disabling ANC for FF mic access");
       app_anc_disable();
     }
 #endif
@@ -496,6 +497,7 @@ void cros_tws_init(void) {
   if (inited) {
     return;
   }
+  cros_bt_log_init();
   cros_besaud_extra_init();
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   enabled = false;
@@ -503,7 +505,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.3.4 50ms+deferred-extra (poor=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.4 50ms+deferred-extra (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -517,14 +519,14 @@ int cros_tws_start(void) {
     return 0;
   }
   if (!app_tws_ibrt_tws_link_connected()) {
-    TRACE(0, "[cros_tws] TWS not linked — pair buds in case first");
+    CROS_LOG(0, "[cros_tws] TWS not linked — pair buds in case first");
     return -1;
   }
 
   enabled = true;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
   cros_besaud_extra_ensure();
-  TRACE(2, "[cros_tws] ENABLE (local is %s, extra_open=%d)",
+  CROS_LOG(2, "[cros_tws] ENABLE (local is %s, extra_open=%d)",
         cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX",
         cros_besaud_extra_is_open() ? 1 : 0);
   return apply_enabled(true);
@@ -540,7 +542,7 @@ int cros_tws_stop(void) {
   if (app_tws_ibrt_tws_link_connected()) {
     tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
   }
-  TRACE(0, "[cros_tws] DISABLE");
+  CROS_LOG(0, "[cros_tws] DISABLE");
   return apply_enabled(false);
 }
 
@@ -549,7 +551,7 @@ int cros_tws_toggle(void) {
     return cros_tws_stop();
   }
   if (!app_tws_ibrt_tws_link_connected()) {
-    TRACE(0, "[cros_tws] toggle ignored — TWS not linked (reseating both?)");
+    CROS_LOG(0, "[cros_tws] toggle ignored — TWS not linked (reseating both?)");
     return -1;
   }
   return cros_tws_start();
@@ -557,7 +559,7 @@ int cros_tws_toggle(void) {
 
 void cros_tws_on_peer_mode(uint8_t on) {
   bool want = (on != 0);
-  TRACE(1, "[cros_tws] peer mode=%d", (int)want);
+  CROS_LOG(1, "[cros_tws] peer mode=%d", (int)want);
   if (want == enabled) {
     if (want) {
       cros_besaud_extra_ensure();
@@ -618,7 +620,7 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   }
   rx_pkts++;
   if ((rx_pkts & 0x3F) == 0) {
-    TRACE(4, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u", rx_pkts,
+    CROS_LOG(4, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u", rx_pkts,
           underruns, rx_resyncs, jitter_target_frames);
   }
 }

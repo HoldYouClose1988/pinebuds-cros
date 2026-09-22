@@ -12,7 +12,11 @@ Keep patches minimal and feature-scoped.
 | `0002-stage-b-cros-tws.patch` | Wire experimental `CROS_STAGE_B`: cross-bud CROS over IBRT custom cmds, larger TWS ctrl buf |
 | `0003-cros-direct-audio-send.patch` | Direct BESAUD send helper (skip tws_ctrl mailbox backlog) |
 | `0004-cros-besaud-extra-hook.patch` | BESAUD disconnect cleanup for optional extra L2CAP (create gated off in firmware) |
+| `0005-tota-force-test-over-the-air.patch` | Make `TOTA=1` actually build on open_source: force `TEST_OVER_THE_AIR=1`, stub ANC tool when `APP_ANC_TEST=0`, fix missing stdint includes |
 
 Sources:
 - Stage A: `firmware/stage_a/` → `apps/cros_loopback/`
-- Stage B: `firmware/stage_b/` → `apps/cros_tws/` (`cros_tws` + `cros_besaud_extra`)
+- Stage B: `firmware/stage_b/` → `apps/cros_tws/` (`cros_tws` + `cros_besaud_extra` + `cros_bt_log`)
+
+Phone log sink (no new patch — build flag): `TOTA=1 ./scripts/build.sh` registers stock
+TOTA SPP (RFCOMM 12). See [docs/bt-log-sink.md](../docs/bt-log-sink.md).

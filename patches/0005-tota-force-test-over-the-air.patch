@@ -1,0 +1,76 @@
+diff --git a/config/open_source/target.mk b/config/open_source/target.mk
+--- a/config/open_source/target.mk
++++ b/config/open_source/target.mk
+@@ -443,7 +443,8 @@ ifeq ($(BLE),1)
+ KBUILD_CPPFLAGS += -DBLE_TOTA_ENABLED
+ endif
+ KBUILD_CPPFLAGS += -DSHOW_RSSI
+ KBUILD_CPPFLAGS += -DTEST_OVER_THE_AIR_ENANBLED
+-export TEST_OVER_THE_AIR ?= 1
++# Force: common.mk may have already ?=0'd this before target.mk runs.
++export TEST_OVER_THE_AIR := 1
+ endif
+ 
+ KBUILD_CPPFLAGS += -DSHOW_RSSI
+diff --git a/services/tota/app_tota.cpp b/services/tota/app_tota.cpp
+--- a/services/tota/app_tota.cpp
++++ b/services/tota/app_tota.cpp
+@@ -85,8 +85,12 @@ void app_tota_init(void) {
+   app_tota_flash_init();
+ 
+   /* set module to access spp callback */
+-  // tota_callback_module_set(APP_TOTA_AUDIO_DUMP);
+-  tota_callback_module_set(APP_TOTA_ANC);
++#if defined(APP_ANC_TEST)
++  tota_callback_module_set(APP_TOTA_ANC);
++#else
++  /* open_source: no anc_spp_tool — use custom module for phone log sink */
++  tota_callback_module_set(APP_TOTA_CUSTOM);
++#endif
+ 
+ #if (BLE_APP_TOTA)
+   app_ble_rx_handler_init();
+diff --git a/services/tota/app_tota_anc.cpp b/services/tota/app_tota_anc.cpp
+--- a/services/tota/app_tota_anc.cpp
++++ b/services/tota/app_tota_anc.cpp
+@@ -15,6 +15,11 @@
+  *
+  ****************************************************************************/
+ 
++#ifndef APP_ANC_TEST
++/* open_source builds TOTA without anc_spp_tool — keep a no-op init. */
++#include "app_tota_anc.h"
++void app_tota_anc_init() {}
++#else
+ #include "app_tota_anc.h"
+ #include "anc_parse_data.h"
+ #include "app_spp_tota.h"
+@@ -92,3 +97,4 @@ static void _tota_spp_data_receive_handle(uint8_t *buf, uint32_t len) {
+ }
+ 
+ /*-----------------------------------------------------------------------------*/
++#endif /* APP_ANC_TEST */
+diff --git a/services/tota/app_tota_anc.h b/services/tota/app_tota_anc.h
+--- a/services/tota/app_tota_anc.h
++++ b/services/tota/app_tota_anc.h
+@@ -17,6 +17,8 @@
+ #ifndef __APP_TOTA_ANC_H__
+ #define __APP_TOTA_ANC_H__
+ 
++#include <stddef.h>
++#include <stdint.h>
+ 
+ /* from other files */
+ extern unsigned char *g_buf;
+diff --git a/services/tota/app_tota_flash_program.h b/services/tota/app_tota_flash_program.h
+--- a/services/tota/app_tota_flash_program.h
++++ b/services/tota/app_tota_flash_program.h
+@@ -17,6 +17,8 @@
+ #ifndef __APP_TOTA_FLASH_PROGRAM_H__
+ #define __APP_TOTA_FLASH_PROGRAM_H__
+ 
++#include <stdint.h>
++
+ //TODO:
+ #define MAX_FLASH_HANDLE_SIZE 650
+ #define TOTA_FLASH_TEST_ADDR                          (0x200000+FLASH_NC_BASE+4096)

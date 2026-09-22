@@ -1,7 +1,7 @@
 cur_dir := $(dir $(lastword $(MAKEFILE_LIST)))
 
 ifeq ($(CROS_STAGE_B),1)
-obj-y := cros_tws.o cros_besaud_extra.o
+obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o
 endif
 
 # Deferred extra-L2CAP probe on by default for Stage B flash packages.
@@ -22,6 +22,7 @@ ccflags-y += \
 	-Iservices/ibrt_core/inc \
 	-Iservices/multimedia/audio/codec/sbc/inc \
 	-Iservices/multimedia/audio/codec/sbc/src/inc \
+	-Iservices/tota \
 	-Iplatform/hal \
 	-Iplatform/drivers/bt \
 	-Iutils/cqueue
