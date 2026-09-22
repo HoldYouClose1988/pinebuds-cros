@@ -1,11 +1,10 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.2.6 — sweet spot after rate-ceiling confirmation (v0.2.5):
- *  - 40 ms ADPCM packets (~17.5 cmds/s): between choppy-20ms and laggy-60ms
- *  - Continuous ADPCM state across sequential packets (fixes "robotic" resets)
- *  - Seq byte; RX only resyncs predictor on gaps
- *  - Direct BESAUD send; tight jitter (40–80 ms)
+ * v0.2.7 — fix right-bud hang from v0.2.6:
+ *  send_now() from osTimer is unsafe (crashed/hung TX side → solid blue,
+ *  quad-tap dead). Back to tws_ctrl_send_cmd from ticker + pending gate.
+ *  Keep 40 ms continuous ADPCM; static frame scratch (no big stack alloc).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -25,7 +24,8 @@
 
 extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length);
 extern bool app_tws_ibrt_tws_link_connected(void);
-extern int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length);
+/* Do NOT call app_ibrt_cros_audio_send_now from osTimer — needs BT/ctrl
+ * context. v0.2.6 did that and hung the TX (right) bud. */
 
 #ifndef CROS_POOR_IS_RIGHT
 #define CROS_POOR_IS_RIGHT 1
@@ -56,6 +56,7 @@ static uint8_t capture_dma_buf[CROS_DMA_BYTES];
 static uint8_t playback_dma_buf[CROS_DMA_BYTES];
 static uint8_t pcm_ring[CROS_RING_BYTES];
 static uint8_t tx_pkt[CROS_PKT_BYTES];
+static int16_t send_pcm[CROS_FRAME_SAMPLES]; /* ticker scratch — not on stack */
 
 static int16_t latest_pcm[CROS_FRAME_SAMPLES];
 static volatile uint8_t latest_ready;
@@ -69,12 +70,12 @@ static bool inited;
 static bool enabled;
 static bool tx_running;
 static bool rx_running;
+static volatile uint8_t tx_pending;
 static uint8_t tx_seq;
 static uint8_t rx_expect_seq;
 static bool rx_have_seq;
 static uint8_t jitter_target_frames;
 static uint16_t healthy_ticks;
-static uint8_t send_fail_backoff;
 static uint32_t tx_frames;
 static uint32_t rx_pkts;
 static uint32_t tx_drops;
@@ -213,7 +214,7 @@ bool cros_tws_is_poor_side(void) {
 
 bool cros_tws_is_enabled(void) { return enabled; }
 
-void cros_tws_on_audio_tx_done(void) {}
+void cros_tws_on_audio_tx_done(void) { tx_pending = 0; }
 
 static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
   int16_t *pcm = (int16_t *)buf;
@@ -255,14 +256,12 @@ static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
 }
 
 static void try_send_latest(void) {
-  int16_t local[CROS_FRAME_SAMPLES];
   ima_state_t snap;
 
   if (!tx_running || !app_tws_ibrt_tws_link_connected()) {
     return;
   }
-  if (send_fail_backoff) {
-    send_fail_backoff--;
+  if (tx_pending) {
     return;
   }
   if (!latest_ready) {
@@ -270,19 +269,20 @@ static void try_send_latest(void) {
   }
 
   latest_ready = 0;
-  memcpy(local, latest_pcm, sizeof(local));
+  memcpy(send_pcm, latest_pcm, sizeof(send_pcm));
 
-  /* Header carries pre-encode state for RX resync on gaps only. */
   snap = enc_state;
   tx_pkt[0] = CROS_PKT_MAGIC;
   tx_pkt[1] = tx_seq++;
   tx_pkt[2] = (uint8_t)snap.index;
   tx_pkt[3] = (uint8_t)(snap.pred & 0xFF);
   tx_pkt[4] = (uint8_t)((snap.pred >> 8) & 0xFF);
-  ima_encode_block(local, &tx_pkt[CROS_HDR_BYTES]);
+  ima_encode_block(send_pcm, &tx_pkt[CROS_HDR_BYTES]);
 
-  if (app_ibrt_cros_audio_send_now(tx_pkt, CROS_PKT_BYTES) != 0) {
-    send_fail_backoff = 1;
+  tx_pending = 1;
+  if (tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, tx_pkt, CROS_PKT_BYTES) !=
+      0) {
+    tx_pending = 0;
     tx_drops++;
   } else {
     tx_frames++;
@@ -337,7 +337,7 @@ static int start_tx(void) {
   cap_acc_count = 0;
   latest_ready = 0;
   tx_seq = 0;
-  send_fail_backoff = 0;
+  tx_pending = 0;
 
   memset(&cfg, 0, sizeof(cfg));
   cfg.bits = CROS_BITS;
@@ -468,7 +468,7 @@ void cros_tws_init(void) {
   tx_running = rx_running = false;
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   inited = true;
-  TRACE(1, "[cros_tws] init v0.2.6 40ms-continuous (poor=%s)",
+  TRACE(1, "[cros_tws] init v0.2.7 40ms (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -510,6 +510,10 @@ int cros_tws_stop(void) {
 int cros_tws_toggle(void) {
   if (enabled) {
     return cros_tws_stop();
+  }
+  if (!app_tws_ibrt_tws_link_connected()) {
+    TRACE(0, "[cros_tws] toggle ignored — TWS not linked (reseating both?)");
+    return -1;
   }
   return cros_tws_start();
 }

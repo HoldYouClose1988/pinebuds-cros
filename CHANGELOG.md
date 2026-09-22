@@ -5,12 +5,24 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.2.7] — 2026-09-22
+
+### Firmware
+- **Fix right-bud hang from v0.2.6:** `app_ibrt_cros_audio_send_now()` from the osTimer was unsafe (wrong BT/ctrl context) → solid blue LED, quad-tap dead on the TX/poor bud
+- Restore **`tws_ctrl_send_cmd` + `tx_pending` / `tx_done` gate** for audio packets (same path as mode sync)
+- Keep **40 ms continuous ADPCM** + seq resync; static encode scratch (no big stack alloc in ticker)
+- Toggle ignored if TWS not linked (avoids half-armed start after a hung peer)
+
+### Recovering from v0.2.6
+- Power-cycle / reseat the stuck right bud (case USB, remove ~3s, reseat), then flash **both** buds with v0.2.7
+
 ## [0.2.6] — 2026-09-22
 
 ### Firmware
 - Stage B sweet-spot after rate-ceiling confirm: **40 ms** packets (vs 60 ms robotic/laggy)
 - **Continuous ADPCM** across sequential packets (seq byte; resync only on gaps) — less “robotic”
 - Tighter RX jitter (40–80 ms); direct BESAUD send
+- **Known bad:** direct `send_now` from osTimer hung the right (TX) bud — superseded by v0.2.7
 
 ## [0.2.5] — 2026-09-22
 
