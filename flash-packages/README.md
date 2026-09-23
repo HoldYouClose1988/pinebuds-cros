@@ -2,14 +2,15 @@
 
 > **Work in progress — not a functional CROS product.** Experimental bins only. Not a hearing aid or PPE.
 
-**Current version: v0.3.16**
+**Current version: v0.3.17**
 
-Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.16.zip](./pinebuds-cros-v0.3.16.zip)**.
+Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.17.zip](./pinebuds-cros-v0.3.17.zip)**.
 
 Each zip includes `BESTOOL.md` (flasher setup), `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers.
 
 | Package | Version |
 |---------|---------|
+| [pinebuds-cros-v0.3.17.zip](./pinebuds-cros-v0.3.17.zip) | v0.3.17 |
 | [pinebuds-cros-v0.3.16.zip](./pinebuds-cros-v0.3.16.zip) | v0.3.16 |
 | [pinebuds-cros-v0.3.15.zip](./pinebuds-cros-v0.3.15.zip) | v0.3.15 |
 | [pinebuds-cros-v0.3.14.zip](./pinebuds-cros-v0.3.14.zip) | v0.3.14 |

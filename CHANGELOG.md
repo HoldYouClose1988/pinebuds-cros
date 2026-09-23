@@ -5,6 +5,18 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.17] — 2026-09-23
+
+### Firmware — quiet-mode leak on remote stop
+- **`cros_tws_on_peer_mode(0)`** now calls `cros_bt_log_set_quiet(0)` (local
+  `cros_tws_stop` already did; remote-initiated stop did not)
+- No behavior change to the extra media path — 0.3.16 coexistence intact
+
+### Status (ear validation)
+4‑minute real-content runs on RX and TX with Capture on; handshake→quiet→extra
+stable. One unresolved one-off chop on a TX-logged run (no RX telemetry that
+session) — watch for underrun-threshold on a future RX-logged recurrence.
+
 ## [0.3.16] — 2026-09-23
 
 ### Firmware — quiet SPP while extra media runs

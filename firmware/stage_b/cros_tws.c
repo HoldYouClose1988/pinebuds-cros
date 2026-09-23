@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.16 — quiet SPP during extra media; keep deep jitter from 0.3.15.
+ * v0.3.17 — clear quiet on remote peer-mode stop; keep 0.3.16 coexist.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -544,7 +544,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.16 quiet-spp-on-extra (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.17 quiet-fix+extra (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
@@ -606,12 +606,18 @@ void cros_tws_on_peer_mode(uint8_t on) {
     if (want) {
       cros_besaud_extra_ensure();
       apply_enabled(true);
+    } else {
+      /* Remote stop while already disabled — still clear quiet. */
+      cros_bt_log_set_quiet(0);
     }
     return;
   }
   enabled = want;
   if (want) {
     cros_besaud_extra_ensure();
+  } else {
+    /* Remote-initiated stop must leave quiet mode (local stop already does). */
+    cros_bt_log_set_quiet(0);
   }
   apply_enabled(want);
 }
