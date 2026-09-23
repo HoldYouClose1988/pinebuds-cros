@@ -5,6 +5,25 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.12] — 2026-09-23
+
+### Firmware — coexist probe (extra back on, carefully)
+A/B 0.3.11 showed **extra-off fixed cutout**; small jitter still underruns but holds.
+This build restores jitter **2–4** and re-enables extra with coexistence knobs:
+
+- Create deferred **2 s** after activate (cmd audio settles first)
+- **Single PING** on OPEN — no 2 s ping retry storm (that was on in 0.3.9)
+- **Retry create** on `no peer` up to 10× / 1 s (0.3.9 LEFT gave up once)
+- Audio still **cmd-only until peer PONG** / audio RX
+
+### What to look for
+| Log / ear | Meaning |
+|-----------|---------|
+| Holds like 0.3.10/11 after `OPEN` / `PING tx` | Coexistence OK; OPEN+single ping tolerable |
+| Cutout ~15 s again after OPEN | Even quiet extra setup contends — need harder isolation |
+| `PING rx` / `peer READY` | Bidirectional extra works — next: ride audio on it |
+| `no peer` then later `CREATE` | Retry fix worked on master/RX |
+
 ## [0.3.11] — 2026-09-23
 
 ### Firmware — A/B isolate (extra vs jitter)

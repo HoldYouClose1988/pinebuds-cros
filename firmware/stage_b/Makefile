@@ -4,9 +4,8 @@ ifeq ($(CROS_STAGE_B),1)
 obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o
 endif
 
-# Deferred BESAUD extra L2CAP — OFF (A/B: isolate jitter vs extra).
-# v0.3.11 keeps extra=0 and reverts jitter to 0.3.9 sizes.
-CROS_EXTRA_L2CAP ?= 0
+# v0.3.12: re-enable extra with coexistence (defer + single ping + no-peer retry).
+CROS_EXTRA_L2CAP ?= 1
 
 ccflags-y += \
 	$(BT_IF_INCLUDES) \

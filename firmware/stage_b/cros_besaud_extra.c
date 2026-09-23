@@ -1,9 +1,8 @@
 /***************************************************************************
  * BESAUD extra L2CAP — deferred create on CROS activate.
  *
- * Audio prefers this channel only after peer_ready (PONG / audio RX). Until
- * then cros_tws keeps the proven cmd path — v0.3.7 ear log showed ~1s of
- * audio (cmd frames) then silence once TX went extra-only with no peer RX.
+ * v0.3.12 coexistence: delay create, one PING only (no 2s storm), retry
+ * when peer addr missing. Audio stays on cmd until peer_ready (PONG/RX).
  ***************************************************************************/
 #include "cros_besaud_extra.h"
 
@@ -30,8 +29,9 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 extern void cros_tws_on_peer_audio(uint8_t *data, uint16_t len);
 
 #define CROS_EXTRA_TX_MAX 512
-#define CROS_EXTRA_DEFER_MS 500
-#define CROS_EXTRA_PING_RETRY_MS 2000
+#define CROS_EXTRA_DEFER_MS 2000 /* let cmd audio settle before OPEN */
+#define CROS_EXTRA_CREATE_RETRY_MS 1000
+#define CROS_EXTRA_CREATE_MAX_TRIES 10
 #define CROS_EXTRA_PING_MAGIC 0xC0
 #define CROS_EXTRA_PONG_MAGIC 0xC1
 
@@ -40,6 +40,7 @@ static volatile uint8_t extra_open;
 static volatile uint8_t peer_ready;
 static volatile uint8_t create_issued;
 static volatile uint8_t tx_busy;
+static uint8_t create_tries;
 static uint8_t tx_scratch[CROS_EXTRA_TX_MAX];
 static uint16_t tx_scratch_len;
 static uint32_t tx_ok;
@@ -53,26 +54,22 @@ static void cros_extra_defer(void const *arg);
 osTimerDef(CROS_EXTRA_DEFER, cros_extra_defer);
 static osTimerId cros_extra_defer_id;
 
-static void cros_extra_ping_retry(void const *arg);
-osTimerDef(CROS_EXTRA_PING_RETRY, cros_extra_ping_retry);
-static osTimerId cros_extra_ping_retry_id;
-
+static void cros_extra_create_bt(void *a, void *b);
 static void cros_extra_send_ping_bt(void *a, void *b);
 static void cros_extra_send_pong_bt(void *a, void *b);
 
-static void cros_extra_ping_retry_stop(void) {
-  if (cros_extra_ping_retry_id) {
-    osTimerStop(cros_extra_ping_retry_id);
+static void cros_extra_schedule_create(uint32_t delay_ms) {
+  if (!cros_extra_defer_id) {
+    cros_extra_defer_id =
+        osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-}
-
-static void cros_extra_ping_retry_start(void) {
-  if (!cros_extra_ping_retry_id) {
-    cros_extra_ping_retry_id =
-        osTimerCreate(osTimer(CROS_EXTRA_PING_RETRY), osTimerPeriodic, NULL);
-  }
-  if (cros_extra_ping_retry_id) {
-    osTimerStart(cros_extra_ping_retry_id, CROS_EXTRA_PING_RETRY_MS);
+  if (cros_extra_defer_id) {
+    create_issued = 1;
+    osTimerStart(cros_extra_defer_id, delay_ms);
+  } else {
+    create_issued = 1;
+    app_bt_start_custom_function_in_bt_thread(0, 0,
+                                              (uint32_t)cros_extra_create_bt);
   }
 }
 
@@ -87,11 +84,12 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
     extra_open = 1;
     peer_ready = 0;
     tx_busy = 0;
-    CROS_LOG(2, "[cros_extra] OPEN handle=0x%08x — ping (cmd audio until PONG)",
+    create_tries = 0;
+    /* One PING only — 0.3.9 2s retry storm contended with cmd audio. */
+    CROS_LOG(2, "[cros_extra] OPEN handle=0x%08x — single ping (no retry storm)",
           (unsigned)l2cap_handle);
     app_bt_start_custom_function_in_bt_thread(0, 0,
                                               (uint32_t)cros_extra_send_ping_bt);
-    cros_extra_ping_retry_start();
     break;
   case L2CAP_CHANNEL_TX_HANDLED:
     tx_busy = 0;
@@ -99,7 +97,6 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
   case L2CAP_CHANNEL_CLOSED:
     CROS_LOG(1, "[cros_extra] CLOSED handle=0x%08x", (unsigned)l2cap_handle);
     if (extra_handle == l2cap_handle) {
-      cros_extra_ping_retry_stop();
       extra_handle = 0;
       extra_open = 0;
       peer_ready = 0;
@@ -130,7 +127,6 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
     rx_pong++;
     if (!peer_ready) {
       peer_ready = 1;
-      cros_extra_ping_retry_stop();
       CROS_LOG(1, "[cros_extra] peer READY (pong=%u) — switch audio to extra",
             (unsigned)rx_pong);
     }
@@ -138,7 +134,6 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
   }
   if (!peer_ready) {
     peer_ready = 1;
-    cros_extra_ping_retry_stop();
     CROS_LOG(0, "[cros_extra] peer READY (audio rx) — switch audio to extra");
   }
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
@@ -162,20 +157,34 @@ static void cros_extra_create_bt(void *a, void *b) {
   (void)a;
   (void)b;
   if (extra_open) {
+    create_issued = 0;
     return;
   }
   remote = cros_extra_peer_addr();
   if (!remote) {
-    CROS_LOG(0, "[cros_extra] create skipped — no peer");
-    create_issued = 0;
+    create_tries++;
+    CROS_LOG(0, "[cros_extra] create skipped — no peer (try %u/%u)",
+          (unsigned)create_tries, (unsigned)CROS_EXTRA_CREATE_MAX_TRIES);
+    if (create_tries < CROS_EXTRA_CREATE_MAX_TRIES) {
+      cros_extra_schedule_create(CROS_EXTRA_CREATE_RETRY_MS);
+    } else {
+      create_issued = 0;
+      CROS_LOG(0, "[cros_extra] create gave up — cmd-only this session");
+    }
     return;
   }
   if (!tws_besaud_is_connected() && !app_tws_ibrt_tws_link_connected()) {
-    CROS_LOG(0, "[cros_extra] create skipped — TWS/BESAUD down");
-    create_issued = 0;
+    create_tries++;
+    CROS_LOG(0, "[cros_extra] create skipped — TWS/BESAUD down (try %u/%u)",
+          (unsigned)create_tries, (unsigned)CROS_EXTRA_CREATE_MAX_TRIES);
+    if (create_tries < CROS_EXTRA_CREATE_MAX_TRIES) {
+      cros_extra_schedule_create(CROS_EXTRA_CREATE_RETRY_MS);
+    } else {
+      create_issued = 0;
+    }
     return;
   }
-  CROS_LOG(0, "[cros_extra] CREATE deferred 0x0b0e (activate path)");
+  CROS_LOG(0, "[cros_extra] CREATE 0x0b0e (coexist, after settle)");
   l2cap_create_besaud_extra_channel(remote, L2CAP_BESAUD_EXTRA_CHAN_ID,
                                     cros_extra_notify, cros_extra_datarecv);
 }
@@ -214,18 +223,8 @@ static void cros_extra_send_ping_bt(void *a, void *b) {
     return;
   }
   ping_tx++;
-  CROS_LOG(2, "[cros_extra] PING tx=%u (waiting PONG; audio stays on cmd)",
+  CROS_LOG(2, "[cros_extra] PING tx=%u (single; audio stays on cmd until PONG)",
         (unsigned)ping_tx);
-}
-
-static void cros_extra_ping_retry(void const *arg) {
-  (void)arg;
-  if (!extra_open || peer_ready) {
-    cros_extra_ping_retry_stop();
-    return;
-  }
-  app_bt_start_custom_function_in_bt_thread(0, 0,
-                                            (uint32_t)cros_extra_send_ping_bt);
 }
 
 static void cros_extra_send_pong_bt(void *a, void *b) {
@@ -257,6 +256,7 @@ void cros_besaud_extra_init(void) {
   extra_open = 0;
   peer_ready = 0;
   create_issued = 0;
+  create_tries = 0;
   tx_busy = 0;
   tx_scratch_len = 0;
   tx_ok = tx_fail = rx_ok = rx_ping = rx_pong = ping_tx = 0;
@@ -264,11 +264,8 @@ void cros_besaud_extra_init(void) {
     cros_extra_defer_id =
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-  if (!cros_extra_ping_retry_id) {
-    cros_extra_ping_retry_id =
-        osTimerCreate(osTimer(CROS_EXTRA_PING_RETRY), osTimerPeriodic, NULL);
-  }
-  CROS_LOG(0, "[cros_extra] init (deferred-activate + peer-ready gate)");
+  CROS_LOG(0, "[cros_extra] init (coexist: defer %dms, single ping, no-peer retry)",
+        CROS_EXTRA_DEFER_MS);
 #endif
 }
 
@@ -277,18 +274,9 @@ void cros_besaud_extra_ensure(void) {
   if (extra_open || create_issued) {
     return;
   }
-  create_issued = 1;
-  if (!cros_extra_defer_id) {
-    cros_extra_defer_id =
-        osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
-  }
-  if (cros_extra_defer_id) {
-    CROS_LOG(1, "[cros_extra] schedule create in %dms", CROS_EXTRA_DEFER_MS);
-    osTimerStart(cros_extra_defer_id, CROS_EXTRA_DEFER_MS);
-  } else {
-    app_bt_start_custom_function_in_bt_thread(0, 0,
-                                              (uint32_t)cros_extra_create_bt);
-  }
+  create_tries = 0;
+  CROS_LOG(1, "[cros_extra] schedule create in %dms", CROS_EXTRA_DEFER_MS);
+  cros_extra_schedule_create(CROS_EXTRA_DEFER_MS);
 #else
   (void)0;
 #endif
@@ -299,11 +287,11 @@ void cros_besaud_extra_on_besaud_down(void) {
   if (cros_extra_defer_id) {
     osTimerStop(cros_extra_defer_id);
   }
-  cros_extra_ping_retry_stop();
   extra_handle = 0;
   extra_open = 0;
   peer_ready = 0;
   create_issued = 0;
+  create_tries = 0;
   tx_busy = 0;
 #endif
 }
