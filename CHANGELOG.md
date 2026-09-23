@@ -5,6 +5,29 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.16] — 2026-09-23
+
+### Firmware — quiet SPP while extra media runs
+Ear result: **0.3.15 + Capture off = extra works** (choppy/delayed, stable).
+Capture on → dies at READY (`SPP closed by peer`). Logging traffic contends with
+extra media — not the handshake or jitter floor.
+
+- **`CROS_LOG`** = state transitions (always tee to TOTA)
+- **`CROS_LOG_STAT`** = periodic counters (UART only while quiet)
+- On peer READY → `quiet=1`; CLOSED / DISABLE / BESAUD-down → `quiet=0`
+- Still emit rare underrun-threshold events over SPP while quiet
+
+### SDK note (pool theory)
+`HCI_NUM_ACL_BUFFERS` is **6** in this tree (`overide.h` / `bt_sys_cfg.h`). Extra
+ADPCM + TOTA SPP both ride classic ACL — a tiny host ACL buffer count makes
+Claude’s pp_buff/ACL-pool contention theory plausible. Not proven; quiet-SPP is
+the first load test.
+
+### Test
+Capture **on**. Expect: handshake lines → `[cros_log] quiet=1` → silence in the
+app log while audio continues. If link still dies, even minimal SPP is fatal
+(try case-insert dump next). If it holds, load/throughput contention confirmed.
+
 ## [0.3.15] — 2026-09-23
 
 ### Firmware — extra path works; fix underrun cliff

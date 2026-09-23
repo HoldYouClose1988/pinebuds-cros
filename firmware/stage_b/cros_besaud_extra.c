@@ -1,8 +1,8 @@
 /***************************************************************************
  * BESAUD extra L2CAP — deferred create on CROS activate.
  *
- * v0.3.14 — peer READY on PING rx (TX saw PING not PONG in 0.3.13).
- *  Extra OPEN+PONG proven; ride audio on extra once either side is READY.
+ * v0.3.16 — quiet TOTA/SPP while extra media runs (logging killed the link).
+ *  READY on PING|PONG; deep jitter; defer/single-ping coexist knobs.
  ***************************************************************************/
 #include "cros_besaud_extra.h"
 
@@ -103,6 +103,7 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
       peer_ready = 0;
       tx_busy = 0;
       create_issued = 0;
+      cros_bt_log_set_quiet(0);
     }
     break;
   default:
@@ -127,6 +128,7 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
      * cmd audio. Treat PING as READY so audio can switch to extra. */
     if (!peer_ready) {
       peer_ready = 1;
+      cros_bt_log_set_quiet(1);
       CROS_LOG(1, "[cros_extra] peer READY (ping=%u) — switch audio to extra",
             (unsigned)rx_ping);
     }
@@ -136,6 +138,7 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
     rx_pong++;
     if (!peer_ready) {
       peer_ready = 1;
+      cros_bt_log_set_quiet(1);
       CROS_LOG(1, "[cros_extra] peer READY (pong=%u) — switch audio to extra",
             (unsigned)rx_pong);
     }
@@ -143,12 +146,13 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
   }
   if (!peer_ready) {
     peer_ready = 1;
+    cros_bt_log_set_quiet(1);
     CROS_LOG(0, "[cros_extra] peer READY (audio rx) — switch audio to extra");
   }
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
   rx_ok++;
   if ((rx_ok & 0x7F) == 0) {
-    CROS_LOG(0, "[cros_extra] audio_rx=%u ping_rx=%u pong_rx=%u",
+    CROS_LOG_STAT(0, "[cros_extra] audio_rx=%u ping_rx=%u pong_rx=%u",
           (unsigned)rx_ok, (unsigned)rx_ping, (unsigned)rx_pong);
   }
 }
@@ -246,7 +250,7 @@ static void cros_extra_send_bt(void *a, void *b) {
   } else {
     tx_ok++;
     if ((tx_ok & 0x3F) == 0) {
-      CROS_LOG(0, "[cros_extra] audio_tx=%u fail=%u peer_ready=%u",
+      CROS_LOG_STAT(0, "[cros_extra] audio_tx=%u fail=%u peer_ready=%u",
             (unsigned)tx_ok, (unsigned)tx_fail, (unsigned)peer_ready);
     }
   }
@@ -306,7 +310,7 @@ void cros_besaud_extra_init(void) {
     cros_extra_defer_id =
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-  CROS_LOG(0, "[cros_extra] init (v0.3.15 deep jitter on extra; defer %dms)",
+  CROS_LOG(0, "[cros_extra] init (v0.3.16 quiet SPP on extra; defer %dms)",
         CROS_EXTRA_DEFER_MS);
 #endif
 }
@@ -335,6 +339,7 @@ void cros_besaud_extra_on_besaud_down(void) {
   create_issued = 0;
   create_tries = 0;
   tx_busy = 0;
+  cros_bt_log_set_quiet(0);
 #endif
 }
 

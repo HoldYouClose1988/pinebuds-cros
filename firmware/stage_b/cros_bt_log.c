@@ -35,6 +35,7 @@ static volatile uint8_t head;
 static volatile uint8_t tail;
 static volatile uint8_t dropped;
 static volatile uint8_t flush_pending;
+static volatile uint8_t quiet;
 static uint8_t inited;
 
 static void cros_bt_log_timer(void const *arg);
@@ -59,10 +60,12 @@ static void cros_bt_log_flush_bt(void *a, void *b) {
 
   uint8_t sent = 0;
   uint8_t drops = dropped;
-  if (drops) {
+  if (drops && !quiet) {
     dropped = 0;
     tota_printf("[cros_log] dropped=%u", (unsigned)drops);
     sent++;
+  } else if (drops && quiet) {
+    dropped = 0; /* discard count while quiet — do not SPP-spam */
   }
 
   while (sent < CROS_BT_LOG_FLUSH_MAX && tail != head) {
@@ -96,14 +99,29 @@ void cros_bt_log_init(void) {
     return;
   }
   head = tail = dropped = flush_pending = 0;
+  quiet = 0;
   flush_id = osTimerCreate(osTimer(CROS_BT_LOG_FLUSH), osTimerPeriodic, NULL);
   if (flush_id) {
     osTimerStart(flush_id, CROS_BT_LOG_FLUSH_MS);
   }
   inited = 1;
-  TRACE(0, "[cros_log] init (TOTA tee ON, BT-thread flush max=%u)",
+  TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, quiet-on-extra)",
         (unsigned)CROS_BT_LOG_FLUSH_MAX);
 }
+
+void cros_bt_log_set_quiet(int on) {
+  uint8_t was = quiet;
+  quiet = on ? 1 : 0;
+  if (was != quiet) {
+    TRACE(0, "[cros_log] quiet=%u (extra media SPP throttle)", (unsigned)quiet);
+    /* One tee line so the phone sees the transition even as we go quiet. */
+    if (inited) {
+      cros_bt_logf("[cros_log] quiet=%u", (unsigned)quiet);
+    }
+  }
+}
+
+int cros_bt_log_is_quiet(void) { return quiet ? 1 : 0; }
 
 void cros_bt_logf(const char *fmt, ...) {
   char buf[CROS_BT_LOG_LINE_MAX];
@@ -126,10 +144,35 @@ void cros_bt_logf(const char *fmt, ...) {
   head = next;
 }
 
+void cros_bt_logf_stat(const char *fmt, ...) {
+  char buf[CROS_BT_LOG_LINE_MAX];
+  va_list ap;
+  if (!inited || quiet) {
+    return;
+  }
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  buf[sizeof(buf) - 1] = '\0';
+
+  uint8_t next = (uint8_t)((head + 1u) % CROS_BT_LOG_DEPTH);
+  if (next == tail) {
+    dropped++;
+    return;
+  }
+  strncpy(ring[head].line, buf, CROS_BT_LOG_LINE_MAX - 1);
+  ring[head].line[CROS_BT_LOG_LINE_MAX - 1] = '\0';
+  head = next;
+}
+
 #else /* !TEST_OVER_THE_AIR_ENANBLED */
 
 void cros_bt_log_init(void) {
   TRACE(0, "[cros_log] init (TOTA tee OFF — build with TOTA=1)");
 }
+
+void cros_bt_log_set_quiet(int on) { (void)on; }
+
+int cros_bt_log_is_quiet(void) { return 0; }
 
 #endif

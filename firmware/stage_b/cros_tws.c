@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.15 — deeper RX jitter on extra (0.3.14 switched but underrun cliffed).
+ * v0.3.16 — quiet SPP during extra media; keep deep jitter from 0.3.15.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -330,7 +330,7 @@ static void try_send_latest(void) {
       tx_frames++;
       tx_extra++;
       if ((tx_frames & 0x3F) == 0) {
-        CROS_LOG(0, "[cros_tws] tx=%u extra=%u cmd=%u (on EXTRA)", tx_frames,
+        CROS_LOG_STAT(0, "[cros_tws] tx=%u extra=%u cmd=%u (on EXTRA)", tx_frames,
               tx_extra, tx_cmd);
       }
     }
@@ -346,7 +346,7 @@ static void try_send_latest(void) {
     tx_frames++;
     tx_cmd++;
     if ((tx_frames & 0x3F) == 0) {
-      CROS_LOG(0, "[cros_tws] tx=%u extra=%u cmd=%u (on CMD, waiting extra)",
+      CROS_LOG_STAT(0, "[cros_tws] tx=%u extra=%u cmd=%u (on CMD, waiting extra)",
             tx_frames, tx_extra, tx_cmd);
     }
   }
@@ -544,7 +544,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.15 extra-jitter-deep (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.16 quiet-spp-on-extra (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
@@ -582,6 +582,7 @@ int cros_tws_stop(void) {
   if (app_tws_ibrt_tws_link_connected()) {
     tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
   }
+  cros_bt_log_set_quiet(0);
   CROS_LOG(0, "[cros_tws] DISABLE");
   return apply_enabled(false);
 }
@@ -663,8 +664,21 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   }
   rx_pkts++;
   if ((rx_pkts & CROS_RX_LOG_MASK) == 0) {
-    CROS_LOG(0, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u extra=%d",
+    CROS_LOG_STAT(0, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u extra=%d",
           rx_pkts, underruns, rx_resyncs, jitter_target_frames,
           on_extra_media());
+  }
+  /* Rare SPP event while quiet: underrun cliff crossing. */
+  {
+    static uint32_t underrun_armed = 50;
+    if (underruns >= underrun_armed) {
+      CROS_LOG(0, "[cros_tws] underrun threshold %u (rx=%u jitter=%u)",
+            (unsigned)underrun_armed, (unsigned)rx_pkts,
+            (unsigned)jitter_target_frames);
+      underrun_armed += 100;
+    }
+    if (!on_extra_media()) {
+      underrun_armed = 50;
+    }
   }
 }
