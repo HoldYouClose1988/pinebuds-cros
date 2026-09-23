@@ -24,32 +24,41 @@ Both buds sniff the **phone’s** ACL; BESAUD carries **sync/control**.
 Piggybacking CROS onto `app_tws_ibrt_audio_sync_*` / A2DP decoder inject is the
 wrong model for mic→peer speaker.
 
-## Current pipe: BESAUD extra L2CAP (v0.3.0)
+## Current pipe: BESAUD extra L2CAP (primary since v0.3.14+)
 
 | Piece | Where |
 |-------|--------|
 | CID | `L2CAP_BESAUD_EXTRA_CHAN_ID` `0x0b0e` (`l2cap_i.h`) |
 | Create / send / recv | `firmware/stage_b/cros_besaud_extra.c` via `l2cap_create_besaud_extra_channel` |
+| Peer BDADDR | IBRT `p_tws_remote_dev` (besaud peer is NULL on phone master) |
 | Hook | `BTIF_BTEVENT_BES_AUD_CONNECTED` / `DISCONNECTED` in `app_ibrt_customif_ui.cpp` |
-| MODE | Still `APP_IBRT_CUSTOM_CMD_CROS_MODE` on cmd path |
-| Audio fallback | `APP_IBRT_CUSTOM_CMD_CROS_AUDIO` via `tws_ctrl` until peer PONG (or if extra closed) |
+| MODE | `APP_IBRT_CUSTOM_CMD_CROS_MODE` on cmd path |
+| Audio | Extra after peer READY (PING or PONG); cmd fallback until then / if extra down |
+| Logging | TOTA SPP; **quiet** while extra media runs (v0.3.16+) |
 
 Stock `tws_besaud_create_extra_channel` registers TRACE-and-discard RX — **not used**.
 
 MTU ~679 B. Send is posted into the BT thread (`app_bt_start_custom_function_in_bt_thread`);
 inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
-## Non-starters
+## Status (v0.3.17)
 
-- SCO/eSCO between buds (phone call sniffer path)
-- Feeding mic PCM into A2DP SBC store APIs
-- Calling `app_ibrt_send_cmd_without_rsp` / `send_now` from osTimer
-- More cmd-path micro-tuning
+**Extra-path CROS works** in ear tests (multi-minute runs with Capture on).
 
-## Status
+| Milestone | Version | Result |
+|-----------|---------|--------|
+| Cmd-only usable CROS | ≤0.3.11 | Holds; choppy; ~high delay |
+| Extra OPEN + PONG | 0.3.13 | Bidirectional handshake |
+| Media on extra | 0.3.14 | `audio_rx` locked to `rx`; underrun cliff ~20 s |
+| Deep jitter on extra | 0.3.15 | Capture off OK; Capture on dies at READY |
+| Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
+| Quiet clear on remote stop | 0.3.17 | Small correctness fix |
 
-- **Now (v0.3.8):** deferred extra create on activate; **peer PONG gate** before audio on extra; cmd path until READY; 50 ms ADPCM.
-- **Prior art:** no public CROS guide; commercial BES keeps extra-channel API (see Prior art).
+**Next:** latency (extra jitter floor 4→3), then quality (frame/codec) — one lever at a time.
+
+**Open:** rare one-off chop without RX underrun-threshold telemetry; watch on future RX-logged runs.
+
+Coexistence lesson: full-rate extra ADPCM and chatty TOTA SPP fight over classical ACL (host `HCI_NUM_ACL_BUFFERS` = 6). Transition logs only while streaming.
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 
@@ -63,13 +72,19 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Chinese BES blogs (52Bluetooth / CSDN) | Custom IBRT cmds for UI sync (same cmd-path pattern we already maxed out); music is phone ACL sniff + IBRT, not mic relay |
 | Commercial “translate earbuds” marketing | Phone in the loop (HFP/A2DP), not a low-latency bud↔bud CROS pipe |
 
-**Takeaway:** We are likely first on the open side for CROS. Extra L2CAP is still the right bet — commercial firmware keeps the API for non-control traffic — but there is no copy-paste guide. Probe carefully (deferred create).
+**Takeaway:** Likely first open CROS on this platform. Extra L2CAP was the right bet; commercial firmware keeps the API for non-control traffic. As of v0.3.16 the pipe carries live CROS with phone logging quieted during media.
 
-## Options for next session
+## Non-starters (confirmed)
 
-Survey of OpenPineBuds transports that could carry continuous mic PCM / compressed
-frames **bud↔bud** without depending on `APP_IBRT_CUSTOM_CMD_*` / `tws_ctrl`
-rate limits. Ranked by “worth probing for CROS” (not by code maturity).
+- SCO/eSCO between buds (phone call sniffer path)
+- Feeding mic PCM into A2DP SBC store APIs
+- Calling `app_ibrt_send_cmd_without_rsp` / `send_now` from osTimer
+- More cmd-path micro-tuning (usable fallback only)
+- Chatty TOTA SPP **while** full-rate extra ADPCM (kills the link; quiet mode required)
+
+## Historical options survey
+
+The survey below was written while extra was still unproven. Kept for context; **primary path is done** (deferred create + PING/PONG READY + quiet SPP). Remaining work is latency/quality on that pipe, not picking a new transport.
 
 ### Unused CIDs / PSMs / test send paths already in tree
 

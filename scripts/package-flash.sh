@@ -146,9 +146,9 @@ EOF
 cat >"$PKG/FLASH.md" <<EOF
 # PineBuds Pro flash package **v$VERSION** ($STAGE)
 
-DIY / own-risk. **Work in progress — not a functional CROS product.** Not a hearing aid or PPE.
+DIY / own-risk. **Experimental CROS — not a hearing aid or PPE.** Keep a stock backup.
 
-Start here → read **\`BESTOOL.md\`** (flasher notes) and **\`RELEASE_NOTES.txt\`** (what changed).
+Start here → **\`BESTOOL.md\`** (flasher) and **\`RELEASE_NOTES.txt\`** (this version).
 
 ## What’s in this zip
 
@@ -209,22 +209,22 @@ Quad-tap needs the **bud↔bud** link. If one LED stays in pairing flash:
 3. If still unpaired: power each off (hold ~5s to red), both red+blue → tap 5×, seat 30s+.
 4. Last resort: factory restore via \`dld_main\`, confirm stock TWS, re-flash this zip.
 
-## Experimental CROS / loopback test (this build)
+## Experimental CROS test (this build)
 
-**Stage B CROS (v0.2+):** after both buds re-pair in the case (~30s):
+After both buds re-pair (~30s):
 
-- Wear **both** buds. **Quad-tap** either bud to toggle CROS on/off (needs TWS link).
-- Default: **RIGHT = mic (poor)**, **LEFT = speaker (good)**.
-- Scratch / speak near the **right** outer face — you should hear it in the **left** ear with delay.
+- Wear **both** buds. **Quad-tap** either bud to toggle CROS (needs TWS link).
+- Default: **RIGHT = mic (poor / TX)**, **LEFT = speaker (good / RX)**.
+- Speak / scratch near the **right** outer face — hear it in the **left** ear.
+- Path: 50 ms ADPCM on BESAUD **extra L2CAP** after peer READY; cmd fallback until then.
 - Avoid phone music while testing (A2DP fights the CROS stream).
-- DIY / own-risk — **not** a hearing aid.
 
-**Phone log capture (v0.3.5+, TOTA=1):** this image advertises TOTA SPP (RFCOMM 12).
-Open the \`android/cros-log\` app → pick PineBuds → **Capture logs** on to stream
-\`[cros_*]\` lines from the master bud. Flip the toggle **off** before a clean latency
-ear-test (drops SPP so TWS sniff can resume).
+**Phone logs (TOTA=1):** open \`android/cros-log\` → Connect → **Capture logs** on.
+Expect handshake lines then \`[cros_log] quiet=1\` — periodic stats are suppressed on
+purpose so SPP does not kill extra audio. Transitions (READY / DISABLE) still show.
+Share log from the app when done.
 
-Stage A same-bud loopback is still in the tree for bring-up builds without Stage B.
+DIY / own-risk — **not** a hearing aid.
 
 ## Flash budget
 
@@ -232,7 +232,7 @@ On-chip flash has limited erase cycles (~500). Flash only when you mean to.
 
 ## Feedback
 
-If you test a build, note: left/right, worn vs desk, howl y/n, toggle y/n, phone paired y/n.
+If you test a build, note: left/right master, worn vs desk, chop y/n, delay feel, Capture on/off, version from \`init v0.x.x\` log line.
 EOF
 
 (
@@ -258,13 +258,13 @@ EOF
 {
   echo "# Flash packages"
   echo
-  echo "> **Work in progress — not a functional CROS product.** Experimental bins only. Not a hearing aid or PPE."
+  echo "> **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product."
   echo
   echo "**Current version: v$VERSION**"
   echo
   echo "Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[$ZIP_NAME](./$ZIP_NAME)**."
   echo
-  echo "Each zip includes \`BESTOOL.md\` (flasher setup), \`CHANGELOG.md\`, \`RELEASE_NOTES.txt\`, firmware, and PowerShell helpers."
+  echo "Each zip includes \`bestool.exe\`, \`BESTOOL.md\`, \`CHANGELOG.md\`, \`RELEASE_NOTES.txt\`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps."
   echo
   echo "| Package | Version |"
   echo "|---------|---------|"

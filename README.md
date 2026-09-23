@@ -1,72 +1,93 @@
-# PineBuds Pro — CROS + Industrial Damping Firmware
+# PineBuds Pro — CROS firmware (experimental)
 
-> ## ⚠️ Work in progress — not functional
+> ## ⚠️ DIY / own-risk — not a hearing aid
 >
-> **This project does not yet provide working CROS, BiCROS, or industrial noise damping.**  
-> Builds may boot experimental code (for example a local mic→speaker loopback) that is unfinished, unsafe for daily use, and **not** a hearing aid or hearing protection.  
-> Do **not** rely on it. Flash at your own risk; always keep a stock firmware backup and a factory restore path.
+> Experimental contralateral routing on [PineBuds Pro](https://wiki.pine64.org/wiki/PineBuds_Pro).
+> It is **not** a medical device, prescribed CROS/BiCROS, or certified hearing protection.
+> Flash only if you can restore stock firmware. Keep a backup.
 
-Custom firmware research for the [PineBuds Pro](https://wiki.pine64.org/wiki/PineBuds_Pro): explore **contralateral mic routing (CROS)** for single-sided hearing loss scenarios while keeping stock TWS / media / call behavior, and a separate track for **loud-environment attenuation** (not certified PPE).
+Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** over the bud↔bud link, while stock TWS / media / calls remain the baseline when CROS is off. A separate **industrial damping** track is still design-only.
 
-This repository holds design docs, experimental patches, and build tooling. The BES “Little Whale” SDK is **not** vendored here (shared-source / all-rights-reserved); bootstrap pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
+The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Goals (planned)
+## Current status (v0.3.17)
 
-| Mode | Intent | Status |
-|------|--------|--------|
-| **Stock** | A2DP / AVRCP / HFP, TWS pairing, touch controls | Upstream OpenPineBuds baseline |
-| **CROS / BiCROS** | Poor-side mic → good-side speaker over the bud↔bud link | **Not implemented** (design only) |
-| **Industrial damp** | Aggressive attenuation / limiting for high ambient SPL | **Not implemented** (research track) |
+| Mode | Status |
+|------|--------|
+| **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
+| **Stage B CROS** | **Working experimentally** — 50 ms IMA-ADPCM on BESAUD **extra L2CAP** (`0x0b0e`), with cmd-path fallback |
+| **Phone logs** | TOTA SPP (`TOTA=1`) + [android/cros-log](android/cros-log/); auto-quiets during extra media so logging does not kill the pipe |
+| **Industrial damp** | Not implemented (research docs only) |
 
-Current experimental builds may enable a **same-bud FF mic loopback** for audio-path bring-up only. That is not CROS.
+**Ear-validated (v0.3.16+):** multi-minute real-content runs with Capture on; handshake → `quiet=1` → extra media stable. Subjective delay on the order of ~100 ms (jitter floor still conservative). Occasional light chop possible; one unresolved one-off chop under investigation. **Latency tuning is next.**
 
-## Disclaimer
+Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap either bud toggles CROS (needs TWS link).
 
-- DIY / own-risk tinkering — **no clinical claims**
-- **Not** a medical device, hearing aid, or certified hearing protection
-- On-chip flash has limited erase cycles; flash sparingly
+Latest flash zip: [`flash-packages/pinebuds-cros-LATEST.zip`](flash-packages/pinebuds-cros-LATEST.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
-## Quick start
+## How it works (short)
 
-**Flash host: Windows** — see [Windows flashing](docs/windows-flash.md) and [bestool setup](docs/bestool-windows.md).
+```
+RIGHT (poor)                         LEFT (good)
+────────────                         ───────────
+FF mic → 50 ms ADPCM ──extra L2CAP──► decode → speaker
+                 ╲                   (cmd path if extra not READY)
+                  └─ MODE sync on IBRT custom cmd
+```
+
+Bring-up history and transport notes: [docs/cros-transport.md](docs/cros-transport.md).
+
+## Quick start (Windows flash)
+
+See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
+
+1. Download **[pinebuds-cros-LATEST.zip](flash-packages/pinebuds-cros-LATEST.zip)** (includes `bestool.exe`).
+2. Backup once, then flash **both** buds:
 
 ```powershell
-# After noting your two COM ports (bestool.exe is inside the flash zip):
 .\backup.ps1 -Port0 COM5 -Port1 COM6
-.\flash.ps1 -Port0 COM5 -Port1 COM6
+.\flash.ps1  -Port0 COM5 -Port1 COM6
 ```
 
-Build on Linux / WSL / CI:
+3. Seat both buds in the case ~30–60 s so TWS re-pairs.
+4. Wear both; **quad-tap** to toggle CROS. Scratch/speak near the **right** outer face — hear it in the **left** ear.
+5. Optional logs: build [android/cros-log](android/cros-log/), pair the master bud, **Capture logs** on. After `peer READY` the app goes quiet on purpose (`[cros_log] quiet=1`) so SPP does not contend with extra audio; transitions still appear.
+
+Avoid phone music while testing CROS (A2DP fights the stream).
+
+## Build from source
 
 ```bash
-./scripts/setup-public-git.sh   # optional; anonymous git identity for contributors
-./scripts/bootstrap-sdk.sh      # OpenPineBuds + ARM GCC; syncs experimental sources + patches
-./scripts/build.sh              # default: experimental loopback flag on
+./scripts/setup-public-git.sh   # optional anonymous git identity
+./scripts/bootstrap-sdk.sh      # OpenPineBuds + ARM GCC; syncs firmware/ + patches
+TOTA=1 ./scripts/build.sh       # Stage B CROS + TOTA log sink
 # → vendor/OpenPineBuds/out/open_source/open_source.bin
-# Baseline without loopback: STAGE_A=0 ./scripts/build.sh
+./scripts/package-flash.sh      # optional Windows zip under flash-packages/
 ```
 
-Or download a versioned zip from [`flash-packages/`](flash-packages/) (includes bin + helpers + `FLASH.md`). See [CHANGELOG.md](CHANGELOG.md) and [VERSION](VERSION).
-
-Always back up stock firmware before flashing. Factory images: [PINE64 wiki](https://wiki.pine64.org/wiki/PineBuds_Pro#Firmware_images).
+`STAGE_A=0` / `STAGE_B=0` / `TOTA=0` as needed. Details: [docs/development.md](docs/development.md).
 
 ## Documentation
 
-- [Changelog](CHANGELOG.md)
-- [Flash packages](flash-packages/README.md)
-- [Windows flashing](docs/windows-flash.md)
-- [bestool on Windows](docs/bestool-windows.md)
-- [Hardware overview](docs/hardware.md)
-- [Development environment](docs/development.md)
-- [Phone BT log sink (TOTA/SPP)](docs/bt-log-sink.md) — prefer before UART soldering
-- [CROS transport notes](docs/cros-transport.md)
-- [CROS architecture (design)](docs/architecture-cros.md)
-- [Industrial noise damping (design)](docs/architecture-noise-damping.md)
-- [Public git policy](docs/public-git.md)
-- [References](docs/references.md)
+| Doc | Topic |
+|-----|--------|
+| [CHANGELOG.md](CHANGELOG.md) | Version history / ear results |
+| [flash-packages/](flash-packages/) | Downloadable bins |
+| [docs/cros-transport.md](docs/cros-transport.md) | Cmd vs extra L2CAP, lessons learned |
+| [docs/bt-log-sink.md](docs/bt-log-sink.md) | TOTA/SPP phone logging |
+| [docs/architecture-cros.md](docs/architecture-cros.md) | Longer-term CROS/BiCROS design |
+| [docs/windows-flash.md](docs/windows-flash.md) / [bestool-windows.md](docs/bestool-windows.md) | Flashing |
+| [docs/hardware.md](docs/hardware.md) | Hardware overview |
+| [docs/architecture-noise-damping.md](docs/architecture-noise-damping.md) | Industrial damp (design only) |
 
-Android log reader scaffold: [`android/cros-log/`](android/cros-log/).
+## Known limits (honest)
+
+- Not clinical; no gain prescription, no safety certification
+- Codec is simple ADPCM — “phone call” character, not hi-fi
+- Extra-path jitter buffer trades delay for stability (tuning next)
+- Phone SPP logging must stay quiet during extra media (v0.3.16+); heavy log spam can still stress the ACL (`HCI_NUM_ACL_BUFFERS` is only 6 in this SDK tree)
+- BiCROS / media mix / user-selectable poor side: not done
 
 ## License
 
-Project docs and scripts: [LICENSE](LICENSE). The Bestechnic SDK under `vendor/OpenPineBuds` remains under BES / OpenPineBuds terms — see [NOTICE](NOTICE).
+Project docs and scripts: [LICENSE](LICENSE). SDK under `vendor/OpenPineBuds`: BES / OpenPineBuds terms — see [NOTICE](NOTICE).

@@ -21,8 +21,9 @@ I can’t produce an APK in this cloud environment (no Android SDK). Build on yo
 4. Plug in a phone (emulator has no classic Bluetooth), enable USB debugging.
 5. Run ▶ on the device.
 6. Pair PineBuds in system Bluetooth first, then in the app: pick the device → **Capture logs** on.
-7. Flip **Capture logs** off before a clean latency ear-test. Use **Share log** to export a
-   `.txt` (and plain text) via the system share sheet — save to Drive/Files or paste into chat.
+7. After `peer READY` you should see `[cros_log] quiet=1` — periodic stats stop on
+   purpose so SPP does not kill extra-path audio. Transition lines (OPEN/READY/DISABLE)
+   still show. Use **Share log** to export a `.txt` via the system share sheet.
 
 Debug APK output (after a local build):
 
@@ -37,7 +38,7 @@ cd android/cros-log
 ./gradlew :app:assembleDebug   # needs gradle wrapper jar from Studio’s first sync
 ```
 
-Buds need firmware **v0.3.6+** (`TOTA=1`) or SPP connect will fail.
+Buds need firmware **v0.3.16+** for quiet-during-extra (v0.3.6+ minimum for SPP at all).
 
 ## Wire format
 

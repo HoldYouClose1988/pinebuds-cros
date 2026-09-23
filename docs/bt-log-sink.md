@@ -102,34 +102,32 @@ For Stage B, that is still enough: master carries most `[cros_tws]` / `[cros_ext
 
 **Reuse TOTA.** BLE only if classic SPP proves unusable on the test phone.
 
-## Minimal path (ordered — no CROS flash until step 3 works)
+## Minimal path (ordered)
 
-### 1. Android app (no bud flash)
+### Status: steps 1–3 done
 
-Build/install [`android/cros-log`](../android/cros-log/). Connect to a paired PineBuds (even stock) and confirm SPP open fails cleanly while TOTA is off — proves permissions / UUID path.
+Logging + Stage B CROS on extra L2CAP ship together in **v0.3.16+** flash packages (`TOTA=1`). During extra media the firmware sets **`[cros_log] quiet=1`** and stops teeing periodic stats to SPP (heavy logging killed the extra link). Transition lines still appear.
 
-### 2. Firmware flash — logging only (no L2CAP change)
+### 1. Android app
 
-One flash package:
+Build/install [`android/cros-log`](../android/cros-log/). Pair PineBuds, **Capture logs** on.
 
-- Build with **`TOTA=1`** (sets `TEST_OVER_THE_AIR_ENANBLED`).
-- Keep current CROS behavior (v0.3.4 cmd path + deferred extra still optional/off for this flash if desired).
-- Add thin helper [`firmware/stage_b/cros_bt_log.*`](../firmware/stage_b/cros_bt_log.h):
-  ring + BT-thread capped `tota_printf` flush (not from the OS timer directly).
-- Tee existing `[cros_tws]` / `[cros_extra]` sites through `cros_bt_logf` (still `TRACE` to UART if pads ever used).
+### 2. Firmware — logging + CROS
 
-Acceptable risk: SDP gains an SPP record; sniff blocked while the log app’s **Capture logs**
-toggle is on. Flip it off (drops SPP) before measuring glass-to-glass latency.
+Flash [`flash-packages/pinebuds-cros-LATEST.zip`](../flash-packages/pinebuds-cros-LATEST.zip) (both buds). Helper: [`firmware/stage_b/cros_bt_log.*`](../firmware/stage_b/cros_bt_log.h).
 
-### 3. Use logs for the next CROS probe
+Sniff is blocked while Capture is on; that is OK for bring-up. Quiet mode keeps SPP from contending with extra ADPCM.
 
-Only after strings flow: flash deferred-extra / alternate CID / etc. with the app connected so OPEN/CLOSED/tx/fail lines are visible without opening the buds.
+### 3. CROS on extra (current)
 
-### Explicit non-goals for this slice
+Quad-tap → deferred extra create → PING/PONG READY → ADPCM on CID `0x0b0e`. See [cros-transport.md](cros-transport.md).
+
+### Explicit non-goals for the log sink
 
 - Full UART-over-BT mirror of every `TRACE`
 - TOTA flash / ANC / EQ command surface on Android
 - Using SPP as CROS audio pipe (wrong ACL, wrong latency class)
+- Periodic per-frame counters over SPP while extra media is live
 
 ## Wire format cheat sheet
 

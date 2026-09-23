@@ -1,5 +1,15 @@
 # CROS / SSHL architecture
 
+## Implementation status (firmware)
+
+**Stage B CROS is experimentally working** as of flash **v0.3.16+** (see root [README](../README.md) and [cros-transport.md](cros-transport.md)):
+
+- RIGHT FF mic → 50 ms IMA-ADPCM → BESAUD extra L2CAP → LEFT speaker
+- MODE sync on IBRT custom cmd; cmd-path audio as fallback until peer READY
+- Phone TOTA logging with quiet-during-extra (required for coexistence)
+
+Still **not** a clinical product. Missing vs this design doc: BiCROS mix, media ducking, user-selectable poor side, &lt;40 ms glass-to-glass, prescribed gain/limiting UX.
+
 ## Clinical intent (non-medical framing)
 
 **SSHL** here means single-sided hearing loss / single-sided deafness: one ear unaidable, the other usable.
@@ -79,8 +89,10 @@ ANC binary blob remains opaque; CROS should **not** depend on finished ANC. FF A
 
 ## Implementation slices
 
-1. **Mode plumbing** — NV flag, touch toggle, TWS sync of mode byte (no audio yet)
-2. **Loopback prototype** — poor FF → local poor speaker (sanity mic/gain)
-3. **Cross-bud PCM** — smallest working relay, measure latency
-4. **Good-ear mix** — with A2DP ducking
-5. **Polish** — BiCROS local mic, presets, power/CPU profiling
+| Slice | Status |
+|-------|--------|
+| 1. Mode plumbing (NV/touch/TWS sync) | Done (quad-tap + peer MODE cmd; poor side compile-time default RIGHT) |
+| 2. Loopback prototype (Stage A) | Done earlier; optional bring-up |
+| 3. Cross-bud audio + measure latency | **Done on extra L2CAP**; latency tuning next (~100 ms class today) |
+| 4. Good-ear mix with A2DP ducking | Not started |
+| 5. BiCROS / presets / power polish | Not started |

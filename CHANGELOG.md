@@ -3,7 +3,8 @@
 All notable flash-package / firmware iterations for PineBuds Pro CROS + SITE.
 Format: version, date (UTC), then user-facing changes.
 
-**This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
+**This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
+Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
 ## [0.3.17] — 2026-09-23
 

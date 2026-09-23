@@ -1,12 +1,12 @@
 # Flash packages
 
-> **Work in progress — not a functional CROS product.** Experimental bins only. Not a hearing aid or PPE.
+> **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins. Ear-validated extra-path CROS from **v0.3.16+**; still not a clinical product.
 
 **Current version: v0.3.17**
 
 Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.17.zip](./pinebuds-cros-v0.3.17.zip)**.
 
-Each zip includes `BESTOOL.md` (flasher setup), `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers.
+Each zip includes `bestool.exe`, `BESTOOL.md`, `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps (quad-tap CROS, optional Android log capture).
 
 | Package | Version |
 |---------|---------|
