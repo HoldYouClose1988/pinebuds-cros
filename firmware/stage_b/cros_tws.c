@@ -1,8 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.12 — coexist probe: jitter 2–4 + extra on (defer/single-ping/no-peer retry).
- *  A/B 0.3.11: extra-off fixed cutout; underruns still climb on small jitter.
+ * v0.3.13 — fix master peer BDADDR (ibrt remdev) so extra can OPEN on LEFT.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -519,7 +518,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.12 coexist extra+jitter2-4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.13 peer-addr+coexist (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

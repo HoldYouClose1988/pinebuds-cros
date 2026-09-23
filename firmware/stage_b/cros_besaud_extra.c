@@ -1,8 +1,8 @@
 /***************************************************************************
  * BESAUD extra L2CAP — deferred create on CROS activate.
  *
- * v0.3.12 coexistence: delay create, one PING only (no 2s storm), retry
- * when peer addr missing. Audio stays on cmd until peer_ready (PONG/RX).
+ * v0.3.13 — peer BDADDR via IBRT p_tws_remote_dev (master had NULL besaud peer).
+ *  Same coexist knobs as 0.3.12 (defer/single-ping/no-peer retry).
  ***************************************************************************/
 #include "cros_besaud_extra.h"
 
@@ -17,6 +17,7 @@
 
 #if CROS_EXTRA_L2CAP
 #include "app_tws_besaud.h"
+#include "app_tws_ibrt.h"
 #include "besaud_api.h"
 #include "co_ppbuff.h"
 #include "l2cap_i.h"
@@ -145,10 +146,43 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
 }
 
 static void *cros_extra_peer_addr(void) {
-  btif_remote_device_t *dev = btif_besaud_get_peer_device();
+  btif_remote_device_t *dev;
+  void *bd;
+  ibrt_ctrl_t *ctx;
+
+  /* 1) Stock BESAUD peer — works on some roles, NULL on phone-master (0.3.12). */
+  dev = btif_besaud_get_peer_device();
   if (dev) {
-    return btif_me_get_remote_device_bdaddr(dev);
+    bd = btif_me_get_remote_device_bdaddr(dev);
+    if (bd) {
+      CROS_LOG(2, "[cros_extra] peer via besaud_get_peer_device");
+      return bd;
+    }
   }
+
+  /* 2) Live TWS remdev from IBRT ctrl — reliable on master + slave. */
+  ctx = app_tws_ibrt_get_bt_ctrl_ctx();
+  if (ctx && ctx->p_tws_remote_dev) {
+    bd = btif_me_get_remote_device_bdaddr(ctx->p_tws_remote_dev);
+    if (bd) {
+      CROS_LOG(2, "[cros_extra] peer via p_tws_remote_dev");
+      return bd;
+    }
+  }
+
+  /* 3) TWS ACL handle → remdev. */
+  if (ctx && ctx->tws_conhandle) {
+    dev = btif_me_get_remote_device_by_handle(ctx->tws_conhandle);
+    if (dev) {
+      bd = btif_me_get_remote_device_bdaddr(dev);
+      if (bd) {
+        CROS_LOG(2, "[cros_extra] peer via tws_conhandle 0x%04x",
+              (unsigned)ctx->tws_conhandle);
+        return bd;
+      }
+    }
+  }
+
   return NULL;
 }
 
@@ -264,7 +298,7 @@ void cros_besaud_extra_init(void) {
     cros_extra_defer_id =
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-  CROS_LOG(0, "[cros_extra] init (coexist: defer %dms, single ping, no-peer retry)",
+  CROS_LOG(0, "[cros_extra] init (v0.3.13 peer via ibrt; defer %dms)",
         CROS_EXTRA_DEFER_MS);
 #endif
 }

@@ -5,6 +5,20 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.13] — 2026-09-23
+
+### Firmware — peer address on phone master
+0.3.12 LEFT/master log: `create skipped — no peer` ×10 then cmd-only.
+`btif_besaud_get_peer_device()` is **NULL on IBRT master**; cmd audio + jitter 2–4 were fine
+(`underrun` 6→16, jitter recovered 4→3).
+
+- Resolve peer BDADDR: besaud peer → **`p_tws_remote_dev`** → `tws_conhandle`
+- Same coexist: 2 s defer, single PING, no-peer retry, cmd until PONG
+
+### Expect
+`peer via p_tws_remote_dev` (or handle) then `CREATE` / `OPEN` / `PING` on the master.
+Ideal: `PING rx` / `peer READY`. Watch for cutout after OPEN.
+
 ## [0.3.12] — 2026-09-23
 
 ### Firmware — coexist probe (extra back on, carefully)
