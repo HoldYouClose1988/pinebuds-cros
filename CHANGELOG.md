@@ -5,6 +5,20 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.10] — 2026-09-23
+
+### Firmware
+- **Cmd-path stability after 0.3.9 breakthrough:** LEFT/RX heard ~15 s then cut out;
+  log showed `rx` climbing with **underruns 24→62** and `create skipped — no peer`
+  on the master. Likely ACL contention from TX-side extra OPEN+PING while cmd audio ran.
+- **`CROS_EXTRA_L2CAP=0` by default** — stay on proven cmd ADPCM; re-enable later for PONG probe
+- **Larger RX jitter:** prefill 100 ms (2 frames), ceiling 200 ms (4); bigger PCM ring
+- Sparser RX stats logs (every 256 frames) to reduce TOTA SPP load during capture
+
+### Test tip
+Flip **Capture logs off** after you see `RX START` / `TX START` for a clean ear test —
+SPP on the master shares the radio with TWS.
+
 ## [0.3.9] — 2026-09-23
 
 ### Firmware

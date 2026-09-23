@@ -4,8 +4,11 @@ ifeq ($(CROS_STAGE_B),1)
 obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o
 endif
 
-# Deferred extra-L2CAP probe on by default for Stage B flash packages.
-CROS_EXTRA_L2CAP ?= 1
+# Deferred BESAUD extra L2CAP — OFF by default for cmd-path stability.
+# v0.3.9 ear log: continuous RX ~15s but underruns climbed; TX-side extra
+# OPEN+PING likely contended with cmd audio. Re-enable with CROS_EXTRA_L2CAP=1
+# once peer PONG is proven under capture-off tests.
+CROS_EXTRA_L2CAP ?= 0
 
 ccflags-y += \
 	$(BT_IF_INCLUDES) \

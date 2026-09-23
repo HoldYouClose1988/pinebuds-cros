@@ -1,8 +1,8 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.9 — peer-PONG gate (from 0.3.8) + raw left/right side probe in logs.
- *  50 ms ADPCM; deferred extra create on activate.
+ * v0.3.10 — cmd-path stability: larger jitter, no extra-L2CAP while streaming.
+ *  Peer-PONG gate retained; extra create off by default (was starving cmd).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -40,7 +40,7 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_HDR_BYTES 5
 #define CROS_PKT_BYTES (CROS_HDR_BYTES + CROS_ADPCM_BYTES) /* 405 < 672 */
 #define CROS_DMA_BYTES (CROS_CAP_SAMPLES * 2 * 2)
-#define CROS_RING_BYTES (CROS_FRAME_BYTES * 6)
+#define CROS_RING_BYTES (CROS_FRAME_BYTES * 10)
 
 #define CROS_GAIN_Q15 16000
 #define CROS_LIM_THRESH 20000
@@ -48,9 +48,10 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_STREAM_ID AUD_STREAM_ID_0
 #define CROS_PKT_MAGIC 0xA5
 
-#define CROS_JITTER_MIN_FRAMES 1 /* 50 ms */
-#define CROS_JITTER_MAX_FRAMES 2 /* 100 ms */
+#define CROS_JITTER_MIN_FRAMES 2 /* 100 ms prefill */
+#define CROS_JITTER_MAX_FRAMES 4 /* 200 ms ceiling */
 #define CROS_TICK_MS 50
+#define CROS_RX_LOG_MASK 0xFF /* log every 256 frames (~12.8 s) */
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
 static uint8_t playback_dma_buf[CROS_DMA_BYTES];
@@ -444,7 +445,8 @@ static int start_rx(void) {
   rx_running = true;
   rx_pkts = underruns = rx_drops = rx_resyncs = 0;
   tick_start();
-  CROS_LOG(0, "[cros_tws] RX START (50ms, seq-continuous ADPCM)");
+  CROS_LOG(0, "[cros_tws] RX START (50ms cmd-path, jitter %u-%u frames)",
+        (unsigned)CROS_JITTER_MIN_FRAMES, (unsigned)CROS_JITTER_MAX_FRAMES);
   return 0;
 }
 
@@ -517,8 +519,14 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.9 50ms+peer-ready-gate (poor_cfg=%s)",
-        CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+  CROS_LOG(1, "[cros_tws] init v0.3.10 cmd-stable (poor_cfg=%s extra=%d)",
+        CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT",
+#if CROS_EXTRA_L2CAP
+        1
+#else
+        0
+#endif
+  );
   log_side_probe("init");
 }
 
@@ -633,7 +641,7 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
     app_audio_pcmbuff_put((uint8_t *)decode_pcm, CROS_FRAME_BYTES);
   }
   rx_pkts++;
-  if ((rx_pkts & 0x3F) == 0) {
+  if ((rx_pkts & CROS_RX_LOG_MASK) == 0) {
     CROS_LOG(4, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u", rx_pkts,
           underruns, rx_resyncs, jitter_target_frames);
   }
