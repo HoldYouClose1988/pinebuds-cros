@@ -4,10 +4,8 @@ ifeq ($(CROS_STAGE_B),1)
 obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o
 endif
 
-# Deferred BESAUD extra L2CAP — OFF by default for cmd-path stability.
-# v0.3.9 ear log: continuous RX ~15s but underruns climbed; TX-side extra
-# OPEN+PING likely contended with cmd audio. Re-enable with CROS_EXTRA_L2CAP=1
-# once peer PONG is proven under capture-off tests.
+# Deferred BESAUD extra L2CAP — OFF (A/B: isolate jitter vs extra).
+# v0.3.11 keeps extra=0 and reverts jitter to 0.3.9 sizes.
 CROS_EXTRA_L2CAP ?= 0
 
 ccflags-y += \

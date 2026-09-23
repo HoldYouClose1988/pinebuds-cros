@@ -5,6 +5,23 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.11] — 2026-09-23
+
+### Firmware — A/B isolate (extra vs jitter)
+- **`CROS_EXTRA_L2CAP=0` unchanged** (same as 0.3.10)
+- **Jitter reverted to 0.3.9:** `MIN=1` / `MAX=2` frames (50–100 ms), ring back to 6 frames
+- RX stats every 64 frames again so underrun climb is visible like 0.3.9
+
+### How to read the result (Capture on, LEFT/RX master OK)
+Compare to 0.3.9 (`extra=1`, jitter 1–2, underruns climbed) and 0.3.10 (`extra=0`, jitter 2–4, held):
+
+| This build (extra=0, jitter 1–2) | Inference |
+|----------------------------------|-----------|
+| **Holds** — no underrun climb | Removing **extra** fixed 0.3.9; bigger jitter was not required |
+| **Climbs** like 0.3.9 | Bigger **jitter** fixed it; extra may have been innocent |
+
+Do **not** re-enable extra in the same flash as the next step — one variable at a time.
+
 ## [0.3.10] — 2026-09-23
 
 ### Firmware
