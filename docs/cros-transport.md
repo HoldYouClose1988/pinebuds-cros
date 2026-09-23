@@ -54,11 +54,11 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
 | Quiet clear on remote stop | 0.3.17 | Small correctness fix |
 
-**Next:** latency (extra jitter floor 4→3), then quality (frame/codec) — one lever at a time.
+**Next:** measure clap after v0.3.18 (floor 3). Further levers: floor 2, shorter ADPCM frame, codec — one at a time.
 
 **Open:** rare one-off chop without RX underrun-threshold telemetry; watch on future RX-logged runs.
 
-Coexistence lesson: full-rate extra ADPCM and chatty TOTA SPP fight over classical ACL (host `HCI_NUM_ACL_BUFFERS` = 6). Transition logs only while streaming.
+**Latency budget (approx, extra path):** frame period 50 ms + RX jitter floor (was 200 ms @4, now 150 ms @3) + encode/TX/air/playback. v0.3.17 clap **≈376 ms** aligns with floor-dominated delay.
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 

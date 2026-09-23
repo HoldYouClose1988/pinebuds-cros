@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.17 — clear quiet on remote peer-mode stop; keep 0.3.16 coexist.
+ * v0.3.18 — latency: extra jitter floor 4→3 (v0.3.17 clap ≈376 ms).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -50,8 +50,9 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 /* Cmd-path jitter (also used before extra READY). */
 #define CROS_JITTER_MIN_FRAMES 2 /* 100 ms */
 #define CROS_JITTER_MAX_FRAMES 4 /* 200 ms */
-/* Extra L2CAP is burstier (0.3.14: underrun cliff after ~20s as jitter shrank). */
-#define CROS_EXTRA_JITTER_MIN_FRAMES 4 /* 200 ms floor — do not shrink below */
+/* Extra L2CAP is burstier than cmd; floor trades delay for underrun margin.
+ * v0.3.17 clap ≈376 ms glass-to-glass with floor=4 (200 ms). Try floor=3. */
+#define CROS_EXTRA_JITTER_MIN_FRAMES 3 /* 150 ms floor — do not shrink below */
 #define CROS_EXTRA_JITTER_MAX_FRAMES 8 /* 400 ms */
 #define CROS_TICK_MS 50
 #define CROS_RX_LOG_MASK 0x3F
@@ -544,7 +545,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.17 quiet-fix+extra (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.18 latency floor3 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

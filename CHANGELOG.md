@@ -6,6 +6,18 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.18] — 2026-09-24
+
+### Firmware — latency lever (extra jitter floor)
+- **Baseline (v0.3.17):** clap test ≈ **376 ms** glass-to-glass (RIGHT mic → LEFT
+  speaker) with extra jitter floor **4** frames (200 ms)
+- **This build:** `CROS_EXTRA_JITTER_MIN_FRAMES` **4 → 3** (150 ms floor); max
+  still 8. One variable only — expect ~50 ms less delay if the floor dominates;
+  watch for more chop / underrun-threshold lines
+
+### Test
+Confirm `init v0.3.18 latency floor3`. Clap again; note ms and any chop vs 0.3.17.
+
 ## [0.3.17] — 2026-09-23
 
 ### Firmware — quiet-mode leak on remote stop

@@ -19,7 +19,7 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 | **Phone logs** | TOTA SPP (`TOTA=1`) + [android/cros-log](android/cros-log/); auto-quiets during extra media so logging does not kill the pipe |
 | **Industrial damp** | Not implemented (research docs only) |
 
-**Ear-validated (v0.3.16+):** multi-minute real-content runs with Capture on; handshake → `quiet=1` → extra media stable. Subjective delay on the order of ~100 ms (jitter floor still conservative). Occasional light chop possible; one unresolved one-off chop under investigation. **Latency tuning is next.**
+**Ear-validated (v0.3.16+):** multi-minute real-content runs with Capture on; handshake → `quiet=1` → extra media stable. **Clap delay on v0.3.17 ≈ 376 ms** glass-to-glass. **v0.3.18** drops extra jitter floor 4→3 (latency probe). Occasional light chop possible.
 
 Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap either bud toggles CROS (needs TWS link).
 
