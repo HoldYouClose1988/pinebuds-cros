@@ -6,8 +6,8 @@
  * datarecv. MODE sync stays on the IBRT custom-cmd path.
  *
  * Create is DEFERRED to CROS activate (never on BESAUD-up — that killed TWS
- * in v0.3.0). Commercial BES firmware (OPPO RE) keeps this API for
- * non-control traffic; no open CROS recipe exists.
+ * in v0.3.0). Prefer extra for audio only after a peer PONG (or audio RX)
+ * proves the channel is bidirectional; until then keep cmd-path audio.
  ***************************************************************************/
 #ifndef CROS_BESAUD_EXTRA_H
 #define CROS_BESAUD_EXTRA_H
@@ -25,6 +25,8 @@ void cros_besaud_extra_ensure(void);
 void cros_besaud_extra_on_besaud_down(void);
 
 bool cros_besaud_extra_is_open(void);
+/* True once we have seen peer PONG or audio on the extra channel. */
+bool cros_besaud_extra_peer_ready(void);
 
 /* Queue a packet for BT-thread send. Returns 0 if accepted, <0 if busy/closed.
  * Clears pending via L2CAP_CHANNEL_TX_HANDLED (or immediate fail). */

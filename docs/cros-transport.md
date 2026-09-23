@@ -32,7 +32,7 @@ wrong model for mic→peer speaker.
 | Create / send / recv | `firmware/stage_b/cros_besaud_extra.c` via `l2cap_create_besaud_extra_channel` |
 | Hook | `BTIF_BTEVENT_BES_AUD_CONNECTED` / `DISCONNECTED` in `app_ibrt_customif_ui.cpp` |
 | MODE | Still `APP_IBRT_CUSTOM_CMD_CROS_MODE` on cmd path |
-| Audio fallback | `APP_IBRT_CUSTOM_CMD_CROS_AUDIO` via `tws_ctrl` if extra not open |
+| Audio fallback | `APP_IBRT_CUSTOM_CMD_CROS_AUDIO` via `tws_ctrl` until peer PONG (or if extra closed) |
 
 Stock `tws_besaud_create_extra_channel` registers TRACE-and-discard RX — **not used**.
 
@@ -48,7 +48,7 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
 ## Status
 
-- **Now (v0.3.4):** deferred extra-L2CAP create on CROS activate; cmd fallback; 50 ms ADPCM.
+- **Now (v0.3.8):** deferred extra create on activate; **peer PONG gate** before audio on extra; cmd path until READY; 50 ms ADPCM.
 - **Prior art:** no public CROS guide; commercial BES keeps extra-channel API (see Prior art).
 
 ## Prior art (web / GitHub survey, 2026-09-22)

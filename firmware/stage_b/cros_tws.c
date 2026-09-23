@@ -1,8 +1,8 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.4 — deferred BESAUD extra L2CAP probe on CROS activate (not on
- *  BESAUD-up). 50 ms ADPCM; cmd-path fallback if extra not open.
+ * v0.3.8 — prefer BESAUD extra L2CAP only after peer PONG; else cmd path.
+ *  50 ms ADPCM; deferred extra create on activate.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -268,8 +268,9 @@ static void try_send_latest(void) {
     return;
   }
 
-  busy = cros_besaud_extra_is_open() ? (cros_besaud_extra_tx_busy() ? 1 : 0)
-                                     : (tx_pending ? 1 : 0);
+  busy = (cros_besaud_extra_is_open() && cros_besaud_extra_peer_ready())
+             ? (cros_besaud_extra_tx_busy() ? 1 : 0)
+             : (tx_pending ? 1 : 0);
   if (busy) {
     tx_stuck_ticks++;
     if (tx_stuck_ticks >= CROS_TX_STUCK_TICKS) {
@@ -297,7 +298,8 @@ static void try_send_latest(void) {
   tx_pkt[4] = (uint8_t)((snap.pred >> 8) & 0xFF);
   ima_encode_block(send_pcm, &tx_pkt[CROS_HDR_BYTES]);
 
-  if (cros_besaud_extra_is_open()) {
+  /* Extra only after peer PONG/audio proves RX — otherwise stay on cmd. */
+  if (cros_besaud_extra_is_open() && cros_besaud_extra_peer_ready()) {
     if (cros_besaud_extra_send(tx_pkt, CROS_PKT_BYTES) != 0) {
       tx_drops++;
     } else {
@@ -320,8 +322,8 @@ static void try_send_latest(void) {
     tx_frames++;
     tx_cmd++;
     if ((tx_frames & 0x3F) == 0) {
-      CROS_LOG(3, "[cros_tws] tx=%u extra=%u cmd=%u (fallback)", tx_frames,
-            tx_extra, tx_cmd);
+      CROS_LOG(3, "[cros_tws] tx=%u extra=%u cmd=%u (waiting peer on extra)",
+            tx_frames, tx_extra, tx_cmd);
     }
   }
 }
@@ -392,9 +394,9 @@ static int start_tx(void) {
   }
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = true;
-  tx_frames = tx_drops = 0;
+  tx_frames = tx_extra = tx_cmd = tx_drops = 0;
   tick_start();
-  CROS_LOG(0, "[cros_tws] TX START (50ms continuous ADPCM)");
+  CROS_LOG(0, "[cros_tws] TX START (50ms ADPCM; cmd until peer READY)");
   return 0;
 }
 
@@ -505,7 +507,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.4 50ms+deferred-extra (poor=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.8 50ms+peer-ready-gate (poor=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 }
 
@@ -559,7 +561,9 @@ int cros_tws_toggle(void) {
 
 void cros_tws_on_peer_mode(uint8_t on) {
   bool want = (on != 0);
-  CROS_LOG(1, "[cros_tws] peer mode=%d", (int)want);
+  CROS_LOG(1, "[cros_tws] peer mode=%d local=%s side=%s", (int)want,
+        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX",
+        app_tws_is_right_side() ? "RIGHT" : "LEFT");
   if (want == enabled) {
     if (want) {
       cros_besaud_extra_ensure();

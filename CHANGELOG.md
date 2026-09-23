@@ -5,6 +5,20 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.8] — 2026-09-23
+
+### Firmware
+- **Fix silence after ~1 s:** v0.3.7 ear log showed `cmd=7` then all TX on extra
+  (`fail=0`) with no peer RX — audio black-holed. Prefer BESAUD extra **only after
+  peer PONG** (or audio RX); until then keep proven **cmd-path** ADPCM
+- **PING/PONG gate:** OPEN sends `0xC0` ping; peer replies `0xC1`; re-ping every 2 s
+  while waiting; log `peer READY` before switching pipes
+- Role logs on peer mode (`POOR/TX` vs `GOOD/RX`, LEFT/RIGHT)
+
+### Expect after flash
+- Continuous delayed audio on cmd path even if extra never becomes bidirectional
+- Ideal: `[cros_extra] peer READY` then `extra=` climbing — lower-latency pipe
+
 ## [0.3.7] — 2026-09-22
 
 ### Flash package
