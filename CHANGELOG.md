@@ -5,6 +5,15 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.9] — 2026-09-23
+
+### Firmware
+- **Side probe in logs:** print raw `app_tws_is_left_side()` /
+  `app_tws_is_right_side()` at init, enable, and peer-mode — not just the
+  compiled `poor_cfg=RIGHT` label — so phone logs show which physical bud is
+  master (`left=1 right=0` vs `left=0 right=1`)
+- Includes 0.3.8 peer-PONG gate (cmd audio until READY)
+
 ## [0.3.8] — 2026-09-23
 
 ### Firmware

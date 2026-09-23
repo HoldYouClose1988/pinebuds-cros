@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.8 — prefer BESAUD extra L2CAP only after peer PONG; else cmd path.
+ * v0.3.9 — peer-PONG gate (from 0.3.8) + raw left/right side probe in logs.
  *  50 ms ADPCM; deferred extra create on activate.
  ***************************************************************************/
 #include "cros_tws.h"
@@ -495,6 +495,16 @@ static int apply_enabled(bool on) {
   return 0;
 }
 
+/* Raw side APIs — not the compiled poor=RIGHT label. */
+static void log_side_probe(const char *where) {
+  int left = app_tws_is_left_side() ? 1 : 0;
+  int right = app_tws_is_right_side() ? 1 : 0;
+  CROS_LOG(0,
+        "[cros_tws] side@%s left=%d right=%d poor_cfg=%s role=%s", where, left,
+        right, CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT",
+        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
+}
+
 void cros_tws_init(void) {
   if (inited) {
     return;
@@ -507,8 +517,9 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.8 50ms+peer-ready-gate (poor=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.9 50ms+peer-ready-gate (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+  log_side_probe("init");
 }
 
 int cros_tws_start(void) {
@@ -528,8 +539,8 @@ int cros_tws_start(void) {
   enabled = true;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
   cros_besaud_extra_ensure();
-  CROS_LOG(2, "[cros_tws] ENABLE (local is %s, extra_open=%d)",
-        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX",
+  log_side_probe("enable");
+  CROS_LOG(2, "[cros_tws] ENABLE extra_open=%d",
         cros_besaud_extra_is_open() ? 1 : 0);
   return apply_enabled(true);
 }
@@ -561,9 +572,8 @@ int cros_tws_toggle(void) {
 
 void cros_tws_on_peer_mode(uint8_t on) {
   bool want = (on != 0);
-  CROS_LOG(1, "[cros_tws] peer mode=%d local=%s side=%s", (int)want,
-        cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX",
-        app_tws_is_right_side() ? "RIGHT" : "LEFT");
+  CROS_LOG(1, "[cros_tws] peer mode=%d", (int)want);
+  log_side_probe("peer_mode");
   if (want == enabled) {
     if (want) {
       cros_besaud_extra_ensure();
