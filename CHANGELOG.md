@@ -5,6 +5,23 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.14] — 2026-09-23
+
+### Firmware — ride extra after PING (not only PONG)
+0.3.13 breakthrough: master found peer, `OPEN`, `PING tx`, **`peer READY (pong=1)`**.
+Extra is bidirectional. But READY was only set on **PONG rx** — the RX/master got
+READY while the TX/poor bud typically only sees **PING**, kept `peer_ready=0`, and
+stayed on cmd (`rx=` climbed with no `audio_rx=` from extra).
+
+- Set **peer READY on PING rx** (as well as PONG / audio)
+- Louder TX/RX pipe logs: `on EXTRA` vs `on CMD`, `audio_tx` / `audio_rx`
+
+### Expect on LEFT (master/RX)
+`PING` / `READY` then ideally **`audio_rx=`** climbing (media on extra).
+
+### Expect if you catch RIGHT (TX) logs
+`peer READY (ping=…)` then **`tx=… (on EXTRA)`**.
+
 ## [0.3.13] — 2026-09-23
 
 ### Firmware — peer address on phone master

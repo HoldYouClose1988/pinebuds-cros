@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.13 — fix master peer BDADDR (ibrt remdev) so extra can OPEN on LEFT.
+ * v0.3.14 — switch TX to extra when peer answers PING (not only PONG).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -306,8 +306,8 @@ static void try_send_latest(void) {
       tx_frames++;
       tx_extra++;
       if ((tx_frames & 0x3F) == 0) {
-        CROS_LOG(3, "[cros_tws] tx=%u extra=%u cmd=%u", tx_frames, tx_extra,
-              tx_cmd);
+        CROS_LOG(0, "[cros_tws] tx=%u extra=%u cmd=%u (on EXTRA)", tx_frames,
+              tx_extra, tx_cmd);
       }
     }
     return;
@@ -322,7 +322,7 @@ static void try_send_latest(void) {
     tx_frames++;
     tx_cmd++;
     if ((tx_frames & 0x3F) == 0) {
-      CROS_LOG(3, "[cros_tws] tx=%u extra=%u cmd=%u (waiting peer on extra)",
+      CROS_LOG(0, "[cros_tws] tx=%u extra=%u cmd=%u (on CMD, waiting extra)",
             tx_frames, tx_extra, tx_cmd);
     }
   }
@@ -518,7 +518,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.13 peer-addr+coexist (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.14 extra-on-ping-ready (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

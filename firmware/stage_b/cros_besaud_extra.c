@@ -1,8 +1,8 @@
 /***************************************************************************
  * BESAUD extra L2CAP — deferred create on CROS activate.
  *
- * v0.3.13 — peer BDADDR via IBRT p_tws_remote_dev (master had NULL besaud peer).
- *  Same coexist knobs as 0.3.12 (defer/single-ping/no-peer retry).
+ * v0.3.14 — peer READY on PING rx (TX saw PING not PONG in 0.3.13).
+ *  Extra OPEN+PONG proven; ride audio on extra once either side is READY.
  ***************************************************************************/
 #include "cros_besaud_extra.h"
 
@@ -122,6 +122,14 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
           (unsigned)ppb->len, (unsigned)rx_ping);
     app_bt_start_custom_function_in_bt_thread(0, 0,
                                               (uint32_t)cros_extra_send_pong_bt);
+    /* PING proves peer can reach us on extra. TX (poor) often only sees
+     * PING, never PONG — 0.3.13 LEFT got READY from pong while RIGHT kept
+     * cmd audio. Treat PING as READY so audio can switch to extra. */
+    if (!peer_ready) {
+      peer_ready = 1;
+      CROS_LOG(1, "[cros_extra] peer READY (ping=%u) — switch audio to extra",
+            (unsigned)rx_ping);
+    }
     return;
   }
   if (ppb->data[0] == CROS_EXTRA_PONG_MAGIC) {
@@ -140,7 +148,7 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
   rx_ok++;
   if ((rx_ok & 0x3F) == 0) {
-    CROS_LOG(3, "[cros_extra] audio_rx=%u ping_rx=%u pong_rx=%u",
+    CROS_LOG(0, "[cros_extra] audio_rx=%u ping_rx=%u pong_rx=%u",
           (unsigned)rx_ok, (unsigned)rx_ping, (unsigned)rx_pong);
   }
 }
@@ -238,8 +246,8 @@ static void cros_extra_send_bt(void *a, void *b) {
   } else {
     tx_ok++;
     if ((tx_ok & 0x3F) == 0) {
-      CROS_LOG(3, "[cros_extra] tx=%u fail=%u peer_ready=%u", (unsigned)tx_ok,
-            (unsigned)tx_fail, (unsigned)peer_ready);
+      CROS_LOG(0, "[cros_extra] audio_tx=%u fail=%u peer_ready=%u",
+            (unsigned)tx_ok, (unsigned)tx_fail, (unsigned)peer_ready);
     }
   }
 }
@@ -298,7 +306,7 @@ void cros_besaud_extra_init(void) {
     cros_extra_defer_id =
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-  CROS_LOG(0, "[cros_extra] init (v0.3.13 peer via ibrt; defer %dms)",
+  CROS_LOG(0, "[cros_extra] init (v0.3.14 READY on ping|pong; defer %dms)",
         CROS_EXTRA_DEFER_MS);
 #endif
 }
