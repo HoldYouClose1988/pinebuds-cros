@@ -147,7 +147,7 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
   }
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
   rx_ok++;
-  if ((rx_ok & 0x3F) == 0) {
+  if ((rx_ok & 0x7F) == 0) {
     CROS_LOG(0, "[cros_extra] audio_rx=%u ping_rx=%u pong_rx=%u",
           (unsigned)rx_ok, (unsigned)rx_ping, (unsigned)rx_pong);
   }
@@ -306,7 +306,7 @@ void cros_besaud_extra_init(void) {
     cros_extra_defer_id =
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-  CROS_LOG(0, "[cros_extra] init (v0.3.14 READY on ping|pong; defer %dms)",
+  CROS_LOG(0, "[cros_extra] init (v0.3.15 deep jitter on extra; defer %dms)",
         CROS_EXTRA_DEFER_MS);
 #endif
 }

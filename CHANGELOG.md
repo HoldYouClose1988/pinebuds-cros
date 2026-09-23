@@ -5,6 +5,22 @@ Format: version, date (UTC), then user-facing changes.
 
 **This project is a work in progress and is not a functional CROS product.** DIY / own-risk - not a hearing aid or PPE.
 
+## [0.3.15] — 2026-09-23
+
+### Firmware — extra path works; fix underrun cliff
+0.3.14 **did switch** to extra (`audio_rx=` locked to `rx=`). Early underruns were
+fine (~15), then after ~20 s underruns exploded (`24→152→1500+`) while `resync=1`
+(packets in order, just late). Jitter had been **auto-shrinking to 2–3**, too thin
+for bursty L2CAP under phone SPP.
+
+- While on extra media: jitter **floor 4 / ceiling 8** frames (200–400 ms)
+- **Do not shrink** below the extra floor
+- Larger PCM ring; slightly quieter `audio_rx` logs
+
+### Expect
+`extra=1` in rx lines, `jitter` stays ≥4, underrun climb much slower / flat.
+May add latency vs cmd — trade for smoothness on the real pipe.
+
 ## [0.3.14] — 2026-09-23
 
 ### Firmware — ride extra after PING (not only PONG)

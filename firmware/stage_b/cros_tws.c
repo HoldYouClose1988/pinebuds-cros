@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.14 — switch TX to extra when peer answers PING (not only PONG).
+ * v0.3.15 — deeper RX jitter on extra (0.3.14 switched but underrun cliffed).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -39,7 +39,7 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_HDR_BYTES 5
 #define CROS_PKT_BYTES (CROS_HDR_BYTES + CROS_ADPCM_BYTES) /* 405 < 672 */
 #define CROS_DMA_BYTES (CROS_CAP_SAMPLES * 2 * 2)
-#define CROS_RING_BYTES (CROS_FRAME_BYTES * 10)
+#define CROS_RING_BYTES (CROS_FRAME_BYTES * 12)
 
 #define CROS_GAIN_Q15 16000
 #define CROS_LIM_THRESH 20000
@@ -47,10 +47,14 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_STREAM_ID AUD_STREAM_ID_0
 #define CROS_PKT_MAGIC 0xA5
 
-#define CROS_JITTER_MIN_FRAMES 2 /* 100 ms — 0.3.10 quality baseline */
+/* Cmd-path jitter (also used before extra READY). */
+#define CROS_JITTER_MIN_FRAMES 2 /* 100 ms */
 #define CROS_JITTER_MAX_FRAMES 4 /* 200 ms */
+/* Extra L2CAP is burstier (0.3.14: underrun cliff after ~20s as jitter shrank). */
+#define CROS_EXTRA_JITTER_MIN_FRAMES 4 /* 200 ms floor — do not shrink below */
+#define CROS_EXTRA_JITTER_MAX_FRAMES 8 /* 400 ms */
 #define CROS_TICK_MS 50
-#define CROS_RX_LOG_MASK 0x3F /* every 64 frames — watch underruns */
+#define CROS_RX_LOG_MASK 0x3F
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
 static uint8_t playback_dma_buf[CROS_DMA_BYTES];
@@ -112,6 +116,26 @@ typedef struct {
 
 static ima_state_t enc_state;
 static ima_state_t dec_state;
+
+static int on_extra_media(void) {
+  return (cros_besaud_extra_is_open() && cros_besaud_extra_peer_ready()) ? 1 : 0;
+}
+
+static uint8_t jitter_min_now(void) {
+  return on_extra_media() ? CROS_EXTRA_JITTER_MIN_FRAMES : CROS_JITTER_MIN_FRAMES;
+}
+
+static uint8_t jitter_max_now(void) {
+  return on_extra_media() ? CROS_EXTRA_JITTER_MAX_FRAMES : CROS_JITTER_MAX_FRAMES;
+}
+
+static void jitter_apply_extra_floor(void) {
+  uint8_t floor = jitter_min_now();
+  if (jitter_target_frames < floor) {
+    jitter_target_frames = floor;
+    CROS_LOG(1, "[cros_tws] jitter floor=%u (extra media)", (unsigned)floor);
+  }
+}
 
 static int16_t clamp16(int32_t v) {
   if (v > 32767)
@@ -253,7 +277,7 @@ static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
     }
     underruns++;
     healthy_ticks = 0;
-    if (jitter_target_frames < CROS_JITTER_MAX_FRAMES) {
+    if (jitter_target_frames < jitter_max_now()) {
       jitter_target_frames++;
     }
   }
@@ -338,8 +362,10 @@ static void cros_tick(void const *arg) {
   }
   if (rx_running) {
     healthy_ticks++;
+    /* Never shrink below extra floor while riding L2CAP — 0.3.14 cliffed
+     * after healthy_ticks pulled jitter down to 2–3. */
     if (healthy_ticks > 150 &&
-        jitter_target_frames > CROS_JITTER_MIN_FRAMES) {
+        jitter_target_frames > jitter_min_now()) {
       jitter_target_frames--;
       healthy_ticks = 0;
     }
@@ -416,7 +442,7 @@ static int start_rx(void) {
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   {
     uint32_t pre = jitter_target_frames * CROS_FRAME_BYTES;
-    static uint8_t silence[CROS_FRAME_BYTES * CROS_JITTER_MAX_FRAMES];
+    static uint8_t silence[CROS_FRAME_BYTES * CROS_EXTRA_JITTER_MAX_FRAMES];
     if (pre > sizeof(silence))
       pre = sizeof(silence);
     memset(silence, 0, pre);
@@ -518,7 +544,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.14 extra-on-ping-ready (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.15 extra-jitter-deep (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
@@ -603,6 +629,8 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
     return;
   }
 
+  jitter_apply_extra_floor();
+
   max_bytes = (int)jitter_target_frames * (int)CROS_FRAME_BYTES +
               (int)CROS_FRAME_BYTES;
   buffered = app_audio_pcmbuff_length();
@@ -635,7 +663,8 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   }
   rx_pkts++;
   if ((rx_pkts & CROS_RX_LOG_MASK) == 0) {
-    CROS_LOG(4, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u", rx_pkts,
-          underruns, rx_resyncs, jitter_target_frames);
+    CROS_LOG(0, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u extra=%d",
+          rx_pkts, underruns, rx_resyncs, jitter_target_frames,
+          on_extra_media());
   }
 }
