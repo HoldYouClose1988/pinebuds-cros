@@ -10,20 +10,42 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.17)
+## Current status (v0.3.23)
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
-| **Stage B CROS** | **Working experimentally** — 50 ms IMA-ADPCM on BESAUD **extra L2CAP** (`0x0b0e`), with cmd-path fallback |
-| **Phone logs** | TOTA SPP (`TOTA=1`) + [android/cros-log](android/cros-log/); auto-quiets during extra media so logging does not kill the pipe |
-| **Industrial damp** | Not implemented (research docs only) |
+| **Stage B CROS** | **Working experimentally** on BESAUD **extra L2CAP** (`0x0b0e`) |
+| **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
+| **Industrial damp** | Not implemented (design only) |
 
-**Ear-validated (v0.3.16+):** **v0.3.21 / v0.3.23** is the usable baseline — floor 4 × 50 ms, clap start→start ≈ **330 ms**, cutouts rare except brief ones in hectic noise. v0.3.22 (10 ms TX poll) kept delay but restored cutouts — reverted.
+### Usable baseline (flash this)
 
-Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap either bud toggles CROS (needs TWS link).
+**v0.3.23** (= v0.3.21): 50 ms IMA-ADPCM, extra-path jitter floor **4** (200 ms).
 
-Latest flash zip: [`flash-packages/pinebuds-cros-LATEST.zip`](flash-packages/pinebuds-cros-LATEST.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+| Metric | Result |
+|--------|--------|
+| Clap delay (start→start) | ≈ **330 ms** |
+| Cutouts | Rare; brief only in hectic noise |
+| Capture logs + CROS | OK if quiet mode engages after READY |
+
+### Latency levers already tried (do not repeat blindly)
+
+| Lever | Outcome |
+|-------|---------|
+| Jitter floor 4→3 | Cutouts unusable (~2/s) |
+| Frames 50→40 ms | No delay win; more chop |
+| TX poll 50→10 ms | No delay win; cutouts returned |
+
+Most of the 330 ms is the **200 ms jitter floor** required for stable extra under bursty ACL — not a missing “send sooner” fix. **Review / brainstorm:** [docs/latency-and-next.md](docs/latency-and-next.md).
+
+Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap toggles CROS (needs TWS link).
+
+Latest zip: [`flash-packages/pinebuds-cros-LATEST.zip`](flash-packages/pinebuds-cros-LATEST.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+
+## Looking for review
+
+We want more eyes on the transport + latency dead-ends and the ideas in [latency-and-next.md](docs/latency-and-next.md) (PLC, ACL buffer count, finer frames with same ms of jitter, sniff policy, instrumentation). Repro on LATEST + a clap number helps.
 
 ## How it works (short)
 
@@ -35,7 +57,7 @@ FF mic → 50 ms ADPCM ──extra L2CAP──► decode → speaker
                   └─ MODE sync on IBRT custom cmd
 ```
 
-Bring-up history and transport notes: [docs/cros-transport.md](docs/cros-transport.md).
+Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 ## Quick start (Windows flash)
 
@@ -50,8 +72,8 @@ See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows
 ```
 
 3. Seat both buds in the case ~30–60 s so TWS re-pairs.
-4. Wear both; **quad-tap** to toggle CROS. Scratch/speak near the **right** outer face — hear it in the **left** ear.
-5. Optional logs: build [android/cros-log](android/cros-log/), pair the master bud, **Capture logs** on. After `peer READY` the app goes quiet on purpose (`[cros_log] quiet=1`) so SPP does not contend with extra audio; transitions still appear.
+4. Wear both; **quad-tap** to toggle CROS. Speak near the **right** outer face — hear it in the **left** ear.
+5. Optional logs: [android/cros-log](android/cros-log/) → **Capture logs** on. After `peer READY` expect `[cros_log] quiet=1` (periodic stats suppressed on purpose).
 
 Avoid phone music while testing CROS (A2DP fights the stream).
 
@@ -65,12 +87,13 @@ TOTA=1 ./scripts/build.sh       # Stage B CROS + TOTA log sink
 ./scripts/package-flash.sh      # optional Windows zip under flash-packages/
 ```
 
-`STAGE_A=0` / `STAGE_B=0` / `TOTA=0` as needed. Details: [docs/development.md](docs/development.md).
+Details: [docs/development.md](docs/development.md).
 
 ## Documentation
 
 | Doc | Topic |
 |-----|--------|
+| [docs/latency-and-next.md](docs/latency-and-next.md) | **Latency scorecard + brainstorm (start here for review)** |
 | [CHANGELOG.md](CHANGELOG.md) | Version history / ear results |
 | [flash-packages/](flash-packages/) | Downloadable bins |
 | [docs/cros-transport.md](docs/cros-transport.md) | Cmd vs extra L2CAP, lessons learned |
@@ -83,9 +106,10 @@ TOTA=1 ./scripts/build.sh       # Stage B CROS + TOTA log sink
 ## Known limits (honest)
 
 - Not clinical; no gain prescription, no safety certification
-- Codec is simple ADPCM — “phone call” character, not hi-fi
-- Extra-path jitter buffer trades delay for stability (tuning next)
-- Phone SPP logging must stay quiet during extra media (v0.3.16+); heavy log spam can still stress the ACL (`HCI_NUM_ACL_BUFFERS` is only 6 in this SDK tree)
+- ~**330 ms** glass-to-glass today; conversational CROS usually wants ≪100 ms
+- Codec is simple ADPCM — telephone character, not hi-fi
+- Extra path needs deep jitter under current ACL burstiness; thinner buffer = cutouts
+- Heavy TOTA logging during extra media can kill the link (quiet mode mitigates)
 - BiCROS / media mix / user-selectable poor side: not done
 
 ## License

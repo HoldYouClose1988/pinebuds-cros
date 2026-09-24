@@ -1,6 +1,6 @@
 # Flash packages
 
-> **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product.
+> **DIY / own-risk — not a hearing aid or PPE.** Baseline **v0.3.23**: ≈330 ms clap, usable cutouts. Review: [latency-and-next.md](../docs/latency-and-next.md).
 
 **Current version: v0.3.23**
 

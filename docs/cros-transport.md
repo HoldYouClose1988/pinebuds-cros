@@ -41,31 +41,28 @@ Stock `tws_besaud_create_extra_channel` registers TRACE-and-discard RX — **not
 MTU ~679 B. Send is posted into the BT thread (`app_bt_start_custom_function_in_bt_thread`);
 inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
-## Status (v0.3.17)
+## Status (v0.3.23)
 
-**Extra-path CROS works** in ear tests (multi-minute runs with Capture on).
+**Extra-path CROS works.** Usable baseline is **v0.3.23** (= 0.3.21).
 
 | Milestone | Version | Result |
 |-----------|---------|--------|
-| Cmd-only usable CROS | ≤0.3.11 | Holds; choppy; ~high delay |
-| Extra OPEN + PONG | 0.3.13 | Bidirectional handshake |
-| Media on extra | 0.3.14 | `audio_rx` locked to `rx`; underrun cliff ~20 s |
-| Deep jitter on extra | 0.3.15 | Capture off OK; Capture on dies at READY |
-| Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
-| Quiet clear on remote stop | 0.3.17 | Small correctness fix |
+| Cmd-only usable CROS | ≤0.3.11 | Holds; choppy; high delay |
+| Extra OPEN + PONG / PING READY | 0.3.13–14 | Bidirectional; media on extra |
+| Quiet SPP during extra | **0.3.16** | Capture on + stable extra |
+| Floor 3 / 40 ms frames / 10 ms tick | 0.3.18–22 | **Failed** usable latency cuts |
+| **Baseline** | **0.3.21 / 0.3.23** | Floor 4 × 50 ms; clap ≈**330 ms** start→start |
 
-**Baseline:** **v0.3.21 / v0.3.23** — floor 4 × 50 ms, clap ≈330 ms start→start, usable cutouts.
+### Latency model (baseline)
 
-**Failed:** v0.3.22 10 ms TX poll — no delay change, cutouts returned.
+```
+~200 ms  RX jitter floor (4 × 50 ms) — required for usable extra today
+~ 50 ms  ADPCM frame period
+~ 80 ms  other (BT queue / air / play / alignment)
+~330 ms  clap start→start
+```
 
-**Latency reality check:** ~200 ms floor + ~50 ms frame ≈ most of 330 ms. Further cuts need less burstiness or better underrun concealment — not thinner floor / shorter frames / faster tick (all tried).
-
-**Latency budget (clap start→start unless noted):**
-| Build | Lever | Clap | Notes |
-|-------|-------|------|-------|
-| 0.3.21 | floor 4 × 50 ms | ≈**330 ms** | usable baseline |
-| 0.3.22 | + 10 ms TX tick | ≈330 ms | cutouts back — revert |
-| 0.3.23 | = 0.3.21 | ≈330 ms | LATEST baseline |
+Full lever scorecard, failed experiments, and **ranked next ideas** (PLC, ACL buffers, instrumentation, …): **[latency-and-next.md](latency-and-next.md)**.
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 

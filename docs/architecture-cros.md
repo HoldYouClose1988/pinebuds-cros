@@ -2,13 +2,16 @@
 
 ## Implementation status (firmware)
 
-**Stage B CROS is experimentally working** as of flash **v0.3.16+** (see root [README](../README.md) and [cros-transport.md](cros-transport.md)):
+**Stage B CROS is experimentally working** — baseline flash **v0.3.23** (see root [README](../README.md)):
 
 - RIGHT FF mic → 50 ms IMA-ADPCM → BESAUD extra L2CAP → LEFT speaker
 - MODE sync on IBRT custom cmd; cmd-path audio as fallback until peer READY
 - Phone TOTA logging with quiet-during-extra (required for coexistence)
+- Clap start→start ≈ **330 ms**; jitter floor 4 × 50 ms is required for usable stability today
 
-Still **not** a clinical product. Missing vs this design doc: BiCROS mix, media ducking, user-selectable poor side, &lt;40 ms glass-to-glass, prescribed gain/limiting UX.
+Still **not** a clinical product. Missing vs this design doc: BiCROS mix, media ducking, user-selectable poor side, ≪100 ms glass-to-glass, prescribed gain/limiting UX.
+
+**Latency dead-ends and next ideas:** [latency-and-next.md](latency-and-next.md).
 
 ## Clinical intent (non-medical framing)
 
@@ -93,6 +96,6 @@ ANC binary blob remains opaque; CROS should **not** depend on finished ANC. FF A
 |-------|--------|
 | 1. Mode plumbing (NV/touch/TWS sync) | Done (quad-tap + peer MODE cmd; poor side compile-time default RIGHT) |
 | 2. Loopback prototype (Stage A) | Done earlier; optional bring-up |
-| 3. Cross-bud audio + measure latency | **Done on extra L2CAP**; latency tuning next (~100 ms class today) |
+| 3. Cross-bud audio + measure latency | **Done on extra L2CAP** (~330 ms start→start); further cuts blocked on burstiness — see [latency-and-next.md](latency-and-next.md) |
 | 4. Good-ear mix with A2DP ducking | Not started |
 | 5. BiCROS / presets / power polish | Not started |

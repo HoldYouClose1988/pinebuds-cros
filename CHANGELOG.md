@@ -16,9 +16,9 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
   macros kept for future). LATEST points here so nobody stays on 0.3.22
 
 ### Where latency stands
-~200 ms is intentional RX jitter floor; ~50 ms frame; ~80 ms other. Thinning the
-floor or shortening frames has already failed usability. Next ideas need a new
-angle (concealment, less bursty delivery, etc.) — not another tick/floor tweak.
+~200 ms intentional RX jitter floor; ~50 ms frame; ~80 ms other → clap ≈330 ms.
+Floor/frame/tick latency levers failed usability. Review + brainstorm:
+[docs/latency-and-next.md](docs/latency-and-next.md).
 
 ## [0.3.22] — 2026-09-24
 
