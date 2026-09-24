@@ -220,18 +220,29 @@ keep the log line for regressions.
 
 **Verdict:** No free idle BLE pipe today. Standing one up is a second radio (see cros-transport VOB). Different failure mode than ACL burstiness; still high coexist risk with IBRT. Keep as long-shot **after** A / before or beside K.
 
+### L′. Phone↔bud BLE GATT (Erik pattern) — **logging coexist, not media**
+
+**Source:** [erik-smit/EriksPineBuds](https://github.com/erik-smit/EriksPineBuds) runs `BLE ?= 1` with custom GATT (touch/EQ) + Android companion. Same closed profiles `.a` as us.
+
+**Why it matters for us:** Capture today opens **classic TOTA SPP** on the same ACL as extra CROS. Quiet mode helps; a BLE notify log sink would move chatty debug off that ACL entirely (different radio). Does **not** shrink the 200 ms floor by itself.
+
+**Smallest probe (later):** Enable `BLE=1`, add a thin GATT notify characteristic for `[cros_*]` lines (steal Erik’s profile layout / Android BLE client patterns); keep TOTA as fallback. Measure underruns with Capture-on vs SPP Capture-on. **Not** a bud↔bud media transport.
+
+**Also from openqore/[besota](https://github.com/nnonickreal/besota):** BES OTA RFCOMM UUID `66666666-…` is real — strengthens §J (channel exists when OTA on); still not a latency pipe. Full survey: [references.md](references.md#community-bes--pinebuds-forks-surveyed-2026-09-24).
+
 ---
 
 ## Suggested next (agreed order)
 
 1. **B+H** — **done**.  
 2. **G** — **done** (ACTIVE; not the PC-speaker cutout fix).  
-3. **C** — ACL header bump **blocked** (closed `.a`).  
+3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only (`CROS_SUSPEND_A2DP=1`); not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** (stop SPP-teeing thresholds mid-storm).  
 4. **A** — PLC if PC-speaker / quiet-room underruns remain after 0.3.27.  
-5. **K** — SCO/eSCO bud↔bud probe (only if A isn’t enough / latency still the goal).  
-6. **L** — VOB / peer BLE (bench first, TWS unpaired).  
+5. **L′** — BLE GATT log sink (Erik-style) if Capture+SPP still hurts after A.  
+6. **K** — SCO/eSCO bud↔bud probe (only if latency still the goal).  
+7. **L** — VOB / peer BLE media (bench first, TWS unpaired).  
 — **J** — BES_OTA RFCOMM: research closed; not a media path.
 
 ## Suggested review questions

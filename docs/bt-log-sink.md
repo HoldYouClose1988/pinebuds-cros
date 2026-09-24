@@ -1,6 +1,12 @@
 # Phone-side log sink (TOTA / SPP) — investigation
 
-**Verdict:** Reuse Bestechnic **TOTA over classic Bluetooth SPP/RFCOMM**. Do **not** stand up a new BLE GATT log service from zero. Do **not** solder UART until CROS latency is acceptable.
+**Verdict:** Reuse Bestechnic **TOTA over classic Bluetooth SPP/RFCOMM** for now.
+Do **not** solder UART until CROS latency is acceptable.
+
+**Later option:** [erik-smit/EriksPineBuds](https://github.com/erik-smit/EriksPineBuds)
+already ships a working `BLE=1` GATT companion (config/EQ). That pattern is a
+candidate to move Capture logs off classic ACL (§L′ in [latency-and-next.md](latency-and-next.md))
+if quiet-SPP is still too heavy. Not required for the current TOTA path.
 
 This is the logging path for CROS bring-up — phone captures `[cros_*]` lines while buds stay closed. It is **not** a CROS audio transport (see [cros-transport.md](cros-transport.md) §7).
 
