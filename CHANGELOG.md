@@ -6,6 +6,20 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.23] — 2026-09-24
+
+### Firmware — mark 0.3.21 as current baseline (revert 0.3.22)
+- **v0.3.21:** start→start ≈ **330 ms**, cutouts almost gone (brief only in hectic noise)
+- **v0.3.22:** 10 ms TX poll — clap still ≈**330 ms**, **cutouts back / not usable**
+- Faster poll did not remove dispatch delay that matters; side effects hurt stability
+- **This build:** same as 0.3.21 (50 ms tick + floor4 × 50 ms frames + ms stuck timeout
+  macros kept for future). LATEST points here so nobody stays on 0.3.22
+
+### Where latency stands
+~200 ms is intentional RX jitter floor; ~50 ms frame; ~80 ms other. Thinning the
+floor or shortening frames has already failed usability. Next ideas need a new
+angle (concealment, less bursty delivery, etc.) — not another tick/floor tweak.
+
 ## [0.3.22] — 2026-09-24
 
 ### Firmware — faster TX poll on 0.3.21 baseline

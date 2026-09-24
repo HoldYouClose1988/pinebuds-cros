@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.22 — faster TX poll (10 ms) on floor4×50 ms baseline; stuck timeout in ms.
+ * v0.3.23 — revert to 0.3.21 baseline (10 ms TX poll caused cutouts, no delay win).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -50,21 +50,20 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 /* Cmd-path jitter (also used before extra READY). */
 #define CROS_JITTER_MIN_FRAMES 2 /* 100 ms */
 #define CROS_JITTER_MAX_FRAMES 4 /* 200 ms */
-/* Extra floor=4 (200 ms) — 0.3.21 stability baseline. Do not thin. */
+/* Extra floor=4 (200 ms) — validated usable on 0.3.21 (~330 ms clap, rare cutouts). */
 #define CROS_EXTRA_JITTER_MIN_FRAMES 4 /* 200 ms floor */
 #define CROS_EXTRA_JITTER_MAX_FRAMES 8 /* 400 ms */
 /*
- * Frame period stays 50 ms (capture fills latest_*). Tick only drains TX —
- * poll faster so we do not wait almost a full frame after latest_ready.
- * Timeouts below are wall-clock ms so they stay valid if CROS_TICK_MS changes.
+ * Keep send tick = frame period. v0.3.22 tried 10 ms poll (same 50 ms frames,
+ * ms-scaled stuck watchdog) — cutouts returned, clap stayed ~330 ms. Reverted.
  */
-#define CROS_TICK_MS 10
+#define CROS_TICK_MS 50
 #define CROS_TX_STUCK_MS 200
 #define CROS_TX_STUCK_TICKS                                                        \
-  ((CROS_TX_STUCK_MS + CROS_TICK_MS - 1) / CROS_TICK_MS) /* ~20 @ 10 ms */
+  ((CROS_TX_STUCK_MS + CROS_TICK_MS - 1) / CROS_TICK_MS) /* 4 @ 50 ms */
 #define CROS_JITTER_HEALTHY_MS 7500
 #define CROS_JITTER_HEALTHY_TICKS                                                  \
-  ((CROS_JITTER_HEALTHY_MS + CROS_TICK_MS - 1) / CROS_TICK_MS) /* was 150@50ms */
+  ((CROS_JITTER_HEALTHY_MS + CROS_TICK_MS - 1) / CROS_TICK_MS) /* 150 @ 50 ms */
 #define CROS_RX_LOG_MASK 0x3F
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
@@ -554,7 +553,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.22 tick10ms floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.23 baseline floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

@@ -54,19 +54,18 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
 | Quiet clear on remote stop | 0.3.17 | Small correctness fix |
 
-**Baseline:** **v0.3.21** — floor 4 × 50 ms frames (usable stability).
+**Baseline:** **v0.3.21 / v0.3.23** — floor 4 × 50 ms, clap ≈330 ms start→start, usable cutouts.
 
-**Next / now:** v0.3.22 — **10 ms TX poll** on that baseline (not shorter frames). Stuck/healthy timeouts are ms-based so the watchdog stays ~200 ms.
+**Failed:** v0.3.22 10 ms TX poll — no delay change, cutouts returned.
 
-**Open:** random cutouts when floor &lt; 4; underrun storms at max jitter.
+**Latency reality check:** ~200 ms floor + ~50 ms frame ≈ most of 330 ms. Further cuts need less burstiness or better underrun concealment — not thinner floor / shorter frames / faster tick (all tried).
 
 **Latency budget (clap start→start unless noted):**
 | Build | Lever | Clap | Notes |
 |-------|-------|------|-------|
-| 0.3.17 | floor 4 × 50 ms | ≈376 ms | method unclear; smoothish |
-| 0.3.18–20 | floor 3 … | 243–336 ms | floor 3 too thin / misaligned |
-| 0.3.21 | floor 4 × 50 ms | (stable baseline) | restore floor |
-| 0.3.22 | + 10 ms TX tick | (pending) | same frames; ms stuck timeout |
+| 0.3.21 | floor 4 × 50 ms | ≈**330 ms** | usable baseline |
+| 0.3.22 | + 10 ms TX tick | ≈330 ms | cutouts back — revert |
+| 0.3.23 | = 0.3.21 | ≈330 ms | LATEST baseline |
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 

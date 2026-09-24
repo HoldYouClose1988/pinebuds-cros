@@ -19,7 +19,7 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 | **Phone logs** | TOTA SPP (`TOTA=1`) + [android/cros-log](android/cros-log/); auto-quiets during extra media so logging does not kill the pipe |
 | **Industrial damp** | Not implemented (research docs only) |
 
-**Ear-validated (v0.3.16+):** multi-minute runs with Capture on. **v0.3.21** is the stability baseline (floor 4 × 50 ms). Floor 3 caused heavy dropouts. **v0.3.22** keeps that baseline and only polls TX every 10 ms (frames still 50 ms; stuck timeout stays ~200 ms wall-clock).
+**Ear-validated (v0.3.16+):** **v0.3.21 / v0.3.23** is the usable baseline — floor 4 × 50 ms, clap start→start ≈ **330 ms**, cutouts rare except brief ones in hectic noise. v0.3.22 (10 ms TX poll) kept delay but restored cutouts — reverted.
 
 Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap either bud toggles CROS (needs TWS link).
 
