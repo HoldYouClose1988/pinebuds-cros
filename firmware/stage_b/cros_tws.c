@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.25 — G: sniff lock while CROS on (B+H measurement stays).
+ * v0.3.26 — suspend A2DP while CROS on (video/ACL coexist); keep G+B.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -28,6 +28,8 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 extern int app_ibrt_if_tws_sniff_block(uint32_t block_next_sec);
 extern int app_ibrt_if_sniff_checker_start(int user);
 extern int app_ibrt_if_sniff_checker_stop(int user);
+extern int cros_a2dp_music_ongoing(void);
+extern void cros_a2dp_suspend_for_cros(void);
 /* Do NOT call app_ibrt_cros_audio_send_now from osTimer — needs BT/ctrl
  * context. v0.2.6 did that and hung the TX (right) bud. */
 
@@ -104,6 +106,7 @@ static bool rx_have_seq;
 static uint8_t jitter_target_frames;
 static uint16_t healthy_ticks;
 static uint16_t sniff_refresh_ticks;
+static uint8_t a2dp_paused_for_cros;
 static uint32_t tx_frames;
 static uint32_t tx_extra;
 static uint32_t tx_cmd;
@@ -201,6 +204,27 @@ static void cros_sniff_lock_off(void) {
   sniff_refresh_ticks = 0;
   CROS_LOG(0, "[cros_tws] sniff UNLOCK");
   log_link_modes("unlock");
+}
+
+/* A2DP + extra CROS share airtime/ACL — 0.3.25 LEFT+video underrun storm.
+ * Header-only HCI_NUM_ACL_BUFFERS bump is a no-op (stack is closed .a).
+ * Suspend phone A2DP while CROS is on; user resumes play after DISABLE. */
+static void cros_a2dp_coexist_on(void) {
+  if (cros_a2dp_music_ongoing()) {
+    CROS_LOG(0, "[cros_tws] A2DP streaming — suspend for CROS (airtime/ACL)");
+    cros_a2dp_suspend_for_cros();
+    a2dp_paused_for_cros = 1;
+  } else {
+    a2dp_paused_for_cros = 0;
+    CROS_LOG(0, "[cros_tws] A2DP idle — no suspend");
+  }
+}
+
+static void cros_a2dp_coexist_off(void) {
+  if (a2dp_paused_for_cros) {
+    CROS_LOG(0, "[cros_tws] A2DP was suspended for CROS — press play to resume");
+    a2dp_paused_for_cros = 0;
+  }
 }
 
 static int16_t clamp16(int32_t v) {
@@ -588,6 +612,7 @@ static int apply_enabled(bool on) {
   if (on) {
     app_sysfreq_req(APP_SYSFREQ_USER_APP_0, APP_SYSFREQ_104M);
     af_set_priority(AF_USER_TEST, osPriorityHigh);
+    cros_a2dp_coexist_on();
     cros_sniff_lock_on();
 #ifdef ANC_APP
     if (app_anc_work_status()) {
@@ -606,6 +631,7 @@ static int apply_enabled(bool on) {
   stop_tx();
   stop_rx();
   cros_sniff_lock_off();
+  cros_a2dp_coexist_off();
   app_sysfreq_req(APP_SYSFREQ_USER_APP_0, APP_SYSFREQ_32K);
   af_set_priority(AF_USER_TEST, osPriorityAboveNormal);
   return 0;
@@ -634,7 +660,7 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
-  CROS_LOG(1, "[cros_tws] init v0.3.25 sniff-lock G floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.26 A2DP-suspend+G floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

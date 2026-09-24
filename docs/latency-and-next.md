@@ -101,13 +101,25 @@ disable, paste dump lines.
 
 **Risk:** Low. Should be first engineering step before big design changes.
 
-### C. Raise host ACL buffer count (small SDK experiment)
+### C. Raise host ACL buffer count — **blocked (closed stack)**
 
 **Idea:** Bump `HCI_NUM_ACL_BUFFERS` (and related) from 6 → 8 or 12 in a one-variable flash; keep baseline media settings.
 
-**Why:** Pool exhaustion / FC stalls could cause the bursty gaps that force a deep jitter floor.
+**Blocked:** BT profiles are closed `.a` libraries; changing the header does not
+resize `hci_rx_acl_buff` / host pools. Tried and reverted. True bump needs a
+rebuildable stack or a different vendor API.
 
-**Risk:** Medium–high (memory, stack assumptions). One-variable flash; watch for new hangs.
+**Why still relevant:** Pool exhaustion / FC stalls under **A2DP + extra CROS**
+remain the leading theory for the 0.3.25 LEFT+video storm.
+
+**Workaround shipped in v0.3.26:** suspend A2DP while CROS is enabled (see below).
+
+### C′. Suspend A2DP while CROS on — **v0.3.26**
+
+**Shipped:** if `a2dp_is_music_ongoing()` at CROS enable → suspend stream + stop
+local SBC. Frees mobile ACL airtime for TWS extra. User presses play after DISABLE.
+
+**Risk:** Low–medium (UX: video pauses). Correct for DIY CROS priority.
 
 ### D. Finer frames with **same ms of jitter** (chop fix, not delay cut)
 
@@ -133,14 +145,15 @@ disable, paste dump lines.
 
 **Risk:** More ACL load (danger zone given buffer=6). Small duty cycle only.
 
-### G. Link policy during CROS — **v0.3.25**
+### G. Link policy during CROS — **v0.3.25; not the A2DP lever**
 
 **Idea:** Ensure sniff is off / delayed while CROS enabled (SPP already blocks sniff; without Capture, does TWS enter sniff and burst?). Role-switch lock. Any BES “prefer throughput” knobs on the TWS ACL.
 
-**Shipped:** `cros_tws_is_enabled()` blocks sniff entry; on enable exit TWS sniff +
-`tws_sniff_block` + checker; log `link@` ACTIVE/SNIFF. **Note:** Capture-on LEFT
-dump already had sniff blocked and still saw underruns — G targets Capture-off;
-A/C still needed if Capture-on burstiness remains.
+**Shipped:** sniff lock while CROS on. Logs show `tws=ACTIVE` / `mobile=ACTIVE`.
+
+**0.3.25 ear (LEFT master + video):** underrun storm (`underrun=1757` / `rx=1928`,
+`jitter=8`, `rx_buf@put` avg 88 ms) while link stayed ACTIVE. **No delay increase.**
+**Did not stop video cutouts** — next lever is **C** (ACL pool).
 
 **Why:** Sniff → bursty delivery → need deep jitter.
 
@@ -173,10 +186,11 @@ keep the log line for regressions.
 
 ## Suggested next (agreed order)
 
-1. **B+H** — **done** (RIGHT TX + LEFT RX + L2CAP basic).  
-2. **G** — sniff lock while CROS on — **v0.3.25**.  
-3. **A** — PLC so underruns are softer (then maybe revisit floor).  
-4. **C** — `HCI_NUM_ACL_BUFFERS` bump only if pool pressure is implicated.
+1. **B+H** — **done**.  
+2. **G** — **done** (ACTIVE; not the video cutout fix).  
+3. **C** — ACL header bump **blocked** (closed `.a`).  
+3′. **C′** — A2DP suspend while CROS — **v0.3.26**.  
+4. **A** — PLC if quiet-room underruns remain.
 
 ## Suggested review questions
 

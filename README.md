@@ -10,7 +10,7 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.25)
+## Current status (v0.3.26)
 
 | Mode | Status |
 |------|--------|
@@ -19,16 +19,14 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
 | **Industrial damp** | Not implemented (design only) |
 
-### Usable baseline + measurement / sniff-lock flashes
+### Usable baseline + experiment flashes
 
-**v0.3.23** (= v0.3.21): 50 ms IMA-ADPCM, extra-path jitter floor **4** (200 ms).  
-**v0.3.24:** same media + **B+H probe**.  
-**v0.3.25:** same media + **G sniff lock** while CROS on.
+**v0.3.23** media baseline · **v0.3.24** B+H · **v0.3.25** sniff lock · **v0.3.26** A2DP-suspend coexist.
 
 | Metric | Result |
 |--------|--------|
 | Clap delay (start→start) | ≈ **322–330 ms** |
-| Cutouts | Rare; brief only in hectic noise |
+| Cutouts | Rare without A2DP; **storm with LEFT+video** on ≤0.3.25 (0.3.26 pauses A2DP) |
 | Capture logs + CROS | OK if quiet mode engages after READY |
 
 ### Latency levers already tried (do not repeat blindly)

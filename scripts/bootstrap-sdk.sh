@@ -80,8 +80,14 @@ if [[ -d "$ROOT/firmware/stage_b" ]]; then
   mkdir -p "$VENDOR_DIR/OpenPineBuds/apps/cros_tws"
   cp -f "$ROOT/firmware/stage_b/"*.c \
         "$ROOT/firmware/stage_b/"*.h \
+        "$ROOT/firmware/stage_b/"*.cpp \
+        "$ROOT/firmware/stage_b/Makefile" \
+        "$VENDOR_DIR/OpenPineBuds/apps/cros_tws/" 2>/dev/null || \
+  cp -f "$ROOT/firmware/stage_b/"*.c \
+        "$ROOT/firmware/stage_b/"*.h \
         "$ROOT/firmware/stage_b/Makefile" \
         "$VENDOR_DIR/OpenPineBuds/apps/cros_tws/"
+
 fi
 
 # Apply local patches once we have them.

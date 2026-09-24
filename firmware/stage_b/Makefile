@@ -1,7 +1,7 @@
 cur_dir := $(dir $(lastword $(MAKEFILE_LIST)))
 
 ifeq ($(CROS_STAGE_B),1)
-obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o cros_lat.o
+obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o cros_lat.o cros_a2dp_bridge.o
 endif
 
 # v0.3.12: re-enable extra with coexistence (defer + single ping + no-peer retry).

@@ -6,6 +6,23 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.26] — 2026-09-24
+
+### Firmware — A2DP suspend while CROS on (video coexist)
+- **Same media + G sniff lock** as v0.3.25.
+- **0.3.25 ear:** LEFT master + **video** → underrun storm (`1757` / `1928` rx,
+  `jitter=8`) while sniff stayed **ACTIVE**. G is fine; not the lever.
+- **C (ACL buffers 6→8) blocked:** BT stack is closed `.a`; changing
+  `HCI_NUM_ACL_BUFFERS` in headers does not resize the pool. Not shipped.
+- **This build:** on CROS enable, if A2DP is streaming → `app_a2dp_suspend_stream`
+  + local SBC stop. Log `A2DP streaming — suspend for CROS`. After DISABLE, press
+  play on the phone to resume (we do not auto-resume).
+
+### Test
+Confirm `init v0.3.26 A2DP-suspend+G`. Start video, enable CROS — video should
+**pause**; cutouts should drop. DISABLE → press play. Paste logs with
+`A2DP streaming — suspend` / `A2DP idle`.
+
 ## [0.3.25] — 2026-09-24
 
 ### Firmware — G: sniff lock while CROS enabled
@@ -17,10 +34,9 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
   refresh block every 60 s; `sniff_allowed` also false while `cros_tws_is_enabled()`.
 - Log `[cros_tws] sniff LOCK/UNLOCK` + `link@… tws=/mobile=` (ACTIVE vs SNIFF).
 
-### Test
-Confirm `init v0.3.25 sniff-lock G`. Prefer a run **without** Capture first (G’s
-target), then with Capture. Look for `sniff LOCK` / `tws=ACTIVE`. Clap + cutouts
-vs 0.3.24; paste DISABLE `[cros_lat]` from LEFT (`rx_buf@put` / underrun).
+### Test / result (0.3.25)
+Sniff lock worked (`tws=ACTIVE` throughout). **No delay increase.** Cutouts with
+**LEFT master + video** — underrun storm; not a sniff issue → A2DP coexist next.
 
 ## [0.3.24] — 2026-09-24
 
