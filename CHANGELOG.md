@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.25] — 2026-09-24
+
+### Firmware — G: sniff lock while CROS enabled
+- **Same media as v0.3.24 / 0.3.23** (floor 4 × 50 ms). No floor/frame change.
+- **Why:** B+H showed TX path clean (`cap→send`≈25 ms, BT≈0 ms) but LEFT RX
+  `rx_buf@put` avg **102 ms** (0–190) with **20 underruns / ~25 s** — bursty
+  delivery. Capture already blocks sniff; this locks sniff for **Capture-off** use.
+- On CROS enable: `tws_sniff_block(120s)`, `exit_sniff_with_tws`, sniff checker on;
+  refresh block every 60 s; `sniff_allowed` also false while `cros_tws_is_enabled()`.
+- Log `[cros_tws] sniff LOCK/UNLOCK` + `link@… tws=/mobile=` (ACTIVE vs SNIFF).
+
+### Test
+Confirm `init v0.3.25 sniff-lock G`. Prefer a run **without** Capture first (G’s
+target), then with Capture. Look for `sniff LOCK` / `tws=ACTIVE`. Clap + cutouts
+vs 0.3.24; paste DISABLE `[cros_lat]` from LEFT (`rx_buf@put` / underrun).
+
 ## [0.3.24] — 2026-09-24
 
 ### Firmware — B+H measurement on 0.3.23 baseline (no media change)

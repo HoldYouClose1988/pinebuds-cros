@@ -51,25 +51,30 @@ scid=dcid=`0x0b0e`, psm=`0x0033`, state=`OPEN`(9), mtu=`679`, cfg flags `0`
 | `cmd q→done` | 33× @ 1 ms then extra | same | Brief cmd until READY |
 | underrun / tx_fail | 0 / 0 | 0 / 0 | Clean TX |
 
-**LEFT / RX dump:** still needed (`role=GOOD/RX`, expect `DUMP @RX_STOP` +
-`rx_buf@put` / `play_buf@get`). Both pasted files were the **RIGHT** MAC.
+**LEFT / RX dump** (`role=GOOD/RX`, ~25 s / 497 frames, READY via pong):
 
-### Revised “other ~80 ms” (from TX + clap)
+| Hop | Result | Read |
+|-----|--------|------|
+| `recv→put` | n=497 **avg 0 ms** | Decode+put free |
+| `rx_buf@put` | **avg 102 ms** (0–190) | **Not** sitting at 200 ms floor — oscillates |
+| `play_buf@get` | avg 122 ms (0–230) | Same story from playback |
+| underrun | **20** (inaudible to tester) | Brief holes masked by repeat-last-PCM |
+
+### Revised delay model (B complete)
 
 ```
-~200 ms  RX jitter floor (still assumed; confirm with LEFT rx_buf@put)
-~ 50 ms  ADPCM frame period (clap can land anywhere in the frame)
-~ 25 ms  cap→send tick wait          ← measured
-~  0–2 ms BT queue / TX_HANDLED avg  ← measured, not the problem
-~ 45–70 ms remainder (air + decode + DMA + any RX depth above floor)
+~100–190 ms  RX buffer depth in practice (avg ~102; floor target 200, often drained)
+~ 50 ms      ADPCM frame period
+~ 25 ms      cap→send tick wait          ← measured RIGHT
+~  0–2 ms    BT queue / TX_HANDLED avg   ← measured RIGHT
+~ remainder  air + DMA + clap alignment
 ───────
-~322 ms  clap start→start (0.3.24)
+~322 ms      clap start→start (0.3.24)
 ```
 
-**Conclusion:** the non-jitter path is **not** stuck in L2CAP/BT queue. Reclaiming
-the ~25 ms tick wait (send-on-frame-complete) is the only TX-side cut left; 0.3.22’s
-10 ms poll tried that class of change and failed usability — any retry must be
-careful. Big remaining lever is still **delivery burstiness → floor depth** → **G**.
+**Conclusion:** non-jitter TX path is clean. RX depth **averages ~half the floor** with
+min=0 and 20 underruns / ~25 s — **bursty delivery**, not a stuck encode/BT queue.
+That is exactly what **G (sniff / link-policy lock)** targets.
 
 ---
 
@@ -128,9 +133,14 @@ disable, paste dump lines.
 
 **Risk:** More ACL load (danger zone given buffer=6). Small duty cycle only.
 
-### G. Link policy during CROS
+### G. Link policy during CROS — **v0.3.25**
 
 **Idea:** Ensure sniff is off / delayed while CROS enabled (SPP already blocks sniff; without Capture, does TWS enter sniff and burst?). Role-switch lock. Any BES “prefer throughput” knobs on the TWS ACL.
+
+**Shipped:** `cros_tws_is_enabled()` blocks sniff entry; on enable exit TWS sniff +
+`tws_sniff_block` + checker; log `link@` ACTIVE/SNIFF. **Note:** Capture-on LEFT
+dump already had sniff blocked and still saw underruns — G targets Capture-off;
+A/C still needed if Capture-on burstiness remains.
 
 **Why:** Sniff → bursty delivery → need deep jitter.
 
@@ -163,8 +173,8 @@ keep the log line for regressions.
 
 ## Suggested next (agreed order)
 
-1. **B+H** — **done** (TX hops + L2CAP basic). Still want one **LEFT RX** dump.  
-2. **G** — sniff / link-policy lock during CROS (**next code**).  
+1. **B+H** — **done** (RIGHT TX + LEFT RX + L2CAP basic).  
+2. **G** — sniff lock while CROS on — **v0.3.25**.  
 3. **A** — PLC so underruns are softer (then maybe revisit floor).  
 4. **C** — `HCI_NUM_ACL_BUFFERS` bump only if pool pressure is implicated.
 

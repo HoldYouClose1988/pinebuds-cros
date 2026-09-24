@@ -1,0 +1,23 @@
+--- a/services/app_ibrt/src/app_ibrt_if.cpp
++++ b/services/app_ibrt/src/app_ibrt_if.cpp
+@@ -53,6 +53,10 @@
+ #include "app_spp_tota.h"
+ #endif
+ 
++#if defined(CROS_STAGE_B)
++#include "cros_tws.h"
++#endif
++
+ 
+ extern struct BT_DEVICE_T app_bt_device;
+ 
+@@ -786,6 +790,9 @@
+ #ifdef TEST_OVER_THE_AIR_ENANBLED
+       || spp_tota_in_progress()
+ #endif
++#if defined(CROS_STAGE_B)
++      || cros_tws_is_enabled()
++#endif
+   ) {
+     TRACE(0, "ibrt_ui_log:sniff not allow\n");
+     return false;

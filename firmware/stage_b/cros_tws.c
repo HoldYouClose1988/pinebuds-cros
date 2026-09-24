@@ -1,12 +1,13 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.24 — B+H measurement on 0.3.23 baseline (no media timing change).
+ * v0.3.25 — G: sniff lock while CROS on (B+H measurement stays).
  ***************************************************************************/
 #include "cros_tws.h"
 
 #include "app_audio.h"
 #include "app_ibrt_customif_cmd.h"
+#include "app_tws_ibrt.h"
 #include "app_tws_if.h"
 #include "app_utils.h"
 #include "audioflinger.h"
@@ -24,8 +25,14 @@
 
 extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length);
 extern bool app_tws_ibrt_tws_link_connected(void);
+extern int app_ibrt_if_tws_sniff_block(uint32_t block_next_sec);
+extern int app_ibrt_if_sniff_checker_start(int user);
+extern int app_ibrt_if_sniff_checker_stop(int user);
 /* Do NOT call app_ibrt_cros_audio_send_now from osTimer — needs BT/ctrl
  * context. v0.2.6 did that and hung the TX (right) bud. */
+
+/* Mirror APP_IBRT_IF_SNIFF_CHECKER_USER_SPP (HFP=0, A2DP=1, SPP=2). */
+#define CROS_SNIFF_CHECKER_USER_SPP 2
 
 #ifndef CROS_POOR_IS_RIGHT
 #define CROS_POOR_IS_RIGHT 1
@@ -65,6 +72,11 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_JITTER_HEALTHY_MS 7500
 #define CROS_JITTER_HEALTHY_TICKS                                                  \
   ((CROS_JITTER_HEALTHY_MS + CROS_TICK_MS - 1) / CROS_TICK_MS) /* 150 @ 50 ms */
+/* Refresh sniff block while CROS is on (Capture already blocks via TOTA). */
+#define CROS_SNIFF_BLOCK_SEC 120
+#define CROS_SNIFF_REFRESH_MS 60000
+#define CROS_SNIFF_REFRESH_TICKS                                                   \
+  ((CROS_SNIFF_REFRESH_MS + CROS_TICK_MS - 1) / CROS_TICK_MS)
 #define CROS_RX_LOG_MASK 0x3F
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
@@ -91,6 +103,7 @@ static uint8_t rx_expect_seq;
 static bool rx_have_seq;
 static uint8_t jitter_target_frames;
 static uint16_t healthy_ticks;
+static uint16_t sniff_refresh_ticks;
 static uint32_t tx_frames;
 static uint32_t tx_extra;
 static uint32_t tx_cmd;
@@ -145,6 +158,49 @@ static void jitter_apply_extra_floor(void) {
     jitter_target_frames = floor;
     CROS_LOG(1, "[cros_tws] jitter floor=%u (extra media)", (unsigned)floor);
   }
+}
+
+static const char *link_mode_name(uint8_t mode) {
+  switch (mode) {
+  case IBRT_ACTIVE_MODE:
+    return "ACTIVE";
+  case IBRT_SNIFF_MODE:
+    return "SNIFF";
+  default:
+    return "?";
+  }
+}
+
+static void log_link_modes(const char *where) {
+  ibrt_ctrl_t *ctx = app_tws_ibrt_get_bt_ctrl_ctx();
+  if (!ctx) {
+    CROS_LOG(0, "[cros_tws] link@%s (no ibrt ctx)", where);
+    return;
+  }
+  CROS_LOG(0, "[cros_tws] link@%s tws=%s(%u) mobile=%s(%u)", where,
+        link_mode_name((uint8_t)ctx->tws_mode), (unsigned)ctx->tws_mode,
+        link_mode_name((uint8_t)ctx->mobile_mode), (unsigned)ctx->mobile_mode);
+}
+
+static void cros_sniff_lock_on(void) {
+  app_ibrt_if_tws_sniff_block(CROS_SNIFF_BLOCK_SEC);
+  app_ibrt_if_sniff_checker_start(CROS_SNIFF_CHECKER_USER_SPP);
+  if (app_tws_ibrt_tws_link_connected()) {
+    app_tws_ibrt_exit_sniff_with_tws();
+  }
+  sniff_refresh_ticks = 0;
+  CROS_LOG(0, "[cros_tws] sniff LOCK (block %us + exit_tws + checker)",
+        (unsigned)CROS_SNIFF_BLOCK_SEC);
+  log_link_modes("lock");
+}
+
+static void cros_sniff_lock_off(void) {
+  app_ibrt_if_sniff_checker_stop(CROS_SNIFF_CHECKER_USER_SPP);
+  /* Expire the timed block immediately. */
+  app_ibrt_if_tws_sniff_block(0);
+  sniff_refresh_ticks = 0;
+  CROS_LOG(0, "[cros_tws] sniff UNLOCK");
+  log_link_modes("unlock");
 }
 
 static int16_t clamp16(int32_t v) {
@@ -388,6 +444,13 @@ static void cros_tick(void const *arg) {
       healthy_ticks = 0;
     }
   }
+  /* Keep sniff block fresh while CROS is live (Capture-off case). */
+  sniff_refresh_ticks++;
+  if (sniff_refresh_ticks >= CROS_SNIFF_REFRESH_TICKS) {
+    sniff_refresh_ticks = 0;
+    app_ibrt_if_tws_sniff_block(CROS_SNIFF_BLOCK_SEC);
+    log_link_modes("refresh");
+  }
 }
 
 static void tick_start(void) {
@@ -525,6 +588,7 @@ static int apply_enabled(bool on) {
   if (on) {
     app_sysfreq_req(APP_SYSFREQ_USER_APP_0, APP_SYSFREQ_104M);
     af_set_priority(AF_USER_TEST, osPriorityHigh);
+    cros_sniff_lock_on();
 #ifdef ANC_APP
     if (app_anc_work_status()) {
       CROS_LOG(0, "[cros_tws] disabling ANC for FF mic access");
@@ -541,6 +605,7 @@ static int apply_enabled(bool on) {
 
   stop_tx();
   stop_rx();
+  cros_sniff_lock_off();
   app_sysfreq_req(APP_SYSFREQ_USER_APP_0, APP_SYSFREQ_32K);
   af_set_priority(AF_USER_TEST, osPriorityAboveNormal);
   return 0;
@@ -569,7 +634,7 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
-  CROS_LOG(1, "[cros_tws] init v0.3.24 probe B+H floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.25 sniff-lock G floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

@@ -20,6 +20,7 @@ ccflags-y += \
 	-Iservices/app_ibrt/inc \
 	-Iservices/app_tws/inc \
 	-Iservices/ibrt_core/inc \
+	-Iservices/ibrt_ui/inc \
 	-Iservices/multimedia/audio/codec/sbc/inc \
 	-Iservices/multimedia/audio/codec/sbc/src/inc \
 	-Iservices/tota \
