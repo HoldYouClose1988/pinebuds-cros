@@ -2,7 +2,7 @@
 
 **Baseline firmware:** **v0.3.23** (= v0.3.21) — floor 4 × 50 ms ADPCM on BESAUD extra L2CAP.  
 **Measurement build:** **v0.3.24** — same media path + hop timestamps (B) + L2CAP mode log (H).  
-**Measured:** clap **start→start ≈ 330 ms** (RIGHT mic → LEFT speaker).  
+**Measured:** clap **start→start ≈ 322 ms** (v0.3.24, Capture on, stable / no dropouts).  
 **Usability:** cutouts rare; brief ones only in hectic noise. DIY / not a hearing aid.
 
 This note is for **fresh eyes**: what we proved, what failed, where the delay lives, and ranked ideas that are *not* “thin the jitter floor again.”
@@ -33,22 +33,43 @@ Measure clap as **waveform start → output start**. Earlier “243 ms” was 
 | 0.3.20 | Back to 50 ms, floor 3 | **≈336 ms** | **~2 / s** | Floor 3 unusable |
 | **0.3.21 / 23** | **Floor 4 × 50 ms** | **≈330 ms** | Rare | **Baseline** |
 | 0.3.22 | 10 ms TX poll, same frames | ≈330 ms | Back / unusable | Poll ≠ delay; side effects |
+| **0.3.24** | **B+H probe only** | **≈322 ms** | **None while logging** | Measurement; media = 0.3.23 |
 
-**Failed for latency-with-usability:** thinner floor, shorter frames, faster send tick.
+## B+H results (v0.3.24 ear log)
 
-## Where ~330 ms goes (best current model)
+**H — L2CAP mode:** `ERTM_support=0`, `cfg_rfc=BASIC(0)`, CID `0x0b0e`,
+scid=dcid=`0x0b0e`, psm=`0x0033`, state=`OPEN`(9), mtu=`679`, cfg flags `0`
+→ **basic fixed-CID channel** (no ERTM / no CFG). Closed.
+
+**B — RIGHT / TX dump** (two sessions, same bud `…:2B:B7`, `role=POOR/TX`):
+
+| Hop | Session A (long) | Session B (shorter) | Read |
+|-----|------------------|---------------------|------|
+| `cap→send` | n=3217 **avg 25 ms** (0–50) | n=695 **avg 25 ms** (0–63) | Half of 50 ms tick — frame waits for send tick |
+| `extra q→bt` | avg **0 ms** (max 1) | avg **0 ms** (max 1) | BT-thread dispatch is free |
+| `extra bt→TX_HANDLED` | avg **0 ms** (max 69) | avg **2 ms** (max 159) | Stack accepts fast; rare ACL stalls |
+| `cmd q→done` | 33× @ 1 ms then extra | same | Brief cmd until READY |
+| underrun / tx_fail | 0 / 0 | 0 / 0 | Clean TX |
+
+**LEFT / RX dump:** still needed (`role=GOOD/RX`, expect `DUMP @RX_STOP` +
+`rx_buf@put` / `play_buf@get`). Both pasted files were the **RIGHT** MAC.
+
+### Revised “other ~80 ms” (from TX + clap)
 
 ```
-~200 ms  RX jitter floor (required for usable extra under bursty ACL)
-~ 50 ms  ADPCM frame period (capture aggregation)
-~ 80 ms  “other” (encode, BT-thread queue, air, playback DMA, alignment)
+~200 ms  RX jitter floor (still assumed; confirm with LEFT rx_buf@put)
+~ 50 ms  ADPCM frame period (clap can land anywhere in the frame)
+~ 25 ms  cap→send tick wait          ← measured
+~  0–2 ms BT queue / TX_HANDLED avg  ← measured, not the problem
+~ 45–70 ms remainder (air + decode + DMA + any RX depth above floor)
 ───────
-~330 ms  clap start→start
+~322 ms  clap start→start (0.3.24)
 ```
 
-So most delay is **intentional buffering**, not a missing “send sooner” optimization. Until delivery is less bursty (or underruns are inaudible), cutting the floor recreates cutouts.
-
-**SDK pressure:** `HCI_NUM_ACL_BUFFERS` is only **6** in this tree — extra ADPCM + any other classic ACL (including quiet-but-open SPP) share a tiny pool. Plausible contributor to burstiness / death-under-log-spam.
+**Conclusion:** the non-jitter path is **not** stuck in L2CAP/BT queue. Reclaiming
+the ~25 ms tick wait (send-on-frame-complete) is the only TX-side cut left; 0.3.22’s
+10 ms poll tried that class of change and failed usability — any retry must be
+careful. Big remaining lever is still **delivery burstiness → floor depth** → **G**.
 
 ---
 
@@ -142,8 +163,8 @@ keep the log line for regressions.
 
 ## Suggested next (agreed order)
 
-1. **B+H** — flash v0.3.24, collect `[cros_lat]` + L2CAP mode lines (H largely done).  
-2. **G** — sniff / link-policy lock during CROS (if B shows delivery burstiness, not TX queue).  
+1. **B+H** — **done** (TX hops + L2CAP basic). Still want one **LEFT RX** dump.  
+2. **G** — sniff / link-policy lock during CROS (**next code**).  
 3. **A** — PLC so underruns are softer (then maybe revisit floor).  
 4. **C** — `HCI_NUM_ACL_BUFFERS` bump only if pool pressure is implicated.
 
