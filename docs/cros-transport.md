@@ -54,17 +54,18 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
 | Quiet clear on remote stop | 0.3.17 | Small correctness fix |
 
-**Next:** start-to-start clap on v0.3.20 (50 ms + floor3). Then faster TX drain tick (10 ms) without thinning jitter floor.
+**Next:** confirm v0.3.21 walk stability + start→start clap. Then latency via **TX drain tick** (10 ms) or similar — **not** a thinner jitter floor.
 
-**Open:** underrun storms / random 0.2–0.3 s cutouts; elevated jitter inflates clap delay.
+**Open:** random cutouts when floor &lt; 4; underrun storms at max jitter.
 
 **Latency budget (clap start→start unless noted):**
-| Build | Lever | Clap |
-|-------|-------|------|
-| 0.3.17 | floor 4 × 50 ms | ≈376 ms (method unclear) |
-| 0.3.18 | floor 3 × 50 ms | ≈243 ms (likely misaligned) |
-| 0.3.19 | floor 3 × 40 ms | ≈**323 ms** start→start; more cutouts |
-| 0.3.20 | floor 3 × 50 ms | (pending start→start) |
+| Build | Lever | Clap | Notes |
+|-------|-------|------|-------|
+| 0.3.17 | floor 4 × 50 ms | ≈376 ms | method unclear; smoothish |
+| 0.3.18 | floor 3 × 50 ms | ≈243 ms | likely misaligned |
+| 0.3.19 | floor 3 × 40 ms | ≈323 ms | more cutouts |
+| 0.3.20 | floor 3 × 50 ms | ≈336 ms | ~2 dropouts/s — too thin |
+| 0.3.21 | floor 4 × 50 ms | (pending) | stabilize |
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 

@@ -6,6 +6,19 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.21] — 2026-09-24
+
+### Firmware — stabilize (restore extra jitter floor 4)
+- **v0.3.20** (floor3 × 50 ms): start→start clap ≈ **336 ms**, dropouts **~2 / s**
+- Floor 3 is too thin for this RF/path — underruns grow jitter and chop dominates
+- **This build:** `CROS_EXTRA_JITTER_MIN_FRAMES` **3 → 4** (200 ms); 50 ms frames
+  unchanged. Same media settings as the last known “mostly smooth” era (0.3.16–17)
+- Next latency work should **not** thin the floor; prefer TX scheduling / other levers
+
+### Test
+Confirm `init v0.3.21 floor4 stable`. Walk 30 s — cutouts should drop sharply.
+Clap start→start for the stable-path delay number.
+
 ## [0.3.20] — 2026-09-24
 
 ### Firmware — remeasure baseline (revert 40 ms frames)

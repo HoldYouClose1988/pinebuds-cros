@@ -1,8 +1,8 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.20 — revert 50 ms frames; remeasure clap start-to-start (0.3.19 ≈323 ms).
- *  40 ms increased cutout rate (~3 / 10 s); leave floor=3; establish true baseline.
+ * v0.3.21 — restore extra jitter floor 4 (floor 3 dropouts ~2/s @ 0.3.20).
+ *  Clap start→start on 0.3.20 ≈336 ms; stabilize first, then other latency levers.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -51,8 +51,8 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 /* Cmd-path jitter (also used before extra READY). */
 #define CROS_JITTER_MIN_FRAMES 2 /* 100 ms */
 #define CROS_JITTER_MAX_FRAMES 4 /* 200 ms */
-/* Extra floor=3 (150 ms). Remeasure latency start-to-start before more cuts. */
-#define CROS_EXTRA_JITTER_MIN_FRAMES 3 /* 150 ms floor */
+/* Extra floor=4 (200 ms). Floor 3 caused ~2 dropouts/s (0.3.20); stabilize. */
+#define CROS_EXTRA_JITTER_MIN_FRAMES 4 /* 200 ms floor */
 #define CROS_EXTRA_JITTER_MAX_FRAMES 8 /* 400 ms */
 #define CROS_TICK_MS 50
 #define CROS_RX_LOG_MASK 0x3F
@@ -545,7 +545,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.20 50ms+floor3 start-to-start (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.21 floor4 stable (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
