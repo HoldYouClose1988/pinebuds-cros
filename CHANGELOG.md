@@ -6,6 +6,20 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.19] — 2026-09-24
+
+### Firmware — latency lever (frame period)
+- **v0.3.18 clap ≈243 ms** (was 376 ms @ floor4) — floor 4→3 worked
+- Walk test mostly smooth; occasional &lt;0.2 s cutouts. One underrun storm
+  (`threshold 50…650`, `jitter=8`) then SPP closed — possibly fan/RF; not
+  reproduced. **Do not thin floor further** while maxed jitter still cliffs.
+- **This build:** ADPCM / tick **50 ms → 40 ms** (640 samples @ 16 kHz); keep
+  extra jitter floor **3 frames** (=120 ms). Expect ~30–40 ms less delay if
+  frame period + floor-ms both shrink; watch chop / underrun thresholds
+
+### Test
+Confirm `init v0.3.19 latency 40ms-frame`. Clap ms vs 243; note cutouts.
+
 ## [0.3.18] — 2026-09-24
 
 ### Firmware — latency lever (extra jitter floor)

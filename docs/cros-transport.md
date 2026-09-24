@@ -54,11 +54,16 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
 | Quiet clear on remote stop | 0.3.17 | Small correctness fix |
 
-**Next:** measure clap after v0.3.18 (floor 3). Further levers: floor 2, shorter ADPCM frame, codec — one at a time.
+**Next:** clap after v0.3.19 (40 ms frames). Further: 30 ms frames, floor 2 (riskier), codec — one at a time.
 
-**Open:** rare one-off chop without RX underrun-threshold telemetry; watch on future RX-logged runs.
+**Open:** underrun storms when jitter already at max (RF / loud continuous noise?); rare one-off chop.
 
-**Latency budget (approx, extra path):** frame period 50 ms + RX jitter floor (was 200 ms @4, now 150 ms @3) + encode/TX/air/playback. v0.3.17 clap **≈376 ms** aligns with floor-dominated delay.
+**Latency budget (measured):**
+| Build | Lever | Clap |
+|-------|-------|------|
+| 0.3.17 | floor 4 × 50 ms | ≈376 ms |
+| 0.3.18 | floor 3 × 50 ms | ≈243 ms |
+| 0.3.19 | floor 3 × 40 ms | (pending) |
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 
