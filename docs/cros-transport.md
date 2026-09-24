@@ -54,7 +54,9 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
 | Quiet clear on remote stop | 0.3.17 | Small correctness fix |
 
-**Next:** confirm v0.3.21 walk stability + start→start clap. Then latency via **TX drain tick** (10 ms) or similar — **not** a thinner jitter floor.
+**Baseline:** **v0.3.21** — floor 4 × 50 ms frames (usable stability).
+
+**Next / now:** v0.3.22 — **10 ms TX poll** on that baseline (not shorter frames). Stuck/healthy timeouts are ms-based so the watchdog stays ~200 ms.
 
 **Open:** random cutouts when floor &lt; 4; underrun storms at max jitter.
 
@@ -62,10 +64,9 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Build | Lever | Clap | Notes |
 |-------|-------|------|-------|
 | 0.3.17 | floor 4 × 50 ms | ≈376 ms | method unclear; smoothish |
-| 0.3.18 | floor 3 × 50 ms | ≈243 ms | likely misaligned |
-| 0.3.19 | floor 3 × 40 ms | ≈323 ms | more cutouts |
-| 0.3.20 | floor 3 × 50 ms | ≈336 ms | ~2 dropouts/s — too thin |
-| 0.3.21 | floor 4 × 50 ms | (pending) | stabilize |
+| 0.3.18–20 | floor 3 … | 243–336 ms | floor 3 too thin / misaligned |
+| 0.3.21 | floor 4 × 50 ms | (stable baseline) | restore floor |
+| 0.3.22 | + 10 ms TX tick | (pending) | same frames; ms stuck timeout |
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 

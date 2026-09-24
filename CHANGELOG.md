@@ -6,6 +6,20 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.22] — 2026-09-24
+
+### Firmware — faster TX poll on 0.3.21 baseline
+- **Baseline:** v0.3.21 = floor **4** × **50 ms** frames (stability). Not thinning floor.
+- **This build:** send/jitter tick **50 ms → 10 ms**; frame contents still **50 ms**
+  ADPCM (same packet rate). Drains `latest_ready` sooner after capture fills.
+- **Stuck watchdog is wall-clock:** `CROS_TX_STUCK_MS=200` → tick count scales with
+  `CROS_TICK_MS` (was raw `4` ticks = 200 ms @50 ms; would have become 40 ms @10 ms
+  and spuriously force-clear busy sends). Same for jitter healthy shrink (~7.5 s).
+
+### Test
+Confirm `init v0.3.22 tick10ms floor4`. Compare cutouts to 0.3.21; clap start→start
+(expect modest improvement if dispatch wait mattered, not a 0.3.19-style regression).
+
 ## [0.3.21] — 2026-09-24
 
 ### Firmware — stabilize (restore extra jitter floor 4)
