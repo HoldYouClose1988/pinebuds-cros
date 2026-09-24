@@ -54,16 +54,17 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Quiet SPP during extra | **0.3.16** | Capture on + stable extra (validated) |
 | Quiet clear on remote stop | 0.3.17 | Small correctness fix |
 
-**Next:** clap after v0.3.19 (40 ms frames). Further: 30 ms frames, floor 2 (riskier), codec — one at a time.
+**Next:** start-to-start clap on v0.3.20 (50 ms + floor3). Then faster TX drain tick (10 ms) without thinning jitter floor.
 
-**Open:** underrun storms when jitter already at max (RF / loud continuous noise?); rare one-off chop.
+**Open:** underrun storms / random 0.2–0.3 s cutouts; elevated jitter inflates clap delay.
 
-**Latency budget (measured):**
+**Latency budget (clap start→start unless noted):**
 | Build | Lever | Clap |
 |-------|-------|------|
-| 0.3.17 | floor 4 × 50 ms | ≈376 ms |
-| 0.3.18 | floor 3 × 50 ms | ≈243 ms |
-| 0.3.19 | floor 3 × 40 ms | (pending) |
+| 0.3.17 | floor 4 × 50 ms | ≈376 ms (method unclear) |
+| 0.3.18 | floor 3 × 50 ms | ≈243 ms (likely misaligned) |
+| 0.3.19 | floor 3 × 40 ms | ≈**323 ms** start→start; more cutouts |
+| 0.3.20 | floor 3 × 50 ms | (pending start→start) |
 
 ## Prior art (web / GitHub survey, 2026-09-22)
 

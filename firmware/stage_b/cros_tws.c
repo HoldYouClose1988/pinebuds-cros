@@ -1,8 +1,8 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.19 — latency: 50→40 ms ADPCM frames (keep extra jitter floor 3).
- *  v0.3.18 clap ≈243 ms; underrun storm at jitter=8 — do not thin floor further.
+ * v0.3.20 — revert 50 ms frames; remeasure clap start-to-start (0.3.19 ≈323 ms).
+ *  40 ms increased cutout rate (~3 / 10 s); leave floor=3; establish true baseline.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -34,11 +34,11 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_SAMPLE_RATE AUD_SAMPRATE_16000
 #define CROS_BITS AUD_BITS_16
 #define CROS_CAP_SAMPLES 160   /* 10 ms capture quantum */
-#define CROS_FRAME_SAMPLES 640 /* 40 ms packet @ 16 kHz */
+#define CROS_FRAME_SAMPLES 800 /* 50 ms packet @ 16 kHz */
 #define CROS_FRAME_BYTES (CROS_FRAME_SAMPLES * 2)
-#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2) /* 320 */
+#define CROS_ADPCM_BYTES (CROS_FRAME_SAMPLES / 2) /* 400 */
 #define CROS_HDR_BYTES 5
-#define CROS_PKT_BYTES (CROS_HDR_BYTES + CROS_ADPCM_BYTES) /* 325 < 672 */
+#define CROS_PKT_BYTES (CROS_HDR_BYTES + CROS_ADPCM_BYTES) /* 405 < 672 */
 #define CROS_DMA_BYTES (CROS_CAP_SAMPLES * 2 * 2)
 #define CROS_RING_BYTES (CROS_FRAME_BYTES * 12)
 
@@ -49,13 +49,12 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 #define CROS_PKT_MAGIC 0xA5
 
 /* Cmd-path jitter (also used before extra READY). */
-#define CROS_JITTER_MIN_FRAMES 2 /* 80 ms @ 40 ms frames */
-#define CROS_JITTER_MAX_FRAMES 4 /* 160 ms */
-/* Extra: keep floor=3 frames (120 ms @ 40 ms). v0.3.18 thinned ms via floor;
- * next latency win is shorter frames — underrun cliff already hit at max=8. */
-#define CROS_EXTRA_JITTER_MIN_FRAMES 3 /* 120 ms floor */
-#define CROS_EXTRA_JITTER_MAX_FRAMES 8 /* 320 ms */
-#define CROS_TICK_MS 40
+#define CROS_JITTER_MIN_FRAMES 2 /* 100 ms */
+#define CROS_JITTER_MAX_FRAMES 4 /* 200 ms */
+/* Extra floor=3 (150 ms). Remeasure latency start-to-start before more cuts. */
+#define CROS_EXTRA_JITTER_MIN_FRAMES 3 /* 150 ms floor */
+#define CROS_EXTRA_JITTER_MAX_FRAMES 8 /* 400 ms */
+#define CROS_TICK_MS 50
 #define CROS_RX_LOG_MASK 0x3F
 
 static uint8_t capture_dma_buf[CROS_DMA_BYTES];
@@ -424,7 +423,7 @@ static int start_tx(void) {
   tx_running = true;
   tx_frames = tx_extra = tx_cmd = tx_drops = 0;
   tick_start();
-  CROS_LOG(0, "[cros_tws] TX START (40ms ADPCM; cmd until peer READY)");
+  CROS_LOG(0, "[cros_tws] TX START (50ms ADPCM; cmd until peer READY)");
   return 0;
 }
 
@@ -472,7 +471,7 @@ static int start_rx(void) {
   rx_running = true;
   rx_pkts = underruns = rx_drops = rx_resyncs = 0;
   tick_start();
-  CROS_LOG(0, "[cros_tws] RX START (40ms cmd until PONG, jitter %u-%u)",
+  CROS_LOG(0, "[cros_tws] RX START (50ms cmd until PONG, jitter %u-%u)",
         (unsigned)CROS_JITTER_MIN_FRAMES, (unsigned)CROS_JITTER_MAX_FRAMES);
   return 0;
 }
@@ -546,7 +545,7 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.19 latency 40ms-frame (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.20 50ms+floor3 start-to-start (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

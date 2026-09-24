@@ -19,7 +19,7 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 | **Phone logs** | TOTA SPP (`TOTA=1`) + [android/cros-log](android/cros-log/); auto-quiets during extra media so logging does not kill the pipe |
 | **Industrial damp** | Not implemented (research docs only) |
 
-**Ear-validated (v0.3.16+):** multi-minute runs with Capture on. Clap glass-to-glass: **v0.3.17 ≈376 ms** → **v0.3.18 ≈243 ms** (jitter floor 4→3). **v0.3.19** shortens the ADPCM frame 50→40 ms (next latency lever). Occasional short cutouts possible.
+**Ear-validated (v0.3.16+):** multi-minute runs with Capture on. Clap **start→start**: v0.3.19 (40 ms frames) ≈ **323 ms** with ~3 short cutouts / 10 s. Earlier 243 ms figure was likely misaligned. **v0.3.20** reverts to 50 ms frames + floor3 for a clean baseline remasure.
 
 Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap either bud toggles CROS (needs TWS link).
 

@@ -6,6 +6,20 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.20] — 2026-09-24
+
+### Firmware — remeasure baseline (revert 40 ms frames)
+- **v0.3.19:** start-to-start clap ≈ **323 ms**; ~3 cutouts / 10 s (0.2–0.3 s each).
+  Prior 243 ms figure likely wrong alignment; use **clap-start → output-start** only.
+- 40 ms frames did not help delay and chop felt worse — **revert to 50 ms** ADPCM /
+  tick; keep extra jitter floor **3** (same as 0.3.18 media path)
+- Goal: start-to-start clap on this build as the true floor3×50 ms baseline before
+  the next lever (e.g. faster TX tick, not thinner floor)
+
+### Test
+Confirm `init v0.3.20 50ms+floor3 start-to-start`. Clap **start→start**; count
+cutouts over ~30 s walk.
+
 ## [0.3.19] — 2026-09-24
 
 ### Firmware — latency lever (frame period)

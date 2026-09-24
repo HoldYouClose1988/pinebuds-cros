@@ -2,14 +2,15 @@
 
 > **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product.
 
-**Current version: v0.3.19**
+**Current version: v0.3.20**
 
-Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.19.zip](./pinebuds-cros-v0.3.19.zip)**.
+Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.20.zip](./pinebuds-cros-v0.3.20.zip)**.
 
 Each zip includes `bestool.exe`, `BESTOOL.md`, `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps.
 
 | Package | Version |
 |---------|---------|
+| [pinebuds-cros-v0.3.20.zip](./pinebuds-cros-v0.3.20.zip) | v0.3.20 |
 | [pinebuds-cros-v0.3.19.zip](./pinebuds-cros-v0.3.19.zip) | v0.3.19 |
 | [pinebuds-cros-v0.3.18.zip](./pinebuds-cros-v0.3.18.zip) | v0.3.18 |
 | [pinebuds-cros-v0.3.17.zip](./pinebuds-cros-v0.3.17.zip) | v0.3.17 |
