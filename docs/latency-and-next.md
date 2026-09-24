@@ -177,11 +177,48 @@ keep the log line for regressions.
 
 ### I. Long shots (parked unless A–H stall)
 
-- Private dynamic PSM media channel  
+- Private dynamic PSM media channel (surveyed; higher risk than deferred extra)  
 - 8 kHz capture (less ACL, worse quality)  
-- SCO between buds (previously dismissed)  
 - Phone relay (usually worse latency)  
-- Vendor isochronous / ECC test paths (not app media APIs)
+- Vendor isochronous / ECC test paths (not app media APIs)  
+- Other L2CAP CIDs / custom IBRT cmds — **exhausted** (only extra CID is `0x0b0e`; cmd enum has Fast Pair / VA stubs only)
+
+### J. `RFCOMM_CHANNEL_BES_OTA` (ch 4) — **checked; not a latency lever**
+
+**Claude lead:** second named RFCOMM channel next to TOTA, same “defined but unclaimed” shape as extra L2CAP.
+
+**SDK check (open_source build):**
+- Enum + `BTIF_APP_SPP_SERVER_BES_OTA_ID` in `app_spp.h`; IBRT UI stub case only.
+- `ota_spp.h` present; **no** `ota_spp.c` in tree; `OTA_ENABLE ?= 0`.
+- Nothing registers `RFCOMM_CHANNEL_BES_OTA` as a live SPP service in this config.
+
+**Verdict:** Cheapest discovery claim is true — channel is unclaimed here. But RFCOMM still rides **classic ACL best-effort** (same contention class as TOTA / extra). Hijacking it for CROS media would not buy reserved delivery and would fight IBRT profile sync. **Do not flash for latency.** Keep as “free serial ID if we ever need a second phone SPP.”
+
+### K. SCO/eSCO bud↔bud — **upgrade from parked; real API, unproven path**
+
+**Earlier dismissal** (“phone HFP / sniffer path”) was partly **assumed-hard**, not a measured blocker.
+
+**What exists:**
+- Controller/LMP: `lmp_esco_link_req`, `ESCO_ENABLE`, `NUM_SCO_CONNS=2`.
+- Host API (closed `.a`, headers open): `sco_open_link(bdaddr, …)` / `sco_register_link` — **arbitrary BDADDR**, not HFP-only.
+- HFP path: `hf_createSCO`; IBRT sniffer hooks for **phone** SCO (`btapp_sniffer_sco_start`, etc.).
+
+**Why it matters:** eSCO is timeslot-reserved voice — the scheduling property ACL lacks. That matches the measured bottleneck (`rx_buf@put` 0–190 ms burstiness).
+
+**Unknowns / risks:** No open bud↔bud caller. IBRT may refuse SCO on the TWS ACL. PCM/AF path is wired for HFP sniffer, not peer mic. CVSD/mSBC quality + phone-call conflict. Medium–high brick risk.
+
+**Smallest probe (later):** With mobile disconnected, `sco_open_link(tws_peer)` once; log OPEN/CLOSED only; **no** audio until both sides open. Abort if TWS drops.
+
+### L. Parallel BLE between buds — **no idle link; VOB sample exists**
+
+**Claude lead:** dual-mode chip; maybe an idle bud↔bud BLE/GATT already up.
+
+**SDK check:**
+- TWS BLE NV is **address/IRK exchange** for phone-facing identity (`nv_record_tws_*ble*`), not a live peer BLE connection.
+- `snoop_via_ble_enable = false` in this UI config.
+- Open sample: `services/ble_app/app_vob/voice_over_ble.c` (`__VOICE_OVER_BLE_ENABLED__`) — SRC↔DST encoded voice over BLE datapath; flag **off** in open builds.
+
+**Verdict:** No free idle BLE pipe today. Standing one up is a second radio (see cros-transport VOB). Different failure mode than ACL burstiness; still high coexist risk with IBRT. Keep as long-shot **after** A / before or beside K.
 
 ---
 
@@ -192,14 +229,18 @@ keep the log line for regressions.
 3. **C** — ACL header bump **blocked** (closed `.a`).  
 3′. **C′** — A2DP suspend — optional only (`CROS_SUSPEND_A2DP=1`); not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** (stop SPP-teeing thresholds mid-storm).  
-4. **A** — PLC if PC-speaker / quiet-room underruns remain after 0.3.27.
+4. **A** — PLC if PC-speaker / quiet-room underruns remain after 0.3.27.  
+5. **K** — SCO/eSCO bud↔bud probe (only if A isn’t enough / latency still the goal).  
+6. **L** — VOB / peer BLE (bench first, TWS unpaired).  
+— **J** — BES_OTA RFCOMM: research closed; not a media path.
 
 ## Suggested review questions
 
 1. Is the ~200 ms floor diagnosis right, or is burstiness fixable enough to run floor 2–3 cleanly?  
 2. After B dumps: is the non-jitter “other” mostly tick wait (~0–50 ms), BT queue, or RX buffer?  
 3. Any BES/OpenPineBuds prior art for non-control BESAUD extra *with* real-time media?  
-4. Is bumping `HCI_NUM_ACL_BUFFERS` known-safe on BES2300YP / PineBuds?
+4. Is bumping `HCI_NUM_ACL_BUFFERS` known-safe on BES2300YP / PineBuds? *(Answer for this tree: header-only; pool is in closed `.a`.)*  
+5. Has anyone opened `sco_open_link` to the **TWS peer** (not the phone) on BES2300 / IBRT?
 
 ## How to help
 

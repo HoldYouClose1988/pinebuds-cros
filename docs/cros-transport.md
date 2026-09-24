@@ -82,11 +82,20 @@ Full lever scorecard, failed experiments, and **ranked next ideas** (PLC, ACL bu
 
 ## Non-starters (confirmed)
 
-- SCO/eSCO between buds (phone call sniffer path)
 - Feeding mic PCM into A2DP SBC store APIs
 - Calling `app_ibrt_send_cmd_without_rsp` / `send_now` from osTimer
 - More cmd-path micro-tuning (usable fallback only)
 - Chatty TOTA SPP **while** full-rate extra ADPCM (kills the link; quiet mode required)
+- Extra L2CAP CIDs beyond `0x0b0e` / leftover custom cmds (exhausted)
+- `RFCOMM_CHANNEL_BES_OTA` as a CROS media pipe (unclaimed here, but still best-effort ACL)
+
+## Soft / revisit (not confirmed dead)
+
+- **SCO/eSCO bud↔bud:** earlier “phone HFP only” was partly assumed. Host still exports
+  `sco_open_link(bdaddr)` (closed `.a`). No open peer caller; IBRT may refuse. See
+  [latency-and-next.md](latency-and-next.md) §K before retrying.
+- **Parallel BLE / voice-over-BLE:** no idle bud↔bud BLE link in this build; VOB sample
+  exists with flag off (§L).
 
 ## Historical options survey
 
@@ -179,7 +188,7 @@ No other proprietary PSMs or extra CIDs appear in open headers. Dynamic PSM regi
 | Path | Why not |
 |------|---------|
 | `app_tws_ibrt_audio_sync_*` / A2DP store | Phone ACL sniff + sync; not mic relay |
-| SCO/eSCO | Phone HFP path |
+| SCO/eSCO | Phone HFP + sniffer today; `sco_open_link(peer)` untried — see latency §K |
 | TOTA / `through_put` / BLE datapath alone | Phone-centric; through_put rides AI/BLE cmds |
 | ISO/CIS / LE Audio | `BLE_AUDIO` stubs only; no bud↔bud CIS |
 | `btsnoop` / `btif_me_write_dbg_sniffer` | Capture/debug, not a payload pipe |
