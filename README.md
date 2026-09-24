@@ -10,7 +10,7 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.26)
+## Current status (v0.3.27)
 
 | Mode | Status |
 |------|--------|
@@ -21,12 +21,12 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 
 ### Usable baseline + experiment flashes
 
-**v0.3.23** media baseline · **v0.3.24** B+H · **v0.3.25** sniff lock · **v0.3.26** A2DP-suspend coexist.
+**v0.3.23** media · **v0.3.24** B+H · **v0.3.25** sniff lock · **v0.3.27** quiet underrun (skip 0.3.26).
 
 | Metric | Result |
 |--------|--------|
 | Clap delay (start→start) | ≈ **322–330 ms** |
-| Cutouts | Rare without A2DP; **storm with LEFT+video** on ≤0.3.25 (0.3.26 pauses A2DP) |
+| Cutouts | Rare in quiet; **storm on 0.3.25** LEFT master during PC-speaker walk (not BT A2DP) |
 | Capture logs + CROS | OK if quiet mode engages after READY |
 
 ### Latency levers already tried (do not repeat blindly)

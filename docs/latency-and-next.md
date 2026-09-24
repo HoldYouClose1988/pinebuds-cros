@@ -109,17 +109,15 @@ disable, paste dump lines.
 resize `hci_rx_acl_buff` / host pools. Tried and reverted. True bump needs a
 rebuildable stack or a different vendor API.
 
-**Why still relevant:** Pool exhaustion / FC stalls under **A2DP + extra CROS**
-remain the leading theory for the 0.3.25 LEFT+video storm.
+**Why still relevant:** Pool exhaustion / FC stalls under load remain a theory for
+bursty `rx_buf@put` — but the 0.3.25 LEFT storm was **PC speakers** (acoustic
+test), **not** phone A2DP to the buds. Do not treat A2DP as the proven cause.
 
-**Workaround shipped in v0.3.26:** suspend A2DP while CROS is enabled (see below).
+### C′. Suspend A2DP while CROS on — **optional; not default**
 
-### C′. Suspend A2DP while CROS on — **v0.3.26**
-
-**Shipped:** if `a2dp_is_music_ongoing()` at CROS enable → suspend stream + stop
-local SBC. Frees mobile ACL airtime for TWS extra. User presses play after DISABLE.
-
-**Risk:** Low–medium (UX: video pauses). Correct for DIY CROS priority.
+**Mis-shipped in v0.3.26** after reading “video” as BT A2DP. **v0.3.27** defaults
+`CROS_SUSPEND_A2DP=0`. Build with `=1` only if you actually stream music to the
+buds and want pause-on-CROS.
 
 ### D. Finer frames with **same ms of jitter** (chop fix, not delay cut)
 
@@ -151,11 +149,14 @@ local SBC. Frees mobile ACL airtime for TWS extra. User presses play after DISAB
 
 **Shipped:** sniff lock while CROS on. Logs show `tws=ACTIVE` / `mobile=ACTIVE`.
 
-**0.3.25 ear (LEFT master + video):** underrun storm (`underrun=1757` / `rx=1928`,
-`jitter=8`, `rx_buf@put` avg 88 ms) while link stayed ACTIVE. **No delay increase.**
-**Did not stop video cutouts** — next lever is **C** (ACL pool).
+**0.3.25 ear (LEFT master, PC-speaker walk):** underrun storm (`underrun=1757` /
+`rx=1928`, `jitter=8`, `rx_buf@put` avg 88 ms) while link stayed ACTIVE.
+**No delay increase.** Sniff lock did not stop the cutouts.
 
-**Why:** Sniff → bursty delivery → need deep jitter.
+**v0.3.27:** underrun-threshold lines are `CROS_LOG_STAT` (UART-only in quiet) so
+SPP does not tee 50…1750 mid-storm. Retest PC-speaker walk before blaming ACL.
+
+**Why:** Sniff → bursty delivery → need deep jitter. G removed that variable.
 
 **Risk:** Battery. Need logs of sniff entry around cutouts.
 
@@ -187,10 +188,11 @@ keep the log line for regressions.
 ## Suggested next (agreed order)
 
 1. **B+H** — **done**.  
-2. **G** — **done** (ACTIVE; not the video cutout fix).  
+2. **G** — **done** (ACTIVE; not the PC-speaker cutout fix).  
 3. **C** — ACL header bump **blocked** (closed `.a`).  
-3′. **C′** — A2DP suspend while CROS — **v0.3.26**.  
-4. **A** — PLC if quiet-room underruns remain.
+3′. **C′** — A2DP suspend — optional only (`CROS_SUSPEND_A2DP=1`); not the 0.3.25 cause.  
+3″. **Quiet underrun** — **v0.3.27** (stop SPP-teeing thresholds mid-storm).  
+4. **A** — PLC if PC-speaker / quiet-room underruns remain after 0.3.27.
 
 ## Suggested review questions
 

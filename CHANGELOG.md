@@ -6,22 +6,26 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
-## [0.3.26] — 2026-09-24
+## [0.3.27] — 2026-09-24
 
-### Firmware — A2DP suspend while CROS on (video coexist)
-- **Same media + G sniff lock** as v0.3.25.
-- **0.3.25 ear:** LEFT master + **video** → underrun storm (`1757` / `1928` rx,
-  `jitter=8`) while sniff stayed **ACTIVE**. G is fine; not the lever.
-- **C (ACL buffers 6→8) blocked:** BT stack is closed `.a`; changing
-  `HCI_NUM_ACL_BUFFERS` in headers does not resize the pool. Not shipped.
-- **This build:** on CROS enable, if A2DP is streaming → `app_a2dp_suspend_stream`
-  + local SBC stop. Log `A2DP streaming — suspend for CROS`. After DISABLE, press
-  play on the phone to resume (we do not auto-resume).
+### Firmware — correct 0.3.26 misread; quiet underrun SPP tee
+- **Clarification:** 0.3.25 “video” cutouts were **PC speakers** (acoustic test),
+  **not** Bluetooth A2DP to the buds. A2DP-suspend was the wrong lever.
+- **Default:** `CROS_SUSPEND_A2DP=0` (optional `=1` if you really stream to buds).
+- **Quiet harden:** `underrun threshold` lines use `CROS_LOG_STAT` (UART only while
+  quiet). 0.3.25 LEFT storm teed thresholds 50…1750 over SPP mid-media — that can
+  amplify ACL contention. Same media + G sniff lock otherwise.
 
 ### Test
-Confirm `init v0.3.26 A2DP-suspend+G`. Start video, enable CROS — video should
-**pause**; cutouts should drop. DISABLE → press play. Paste logs with
-`A2DP streaming — suspend` / `A2DP idle`.
+Confirm `init v0.3.27 quiet-underrun+G`. PC-speaker walk like 0.3.25 — Capture on
+OK. Expect **no** `underrun threshold` on phone during quiet (UART only). Compare
+cutouts / DISABLE `underrun=` count vs 0.3.25.
+
+## [0.3.26] — 2026-09-24
+
+### Firmware — A2DP suspend while CROS on (video coexist) — **superseded**
+- Built on a misread of “video” as BT A2DP. **Skip; use 0.3.27.**
+- Kept in history: optional `CROS_SUSPEND_A2DP=1` remains for real A2DP coexist.
 
 ## [0.3.25] — 2026-09-24
 
@@ -35,8 +39,9 @@ Confirm `init v0.3.26 A2DP-suspend+G`. Start video, enable CROS — video should
 - Log `[cros_tws] sniff LOCK/UNLOCK` + `link@… tws=/mobile=` (ACTIVE vs SNIFF).
 
 ### Test / result (0.3.25)
-Sniff lock worked (`tws=ACTIVE` throughout). **No delay increase.** Cutouts with
-**LEFT master + video** — underrun storm; not a sniff issue → A2DP coexist next.
+Sniff lock worked (`tws=ACTIVE`). **No delay increase.** Cutouts with LEFT master
+while testing against **PC speakers** (not BT video) — underrun storm
+(`1757`/`1928`, `jitter=8`); SPP still teed underrun thresholds while quiet.
 
 ## [0.3.24] — 2026-09-24
 

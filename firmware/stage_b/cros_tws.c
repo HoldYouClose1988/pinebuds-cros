@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.26 — suspend A2DP while CROS on (video/ACL coexist); keep G+B.
+ * v0.3.27 — A2DP-suspend off (misread); underrun logs UART-only while quiet.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -28,13 +28,22 @@ extern bool app_tws_ibrt_tws_link_connected(void);
 extern int app_ibrt_if_tws_sniff_block(uint32_t block_next_sec);
 extern int app_ibrt_if_sniff_checker_start(int user);
 extern int app_ibrt_if_sniff_checker_stop(int user);
-extern int cros_a2dp_music_ongoing(void);
-extern void cros_a2dp_suspend_for_cros(void);
 /* Do NOT call app_ibrt_cros_audio_send_now from osTimer — needs BT/ctrl
  * context. v0.2.6 did that and hung the TX (right) bud. */
 
 /* Mirror APP_IBRT_IF_SNIFF_CHECKER_USER_SPP (HFP=0, A2DP=1, SPP=2). */
 #define CROS_SNIFF_CHECKER_USER_SPP 2
+
+/* Optional phone-A2DP pause while CROS on. Default OFF — 0.3.25 cutouts were
+ * with PC speakers (acoustic), not BT A2DP. Build with CROS_SUSPEND_A2DP=1 if
+ * you actually stream music to the buds and want that coexist policy. */
+#ifndef CROS_SUSPEND_A2DP
+#define CROS_SUSPEND_A2DP 0
+#endif
+#if CROS_SUSPEND_A2DP
+extern int cros_a2dp_music_ongoing(void);
+extern void cros_a2dp_suspend_for_cros(void);
+#endif
 
 #ifndef CROS_POOR_IS_RIGHT
 #define CROS_POOR_IS_RIGHT 1
@@ -106,7 +115,9 @@ static bool rx_have_seq;
 static uint8_t jitter_target_frames;
 static uint16_t healthy_ticks;
 static uint16_t sniff_refresh_ticks;
+#if CROS_SUSPEND_A2DP
 static uint8_t a2dp_paused_for_cros;
+#endif
 static uint32_t tx_frames;
 static uint32_t tx_extra;
 static uint32_t tx_cmd;
@@ -206,9 +217,8 @@ static void cros_sniff_lock_off(void) {
   log_link_modes("unlock");
 }
 
-/* A2DP + extra CROS share airtime/ACL — 0.3.25 LEFT+video underrun storm.
- * Header-only HCI_NUM_ACL_BUFFERS bump is a no-op (stack is closed .a).
- * Suspend phone A2DP while CROS is on; user resumes play after DISABLE. */
+/* Optional A2DP pause (off by default — see CROS_SUSPEND_A2DP). */
+#if CROS_SUSPEND_A2DP
 static void cros_a2dp_coexist_on(void) {
   if (cros_a2dp_music_ongoing()) {
     CROS_LOG(0, "[cros_tws] A2DP streaming — suspend for CROS (airtime/ACL)");
@@ -226,6 +236,7 @@ static void cros_a2dp_coexist_off(void) {
     a2dp_paused_for_cros = 0;
   }
 }
+#endif
 
 static int16_t clamp16(int32_t v) {
   if (v > 32767)
@@ -612,7 +623,9 @@ static int apply_enabled(bool on) {
   if (on) {
     app_sysfreq_req(APP_SYSFREQ_USER_APP_0, APP_SYSFREQ_104M);
     af_set_priority(AF_USER_TEST, osPriorityHigh);
+#if CROS_SUSPEND_A2DP
     cros_a2dp_coexist_on();
+#endif
     cros_sniff_lock_on();
 #ifdef ANC_APP
     if (app_anc_work_status()) {
@@ -631,7 +644,9 @@ static int apply_enabled(bool on) {
   stop_tx();
   stop_rx();
   cros_sniff_lock_off();
+#if CROS_SUSPEND_A2DP
   cros_a2dp_coexist_off();
+#endif
   app_sysfreq_req(APP_SYSFREQ_USER_APP_0, APP_SYSFREQ_32K);
   af_set_priority(AF_USER_TEST, osPriorityAboveNormal);
   return 0;
@@ -660,7 +675,7 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
-  CROS_LOG(1, "[cros_tws] init v0.3.26 A2DP-suspend+G floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.27 quiet-underrun+G floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
@@ -794,11 +809,13 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
           rx_pkts, underruns, rx_resyncs, jitter_target_frames,
           on_extra_media());
   }
-  /* Rare SPP event while quiet: underrun cliff crossing. */
+  /* Rare event while quiet: underrun cliff. Use STAT so it stays UART-only
+   * during quiet — SPP-teeing these mid-storm can feed ACL contention
+   * (0.3.25 LEFT session logged thresholds 50…1750 over the air). */
   {
     static uint32_t underrun_armed = 50;
     if (underruns >= underrun_armed) {
-      CROS_LOG(0, "[cros_tws] underrun threshold %u (rx=%u jitter=%u)",
+      CROS_LOG_STAT(0, "[cros_tws] underrun threshold %u (rx=%u jitter=%u)",
             (unsigned)underrun_armed, (unsigned)rx_pkts,
             (unsigned)jitter_target_frames);
       underrun_armed += 100;
