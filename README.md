@@ -10,7 +10,7 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.23)
+## Current status (v0.3.24)
 
 | Mode | Status |
 |------|--------|
@@ -19,9 +19,10 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
 | **Industrial damp** | Not implemented (design only) |
 
-### Usable baseline (flash this)
+### Usable baseline + measurement flash
 
-**v0.3.23** (= v0.3.21): 50 ms IMA-ADPCM, extra-path jitter floor **4** (200 ms).
+**v0.3.23** (= v0.3.21): 50 ms IMA-ADPCM, extra-path jitter floor **4** (200 ms).  
+**v0.3.24:** same media + **B+H probe** (`[cros_lat]` hop dumps; L2CAP mode = basic).
 
 | Metric | Result |
 |--------|--------|
@@ -45,7 +46,7 @@ Latest zip: [`flash-packages/pinebuds-cros-LATEST.zip`](flash-packages/pinebuds-
 
 ## Looking for review
 
-We want more eyes on the transport + latency dead-ends and the ideas in [latency-and-next.md](docs/latency-and-next.md) (PLC, ACL buffer count, finer frames with same ms of jitter, sniff policy, instrumentation). Repro on LATEST + a clap number helps.
+We want more eyes on the transport + latency dead-ends and the ideas in [latency-and-next.md](docs/latency-and-next.md) (PLC, ACL buffer count, finer frames with same ms of jitter, sniff policy). Flash **v0.3.24**, disable CROS, paste `[cros_lat]` dumps.
 
 ## How it works (short)
 

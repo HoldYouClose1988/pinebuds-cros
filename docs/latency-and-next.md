@@ -1,6 +1,7 @@
 # Latency, stability, and next ideas (review welcome)
 
 **Baseline firmware:** **v0.3.23** (= v0.3.21) — floor 4 × 50 ms ADPCM on BESAUD extra L2CAP.  
+**Measurement build:** **v0.3.24** — same media path + hop timestamps (B) + L2CAP mode log (H).  
 **Measured:** clap **start→start ≈ 330 ms** (RIGHT mic → LEFT speaker).  
 **Usability:** cutouts rare; brief ones only in hectic noise. DIY / not a hearing aid.
 
@@ -61,9 +62,14 @@ So most delay is **intentional buffering**, not a missing “send sooner” opti
 
 **Risk:** Medium. Easy to make “robotic” worse; needs A/B ear tests.
 
-### B. Instrument the “other ~80 ms” before more guesses
+### B. Instrument the “other ~80 ms” before more guesses — **in v0.3.24**
 
 **Idea:** Timestamp (or sequence + side log) at: capture frame complete → L2CAP submit → peer `datarecv` → pcmbuff put → playback consume. Dump on DISABLE (or rare SPP event lines).
+
+**Shipped:** `[cros_lat]` accumulators (avg/min/max) for cap→send, extra q→bt,
+bt→TX_HANDLED, cmd q→done, recv→put, rx_buf@put, play_buf@get. Dump on TX/RX STOP.
+Bud clocks are not synced — air time is not measured. Flash **v0.3.24**, run ~30 s,
+disable, paste dump lines.
 
 **Why:** If “other” is actually 20 ms, we’re done optimizing non-jitter path. If it’s 120 ms stuck in BT queue, that’s a different fix.
 
@@ -109,13 +115,20 @@ So most delay is **intentional buffering**, not a missing “send sooner” opti
 
 **Risk:** Battery. Need logs of sniff entry around cutouts.
 
-### H. Understand L2CAP mode of extra channel
+### H. Understand L2CAP mode of extra channel — **answered in v0.3.24**
 
 **Idea:** Confirm whether `0x0b0e` is basic or ERTM/streaming; retransmission behavior vs drop. Disasm / HCI sniff if needed.
 
-**Why:** Retransmit-induced reordering/delay could force buffering.
+**Finding:** This tree has `SUPPORT_L2CAP_ENHANCED_RETRANS=0` and
+`L2CAP_CFG_RFC_MODE=L2CAP_MODE_BASE`. `l2cap_create_besaud_extra_channel` stamps
+scid=dcid=`0x0b0e`, psm=BESAUD, **state=OPEN** and notifies immediately — **no
+config exchange / no ERTM**. Runtime log on OPEN/STOP confirms (`[cros_extra] L2CAP mode`).
 
-**Risk:** Research time; may not be changeable.
+**Why:** Retransmit-induced reordering/delay could force buffering — not applicable
+here; burstiness is elsewhere (ACL FC / sniff / scheduling).
+
+**Risk:** Research time; may not be changeable. → Closed for mode; still useful to
+keep the log line for regressions.
 
 ### I. Long shots (parked unless A–H stall)
 
@@ -127,10 +140,17 @@ So most delay is **intentional buffering**, not a missing “send sooner” opti
 
 ---
 
+## Suggested next (agreed order)
+
+1. **B+H** — flash v0.3.24, collect `[cros_lat]` + L2CAP mode lines (H largely done).  
+2. **G** — sniff / link-policy lock during CROS (if B shows delivery burstiness, not TX queue).  
+3. **A** — PLC so underruns are softer (then maybe revisit floor).  
+4. **C** — `HCI_NUM_ACL_BUFFERS` bump only if pool pressure is implicated.
+
 ## Suggested review questions
 
 1. Is the ~200 ms floor diagnosis right, or is burstiness fixable enough to run floor 2–3 cleanly?  
-2. Which of A–C would you try first on this stack?  
+2. After B dumps: is the non-jitter “other” mostly tick wait (~0–50 ms), BT queue, or RX buffer?  
 3. Any BES/OpenPineBuds prior art for non-control BESAUD extra *with* real-time media?  
 4. Is bumping `HCI_NUM_ACL_BUFFERS` known-safe on BES2300YP / PineBuds?
 

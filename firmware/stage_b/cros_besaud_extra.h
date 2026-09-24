@@ -35,6 +35,9 @@ int cros_besaud_extra_send(const uint8_t *data, uint16_t len);
 bool cros_besaud_extra_tx_busy(void);
 void cros_besaud_extra_force_clear_pending(void);
 
+/* H: log compile-time + runtime L2CAP mode / CID / MTU (safe anytime). */
+void cros_besaud_extra_log_l2cap_mode(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.23 — revert to 0.3.21 baseline (10 ms TX poll caused cutouts, no delay win).
+ * v0.3.24 — B+H measurement on 0.3.23 baseline (no media timing change).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -13,6 +13,7 @@
 #include "cmsis_os.h"
 #include "cros_besaud_extra.h"
 #include "cros_bt_log.h"
+#include "cros_lat.h"
 #include "hal_trace.h"
 #include "string.h"
 #include "tgt_hardware.h"
@@ -252,7 +253,10 @@ bool cros_tws_is_poor_side(void) {
 
 bool cros_tws_is_enabled(void) { return enabled; }
 
-void cros_tws_on_audio_tx_done(void) { tx_pending = 0; }
+void cros_tws_on_audio_tx_done(void) {
+  tx_pending = 0;
+  cros_lat_note_cmd_tx_done();
+}
 
 static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
   int16_t *pcm = (int16_t *)buf;
@@ -264,6 +268,7 @@ static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
       memcpy(latest_pcm, cap_acc, sizeof(latest_pcm));
       latest_ready = 1;
       cap_acc_count = 0;
+      cros_lat_note_cap_done();
     }
   }
   return len;
@@ -272,6 +277,7 @@ static uint32_t capture_handler(uint8_t *buf, uint32_t len) {
 static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
   if (app_audio_pcmbuff_length() >= (int)len) {
     app_audio_pcmbuff_get(buf, (uint16_t)len);
+    cros_lat_note_play_ok((uint32_t)app_audio_pcmbuff_length());
     if (len >= sizeof(last_play)) {
       memcpy(last_play, buf + len - sizeof(last_play), sizeof(last_play));
     }
@@ -285,6 +291,7 @@ static uint32_t playback_handler(uint8_t *buf, uint32_t len) {
       filled += chunk;
     }
     underruns++;
+    cros_lat_note_underrun();
     healthy_ticks = 0;
     if (jitter_target_frames < jitter_max_now()) {
       jitter_target_frames++;
@@ -333,6 +340,7 @@ static void try_send_latest(void) {
 
   /* Extra only after peer PONG/audio proves RX — otherwise stay on cmd. */
   if (cros_besaud_extra_is_open() && cros_besaud_extra_peer_ready()) {
+    cros_lat_note_send_begin(1);
     if (cros_besaud_extra_send(tx_pkt, CROS_PKT_BYTES) != 0) {
       tx_drops++;
     } else {
@@ -346,6 +354,7 @@ static void try_send_latest(void) {
     return;
   }
 
+  cros_lat_note_send_begin(0);
   tx_pending = 1;
   if (tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, tx_pkt, CROS_PKT_BYTES) !=
       0) {
@@ -430,6 +439,7 @@ static int start_tx(void) {
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = true;
   tx_frames = tx_extra = tx_cmd = tx_drops = 0;
+  cros_lat_reset();
   tick_start();
   CROS_LOG(0, "[cros_tws] TX START (50ms ADPCM; cmd until peer READY)");
   return 0;
@@ -478,6 +488,7 @@ static int start_rx(void) {
   af_stream_start(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   rx_running = true;
   rx_pkts = underruns = rx_drops = rx_resyncs = 0;
+  cros_lat_reset();
   tick_start();
   CROS_LOG(0, "[cros_tws] RX START (50ms cmd until PONG, jitter %u-%u)",
         (unsigned)CROS_JITTER_MIN_FRAMES, (unsigned)CROS_JITTER_MAX_FRAMES);
@@ -492,6 +503,8 @@ static void stop_tx(void) {
   af_stream_stop(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   af_stream_close(CROS_STREAM_ID, AUD_STREAM_CAPTURE);
   tx_running = false;
+  cros_lat_dump("TX_STOP");
+  cros_besaud_extra_log_l2cap_mode();
   CROS_LOG(0, "[cros_tws] TX STOP");
 }
 
@@ -503,6 +516,8 @@ static void stop_rx(void) {
   af_stream_stop(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   af_stream_close(CROS_STREAM_ID, AUD_STREAM_PLAYBACK);
   rx_running = false;
+  cros_lat_dump("RX_STOP");
+  cros_besaud_extra_log_l2cap_mode();
   CROS_LOG(0, "[cros_tws] RX STOP");
 }
 
@@ -553,7 +568,8 @@ void cros_tws_init(void) {
   jitter_target_frames = CROS_JITTER_MIN_FRAMES;
   tx_stuck_ticks = 0;
   inited = true;
-  CROS_LOG(1, "[cros_tws] init v0.3.23 baseline floor4 (poor_cfg=%s)",
+  cros_lat_reset();
+  CROS_LOG(1, "[cros_tws] init v0.3.24 probe B+H floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
@@ -640,6 +656,7 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   if (!enabled || cros_tws_is_poor_side() || !rx_running || !data) {
     return;
   }
+  cros_lat_note_recv_begin();
   if (len < CROS_PKT_BYTES || data[0] != CROS_PKT_MAGIC) {
     rx_drops++;
     return;
@@ -673,10 +690,13 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
 
   ima_decode_block(&data[CROS_HDR_BYTES], decode_pcm);
 
+  buffered = app_audio_pcmbuff_length();
   if (app_audio_pcmbuff_put((uint8_t *)decode_pcm, CROS_FRAME_BYTES) != 0) {
     app_audio_pcmbuff_discard((uint16_t)(CROS_FRAME_BYTES / 2));
+    buffered = app_audio_pcmbuff_length();
     app_audio_pcmbuff_put((uint8_t *)decode_pcm, CROS_FRAME_BYTES);
   }
+  cros_lat_note_recv_put((uint32_t)buffered);
   rx_pkts++;
   if ((rx_pkts & CROS_RX_LOG_MASK) == 0) {
     CROS_LOG_STAT(0, "[cros_tws] rx=%u underrun=%u resync=%u jitter=%u extra=%d",

@@ -2,7 +2,7 @@
 
 ## Implementation status (firmware)
 
-**Stage B CROS is experimentally working** — baseline flash **v0.3.23** (see root [README](../README.md)):
+**Stage B CROS is experimentally working** — baseline flash **v0.3.23** / probe **v0.3.24** (see root [README](../README.md)):
 
 - RIGHT FF mic → 50 ms IMA-ADPCM → BESAUD extra L2CAP → LEFT speaker
 - MODE sync on IBRT custom cmd; cmd-path audio as fallback until peer READY

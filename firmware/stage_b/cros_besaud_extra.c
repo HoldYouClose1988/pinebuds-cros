@@ -1,13 +1,14 @@
 /***************************************************************************
  * BESAUD extra L2CAP — deferred create on CROS activate.
  *
- * v0.3.16 — quiet TOTA/SPP while extra media runs (logging killed the link).
+ * v0.3.24 — B+H: L2CAP mode log on OPEN; TX hop timestamps via cros_lat.
  *  READY on PING|PONG; deep jitter; defer/single-ping coexist knobs.
  ***************************************************************************/
 #include "cros_besaud_extra.h"
 
 #include "cmsis_os.h"
 #include "cros_bt_log.h"
+#include "cros_lat.h"
 #include "hal_trace.h"
 #include "string.h"
 
@@ -19,7 +20,10 @@
 #include "app_tws_besaud.h"
 #include "app_tws_ibrt.h"
 #include "besaud_api.h"
+#include "bt_sys_cfg.h"
+#include "btm_i.h"
 #include "co_ppbuff.h"
+#include "l2cap.h"
 #include "l2cap_i.h"
 #include "me_api.h"
 
@@ -50,6 +54,7 @@ static uint32_t rx_ok;
 static uint32_t rx_ping;
 static uint32_t rx_pong;
 static uint32_t ping_tx;
+static uint8_t logged_mode;
 
 static void cros_extra_defer(void const *arg);
 osTimerDef(CROS_EXTRA_DEFER, cros_extra_defer);
@@ -58,6 +63,76 @@ static osTimerId cros_extra_defer_id;
 static void cros_extra_create_bt(void *a, void *b);
 static void cros_extra_send_ping_bt(void *a, void *b);
 static void cros_extra_send_pong_bt(void *a, void *b);
+
+static const char *l2cap_mode_name(uint8_t mode) {
+  switch (mode) {
+  case L2CAP_MODE_BASE:
+    return "BASIC";
+  case L2CAP_MODE_RETRANSMISSION:
+    return "RETRANS";
+  case L2CAP_MODE_FLOWCONTROL:
+    return "FLOWCTL";
+  case L2CAP_MODE_ENHANCED_RETRANSMISSION:
+    return "ERTM";
+  case L2CAP_MODE_STREAMING:
+    return "STREAM";
+  default:
+    return "?";
+  }
+}
+
+static void cros_extra_log_mode_now(void) {
+  struct l2cap_channel *ch;
+  int32_t mtu;
+  uint8_t cfgin_f = 0;
+  uint8_t cfgout_f = 0;
+  uint8_t rfc_in = 0xFF;
+  uint8_t rfc_out = 0xFF;
+
+  CROS_LOG(0,
+        "[cros_extra] L2CAP mode: ERTM_support=%d cfg_rfc=%s(%u) cid=0x%04x",
+        SUPPORT_L2CAP_ENHANCED_RETRANS, l2cap_mode_name(L2CAP_CFG_RFC_MODE),
+        (unsigned)L2CAP_CFG_RFC_MODE, (unsigned)L2CAP_BESAUD_EXTRA_CHAN_ID);
+
+  if (!extra_open || !extra_handle) {
+    CROS_LOG(0, "[cros_extra] L2CAP mode: channel not open yet");
+    return;
+  }
+
+  ch = l2cap_channel_search_l2caphandle(extra_handle);
+  mtu = l2cap_get_tx_mtu(extra_handle);
+  if (!ch) {
+    CROS_LOG(0, "[cros_extra] L2CAP mode: handle=0x%08x mtu=%d (no channel*)",
+          (unsigned)extra_handle, (int)mtu);
+    return;
+  }
+
+  cfgin_f = ch->cfgin.cfgin_flag;
+  cfgout_f = ch->cfgout.cfgout_flag;
+  if (cfgin_f & L2CAP_SIG_CFG_RFC_MASK) {
+    rfc_in = ch->cfgin.rfc_local.mode;
+  }
+  if (cfgout_f & L2CAP_SIG_CFG_RFC_MASK) {
+    rfc_out = ch->cfgout.rfc_remote.mode;
+  }
+
+  /*
+   * create_besaud_extra stamps scid=dcid=0x0b0e, psm=BESAUD, state=OPEN and
+   * notifies immediately — no L2CAP config exchange. That is basic mode.
+   */
+  CROS_LOG(0,
+        "[cros_extra] L2CAP mode: handle=0x%08x scid=0x%04x dcid=0x%04x "
+        "psm=0x%04x state=%u mtu=%d",
+        (unsigned)extra_handle, (unsigned)ch->scid, (unsigned)ch->dcid,
+        (unsigned)ch->psm_remote, (unsigned)ch->state, (int)mtu);
+  CROS_LOG(0,
+        "[cros_extra] L2CAP mode: cfgin_f=0x%02x cfgout_f=0x%02x "
+        "rfc_in=%s(%u) rfc_out=%s(%u) → treat as BASIC (fixed CID, no CFG)",
+        (unsigned)cfgin_f, (unsigned)cfgout_f,
+        (rfc_in == 0xFF) ? "none" : l2cap_mode_name(rfc_in), (unsigned)rfc_in,
+        (rfc_out == 0xFF) ? "none" : l2cap_mode_name(rfc_out),
+        (unsigned)rfc_out);
+}
 
 static void cros_extra_schedule_create(uint32_t delay_ms) {
   if (!cros_extra_defer_id) {
@@ -89,11 +164,16 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
     /* One PING only — 0.3.9 2s retry storm contended with cmd audio. */
     CROS_LOG(2, "[cros_extra] OPEN handle=0x%08x — single ping (no retry storm)",
           (unsigned)l2cap_handle);
+    if (!logged_mode) {
+      logged_mode = 1;
+      cros_extra_log_mode_now();
+    }
     app_bt_start_custom_function_in_bt_thread(0, 0,
                                               (uint32_t)cros_extra_send_ping_bt);
     break;
   case L2CAP_CHANNEL_TX_HANDLED:
     tx_busy = 0;
+    cros_lat_note_extra_tx_handled();
     break;
   case L2CAP_CHANNEL_CLOSED:
     CROS_LOG(1, "[cros_extra] CLOSED handle=0x%08x", (unsigned)l2cap_handle);
@@ -103,6 +183,7 @@ static int cros_extra_notify(enum l2cap_event_enum event, uint32 l2cap_handle,
       peer_ready = 0;
       tx_busy = 0;
       create_issued = 0;
+      logged_mode = 0;
       cros_bt_log_set_quiet(0);
     }
     break;
@@ -241,14 +322,17 @@ static void cros_extra_send_bt(void *a, void *b) {
   (void)b;
   if (!extra_open || !extra_handle || tx_scratch_len == 0) {
     tx_busy = 0;
+    cros_lat_note_extra_bt_sent(0);
     return;
   }
   ret = l2cap_send_data(extra_handle, tx_scratch, tx_scratch_len, NULL);
   if (ret != 0) {
     tx_busy = 0;
     tx_fail++;
+    cros_lat_note_extra_bt_sent(0);
   } else {
     tx_ok++;
+    cros_lat_note_extra_bt_sent(1);
     if ((tx_ok & 0x3F) == 0) {
       CROS_LOG_STAT(0, "[cros_extra] audio_tx=%u fail=%u peer_ready=%u",
             (unsigned)tx_ok, (unsigned)tx_fail, (unsigned)peer_ready);
@@ -306,12 +390,18 @@ void cros_besaud_extra_init(void) {
   tx_busy = 0;
   tx_scratch_len = 0;
   tx_ok = tx_fail = rx_ok = rx_ping = rx_pong = ping_tx = 0;
+  logged_mode = 0;
   if (!cros_extra_defer_id) {
     cros_extra_defer_id =
         osTimerCreate(osTimer(CROS_EXTRA_DEFER), osTimerOnce, NULL);
   }
-  CROS_LOG(0, "[cros_extra] init (v0.3.16 quiet SPP on extra; defer %dms)",
+  CROS_LOG(0, "[cros_extra] init (v0.3.24 B+H probe; defer %dms)",
         CROS_EXTRA_DEFER_MS);
+  /* Compile-time answer for H even before OPEN. */
+  CROS_LOG(0,
+        "[cros_extra] L2CAP mode: ERTM_support=%d cfg_rfc=%s(%u) (pre-open)",
+        SUPPORT_L2CAP_ENHANCED_RETRANS, l2cap_mode_name(L2CAP_CFG_RFC_MODE),
+        (unsigned)L2CAP_CFG_RFC_MODE);
 #endif
 }
 
@@ -339,6 +429,7 @@ void cros_besaud_extra_on_besaud_down(void) {
   create_issued = 0;
   create_tries = 0;
   tx_busy = 0;
+  logged_mode = 0;
   cros_bt_log_set_quiet(0);
 #endif
 }
@@ -384,11 +475,20 @@ int cros_besaud_extra_send(const uint8_t *data, uint16_t len) {
   memcpy(tx_scratch, data, len);
   tx_scratch_len = len;
   tx_busy = 1;
+  cros_lat_note_extra_queued();
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_extra_send_bt);
   return 0;
 #else
   (void)data;
   (void)len;
   return -1;
+#endif
+}
+
+void cros_besaud_extra_log_l2cap_mode(void) {
+#if CROS_EXTRA_L2CAP
+  cros_extra_log_mode_now();
+#else
+  CROS_LOG(0, "[cros_extra] L2CAP mode: CROS_EXTRA_L2CAP=0");
 #endif
 }

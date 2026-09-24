@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.24] — 2026-09-24
+
+### Firmware — B+H measurement on 0.3.23 baseline (no media change)
+- **Same audio path as v0.3.23** (floor 4 × 50 ms, 50 ms tick). No latency lever.
+- **B — hop timestamps:** capture→send, extra queue→BT `l2cap_send`, BT→`TX_HANDLED`,
+  cmd queue→done, recv→put, RX pcmbuff depth @put, play depth @get. Accumulators
+  dump on TX/RX STOP (DISABLE). Look for `[cros_lat]` lines after quad-tap off.
+- **H — L2CAP mode of CID `0x0b0e`:** log `SUPPORT_L2CAP_ENHANCED_RETRANS`,
+  `L2CAP_CFG_RFC_MODE`, channel scid/dcid/psm/state/mtu + cfg RFC flags on OPEN
+  and again on STOP. Disasm shows create stamps fixed CID → `OPEN` with **no CFG**
+  → **basic mode** (ERTM compiled out in this tree).
+
+### Test
+Confirm `init v0.3.24 probe B+H`. Enable CROS ~30 s with Capture on, disable,
+paste `[cros_lat]` + `[cros_extra] L2CAP mode` lines. Clap should still ≈330 ms.
+
 ## [0.3.23] — 2026-09-24
 
 ### Firmware — mark 0.3.21 as current baseline (revert 0.3.22)

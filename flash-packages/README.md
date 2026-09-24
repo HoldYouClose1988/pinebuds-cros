@@ -1,15 +1,16 @@
 # Flash packages
 
-> **DIY / own-risk — not a hearing aid or PPE.** Baseline **v0.3.23**: ≈330 ms clap, usable cutouts. Review: [latency-and-next.md](../docs/latency-and-next.md).
+> **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product.
 
-**Current version: v0.3.23**
+**Current version: v0.3.24**
 
-Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.23.zip](./pinebuds-cros-v0.3.23.zip)**.
+Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.24.zip](./pinebuds-cros-v0.3.24.zip)**.
 
 Each zip includes `bestool.exe`, `BESTOOL.md`, `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps.
 
 | Package | Version |
 |---------|---------|
+| [pinebuds-cros-v0.3.24.zip](./pinebuds-cros-v0.3.24.zip) | v0.3.24 |
 | [pinebuds-cros-v0.3.23.zip](./pinebuds-cros-v0.3.23.zip) | v0.3.23 |
 | [pinebuds-cros-v0.3.22.zip](./pinebuds-cros-v0.3.22.zip) | v0.3.22 |
 | [pinebuds-cros-v0.3.21.zip](./pinebuds-cros-v0.3.21.zip) | v0.3.21 |

@@ -41,9 +41,10 @@ Stock `tws_besaud_create_extra_channel` registers TRACE-and-discard RX — **not
 MTU ~679 B. Send is posted into the BT thread (`app_bt_start_custom_function_in_bt_thread`);
 inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 
-## Status (v0.3.23)
+## Status (v0.3.24)
 
-**Extra-path CROS works.** Usable baseline is **v0.3.23** (= 0.3.21).
+**Extra-path CROS works.** Usable baseline media is **v0.3.23** (= 0.3.21).  
+**v0.3.24** adds measurement only (hop timestamps + L2CAP mode log).
 
 | Milestone | Version | Result |
 |-----------|---------|--------|
@@ -52,6 +53,7 @@ inflight gated by `L2CAP_CHANNEL_TX_HANDLED`.
 | Quiet SPP during extra | **0.3.16** | Capture on + stable extra |
 | Floor 3 / 40 ms frames / 10 ms tick | 0.3.18–22 | **Failed** usable latency cuts |
 | **Baseline** | **0.3.21 / 0.3.23** | Floor 4 × 50 ms; clap ≈**330 ms** start→start |
+| **B+H probe** | **0.3.24** | Same media; `[cros_lat]` dumps; CID `0x0b0e` = **basic** |
 
 ### Latency model (baseline)
 
