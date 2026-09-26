@@ -2,9 +2,11 @@
 
 > **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product.
 
-**Current version: v0.3.27**
+**Current version: v0.3.27 — extra-pipe baseline**
 
 Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.27.zip](./pinebuds-cros-v0.3.27.zip)**.
+
+Daily-wear CROS on BESAUD extra L2CAP. Latency experiments move to SCO next; if that fails, keep building on this zip.
 
 Each zip includes `bestool.exe`, `BESTOOL.md`, `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps.
 

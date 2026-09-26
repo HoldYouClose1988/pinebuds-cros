@@ -1,13 +1,18 @@
 # Latency, stability, and next ideas (review welcome)
 
-**Baseline firmware:** **v0.3.23** (= v0.3.21) — floor 4 × 50 ms ADPCM on BESAUD extra L2CAP.  
+**Extra-pipe baseline:** **v0.3.27** — floor 4 × 50 ms ADPCM on BESAUD extra L2CAP;
+quiet underrun + sniff lock; ear-validated (no cutouts, Capture on). **Keep this
+build for features** if SCO does not win on latency.  
 **Measurement build:** **v0.3.24** — same media path + hop timestamps (B) + L2CAP mode log (H).  
-**Measured:** clap **start→start ≈ 322 ms** (v0.3.24, Capture on, stable / no dropouts).  
-**Usability:** cutouts rare; brief ones only in hectic noise. DIY / not a hearing aid.
+**Measured clap:** **start→start ≈ 322–330 ms**.  
+**Usability:** daily-wear quality on extra; DIY / not a hearing aid.
+
+**Strategy:** latency chase → **SCO/eSCO bud↔bud (§K)** next. Extra remains the
+fallback product pipe. Do not thin the jitter floor again without a new delivery story.
 
 This note is for **fresh eyes**: what we proved, what failed, where the delay lives, and ranked ideas that are *not* “thin the jitter floor again.”
 
-Related: [cros-transport.md](cros-transport.md) · [architecture-cros.md](architecture-cros.md) · [CHANGELOG.md](../CHANGELOG.md)
+Related: [cros-transport.md](cros-transport.md) · [architecture-cros.md](architecture-cros.md) · [CHANGELOG.md](../CHANGELOG.md) · [references.md](references.md)
 
 ---
 
@@ -198,7 +203,7 @@ keep the log line for regressions.
 
 **Verdict:** Cheapest discovery claim is true — channel is unclaimed here. But RFCOMM still rides **classic ACL best-effort** (same contention class as TOTA / extra). Hijacking it for CROS media would not buy reserved delivery and would fight IBRT profile sync. **Do not flash for latency.** Keep as “free serial ID if we ever need a second phone SPP.”
 
-### K. SCO/eSCO bud↔bud — **upgrade from parked; real API, unproven path**
+### K. SCO/eSCO bud↔bud — **next latency experiment**
 
 **Earlier dismissal** (“phone HFP / sniffer path”) was partly **assumed-hard**, not a measured blocker.
 
@@ -207,11 +212,13 @@ keep the log line for regressions.
 - Host API (closed `.a`, headers open): `sco_open_link(bdaddr, …)` / `sco_register_link` — **arbitrary BDADDR**, not HFP-only.
 - HFP path: `hf_createSCO`; IBRT sniffer hooks for **phone** SCO (`btapp_sniffer_sco_start`, etc.).
 
-**Why it matters:** eSCO is timeslot-reserved voice — the scheduling property ACL lacks. That matches the measured bottleneck (`rx_buf@put` 0–190 ms burstiness).
+**Why it matters:** eSCO is timeslot-reserved voice — the scheduling property ACL lacks. That matches the measured bottleneck (`rx_buf@put` burstiness). **Agreed next latency bet** after freezing extra at v0.3.27.
 
 **Unknowns / risks:** No open bud↔bud caller. IBRT may refuse SCO on the TWS ACL. PCM/AF path is wired for HFP sniffer, not peer mic. CVSD/mSBC quality + phone-call conflict. Medium–high brick risk.
 
-**Smallest probe (later):** With mobile disconnected, `sco_open_link(tws_peer)` once; log OPEN/CLOSED only; **no** audio until both sides open. Abort if TWS drops.
+**Smallest probe:** With mobile disconnected, `sco_open_link(tws_peer)` once; log OPEN/CLOSED only; **no** audio until both sides open. Abort if TWS drops. If OPEN holds, wire mic→SCO→speaker and clap vs 0.3.27.
+
+**If unfruitful:** return to **v0.3.27 extra** for all further features (PLC, UX, …).
 
 ### L. Parallel BLE between buds — **no idle link; VOB sample exists**
 
@@ -238,16 +245,20 @@ keep the log line for regressions.
 
 ## Suggested next (agreed order)
 
+**Pipe policy:** **v0.3.27 = extra L2CAP baseline** (features freeze here if SCO fails).  
+Latency chase leaves extra; do not thin floor 4 again without new evidence.
+
 1. **B+H** — **done**.  
 2. **G** — **done** (ACTIVE; not the PC-speaker cutout fix).  
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
-3′. **C′** — A2DP suspend — optional only (`CROS_SUSPEND_A2DP=1`); not the 0.3.25 cause.  
-3″. **Quiet underrun** — **v0.3.27** (stop SPP-teeing thresholds mid-storm).  
-4. **A** — PLC if PC-speaker / quiet-room underruns remain after 0.3.27.  
-5. **L′** — BLE GATT log sink (Erik-style) if Capture+SPP still hurts after A.  
-6. **K** — SCO/eSCO bud↔bud probe (only if latency still the goal).  
-7. **L** — VOB / peer BLE media (bench first, TWS unpaired).  
-— **J** — BES_OTA RFCOMM: research closed; not a media path.
+3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
+3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
+4. **K** — **SCO/eSCO bud↔bud** — **next** (latency).  
+5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
+6. **L′** — BLE GATT log sink if Capture+SPP still hurts.  
+7. **L** — VOB / peer BLE media (bench first).  
+— **J** — BES_OTA RFCOMM: research closed; not a media path.  
+— If **K** fails → resume feature work on **v0.3.27 extra**.
 
 ## Suggested review questions
 

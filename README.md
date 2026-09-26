@@ -10,34 +10,43 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.27)
+## Current status (v0.3.27) — **extra-pipe baseline**
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
-| **Stage B CROS** | **Working experimentally** on BESAUD **extra L2CAP** (`0x0b0e`) |
+| **Stage B CROS (extra L2CAP)** | **Usable baseline** — BESAUD extra `0x0b0e`, ear-validated |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
+| **Latency chase** | Next: **SCO/eSCO bud↔bud** probe — see [latency-and-next.md](docs/latency-and-next.md) §K |
 | **Industrial damp** | Not implemented (design only) |
 
-### Usable baseline + experiment flashes
+### Extra-pipe baseline (keep / build features on this)
 
-**v0.3.23** media · **v0.3.24** B+H · **v0.3.25** sniff lock · **v0.3.27** quiet underrun (skip 0.3.26).
+**v0.3.27** is the freeze point for the **extra L2CAP** CROS path. Further product
+features (UX, EQ hooks, logging polish, …) land here if the SCO experiment does
+not beat ~330 ms. Latency hunting moves to a **different pipe** first.
 
 | Metric | Result |
 |--------|--------|
-| Clap delay (start→start) | ≈ **322–330 ms** |
-| Cutouts | **0.3.27:** none on long Capture-on wear (vs 0.3.25 LEFT storm); burstiness still in `rx_buf` |
-| Capture logs + CROS | OK if quiet mode engages after READY |
+| Clap delay (start→start) | ≈ **322–330 ms** (mostly 200 ms jitter floor) |
+| Cutouts | **None** on long Capture-on wear (2026-09-26); `underrun=41` / ~5 min |
+| Capture logs + CROS | OK — quiet mode; no SPP underrun-threshold spam |
+| Known ceiling | ACL delivery bursty (`rx_buf` 0–270 ms); closed BT stack blocks ACL-pool bump |
 
-### Latency levers already tried (do not repeat blindly)
+Experiment trail: v0.3.23 media · 0.3.24 B+H · 0.3.25 sniff · **0.3.27 baseline** (skip 0.3.26).
+
+### Latency levers already tried on extra (do not repeat blindly)
 
 | Lever | Outcome |
 |-------|---------|
 | Jitter floor 4→3 | Cutouts unusable (~2/s) |
 | Frames 50→40 ms | No delay win; more chop |
 | TX poll 50→10 ms | No delay win; cutouts returned |
+| Sniff lock (G) | ACTIVE; no clap win; not the cutout fix |
+| ACL buffer header (C) | **Blocked** — pool lives in closed `.a` |
+| Quiet underrun SPP (0.3.27) | Stopped 0.3.25-class Capture storms |
 
-Most of the 330 ms is the **200 ms jitter floor** required for stable extra under bursty ACL — not a missing “send sooner” fix. **Review / brainstorm:** [docs/latency-and-next.md](docs/latency-and-next.md).
+Most of the 330 ms is the **200 ms jitter floor** required for stable extra under bursty ACL. Next latency bet is **SCO/eSCO** (§K), not thinning this floor again. Full scorecard: [docs/latency-and-next.md](docs/latency-and-next.md).
 
 Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap toggles CROS (needs TWS link).
 
@@ -45,7 +54,9 @@ Latest zip: [`flash-packages/pinebuds-cros-LATEST.zip`](flash-packages/pinebuds-
 
 ## Looking for review
 
-We want more eyes on the transport + latency dead-ends and the ideas in [latency-and-next.md](docs/latency-and-next.md) (PLC, ACL buffer count, finer frames with same ms of jitter, sniff policy). Flash **v0.3.24**, disable CROS, paste `[cros_lat]` dumps.
+Extra-path CROS is at a **usable baseline (v0.3.27)**. Eyes wanted on **bud↔bud SCO/eSCO**
+(`sco_open_link` to TWS peer) and whether anything beats ~330 ms without wrecking IBRT.
+See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.27** for daily extra; paste SCO probe logs if you try §K.
 
 ## How it works (short)
 

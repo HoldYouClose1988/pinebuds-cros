@@ -6,7 +6,12 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
-## [0.3.27] — 2026-09-24
+## [0.3.27] — 2026-09-24 — **extra-pipe baseline**
+
+### Status
+**Freeze / keep** for BESAUD **extra L2CAP** CROS. Ear-validated daily wear with
+Capture on. Product features continue on this pipe if SCO latency work does not
+pan out. Latency chase next: **SCO/eSCO bud↔bud** ([latency-and-next.md](docs/latency-and-next.md) §K).
 
 ### Firmware — correct 0.3.26 misread; quiet underrun SPP tee
 - **Clarification:** 0.3.25 “video” cutouts were **PC speakers** (acoustic test),
@@ -27,6 +32,7 @@ Phone stayed quiet (no `underrun threshold` spam). DISABLE: `underrun=41` over
 `rx_buf@put n=6336` (~5 min @ 50 ms) — vs 0.3.25 storm `1757`/`1928`. Burstiness
 still present (`rx_buf` avg **165 ms**, 0–270) but floor absorbed it. Sniff stayed
 ACTIVE. **Quiet-underrun harden looks good; 0.3.25 storm not reproduced.**
+**Declared extra-pipe baseline.**
 
 ## [0.3.26] — 2026-09-24
 
