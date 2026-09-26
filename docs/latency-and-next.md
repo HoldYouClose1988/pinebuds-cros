@@ -273,6 +273,14 @@ carry into v1.0 configurable poor side — [architecture-cros.md](architecture-c
 **v0.3.35:** last planned lever on this pipe — `CROS_SCO_SLAVE_OPEN=1` (both buds
 call `open_link` after READY settle).
 
+**0.3.35 ear (LEFT master):** **SUCCESS — `[cros_sco] OPENED`** + peer
+`BTEVENT_SCO_CONNECT_IND rem=<tws peer>`. Extra CROS then choppy → hang until
+case (peer SCO + extra ACL + mobile; Phone SCO also started). Link is real;
+coexistence with extra is not.
+
+**v0.3.36:** auto-close SCO ~300 ms after OPENED (proof without wedging). Next
+latency work: move mic→speaker onto SCO and stop extra, not run both.
+
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
 
@@ -309,8 +317,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **v0.3.35:** last lever `CROS_SCO_SLAVE_OPEN=1`
-   (0.3.34: `open_link rc=0`, no OPENED / no peer BTEVENT).  
+4. **K** — **SCO/eSCO bud↔bud** — **OPENED** with `slave_open=1` (0.3.35). Cannot
+   leave up with extra media (hang). **v0.3.36** proof+auto-close. Next: CROS on SCO.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  

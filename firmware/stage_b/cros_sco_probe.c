@@ -37,10 +37,14 @@ btif_me_get_remote_device_by_handle(uint16_t hci_handle);
 #define CROS_SCO_LATE_FALLBACK_MS 12000
 #define CROS_SCO_SETTLE_MS 500
 #define CROS_SCO_SETTLE_POOR_MS 1500
+/* v0.3.36: tear SCO down quickly after OPENED — leaving it up with extra L2CAP
+ * media + mobile ACL wedged the buds (0.3.35 ear). */
+#define CROS_SCO_PROOF_HOLD_MS 300
 #define CROS_SCO_HCI_REMOTE_USER_TERM 0x13
 
 static osTimerId late_timer;
 static osTimerId settle_timer;
+static osTimerId proof_timer;
 static uint8_t sco_inited;
 static uint8_t probe_armed;
 static uint8_t registered;
@@ -48,6 +52,8 @@ static uint8_t open_issued;
 static uint8_t sco_up;
 static struct bdaddr_t peer_ba;
 static uint8_t have_peer;
+
+static void cros_sco_close_bt(void *a, void *b);
 
 static void *cros_sco_peer_bdaddr(void) {
   btif_remote_device_t *dev;
@@ -88,7 +94,15 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
   (void)link_host;
   if (event == SCO_OPENED) {
     sco_up = 1;
-    CROS_LOG(0, "[cros_sco] OPENED (peer SCO up — probe ok, no audio yet)");
+    CROS_LOG(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
+    /* Do not leave peer SCO up under extra media / phone ACL (0.3.35 hang). */
+    if (proof_timer) {
+      osTimerStop(proof_timer);
+      osTimerStart(proof_timer, CROS_SCO_PROOF_HOLD_MS);
+    } else {
+      app_bt_start_custom_function_in_bt_thread(0, 0,
+                                                (uint32_t)cros_sco_close_bt);
+    }
   } else if (event == SCO_CLOSED) {
     sco_up = 0;
     CROS_LOG(0, "[cros_sco] CLOSED");
@@ -229,8 +243,15 @@ static void settle_timer_cb(void const *arg) {
   app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
 }
 
+static void proof_timer_cb(void const *arg) {
+  (void)arg;
+  CROS_LOG(0, "[cros_sco] proof hold done — close (free ACL for extra)");
+  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_close_bt);
+}
+
 osTimerDef(CROS_SCO_LATE, late_timer_cb);
 osTimerDef(CROS_SCO_SETTLE, settle_timer_cb);
+osTimerDef(CROS_SCO_PROOF, proof_timer_cb);
 
 void cros_sco_probe_init(void) {
   if (!late_timer) {
@@ -239,16 +260,19 @@ void cros_sco_probe_init(void) {
   if (!settle_timer) {
     settle_timer = osTimerCreate(osTimer(CROS_SCO_SETTLE), osTimerOnce, NULL);
   }
+  if (!proof_timer) {
+    proof_timer = osTimerCreate(osTimer(CROS_SCO_PROOF), osTimerOnce, NULL);
+  }
   CROS_LOG(1,
-           "[cros_sco] probe init (READY+settle, late=%ums, slave_open=%u)",
-           (unsigned)CROS_SCO_LATE_FALLBACK_MS,
+           "[cros_sco] probe init (READY+settle, slave_open=%u, auto-close "
+           "after OPENED)",
            (unsigned)CROS_SCO_SLAVE_OPEN);
 }
 
 void cros_sco_probe_on_cros_enable(void) {
   probe_armed = 1;
   open_issued = 0;
-  if (!late_timer || !settle_timer) {
+  if (!late_timer || !settle_timer || !proof_timer) {
     cros_sco_probe_init();
   }
   /* v0.3.32: no sco_init/register on enable — that raced TX on RIGHT-master. */
@@ -257,6 +281,9 @@ void cros_sco_probe_on_cros_enable(void) {
            (unsigned)CROS_SCO_LATE_FALLBACK_MS);
   if (settle_timer) {
     osTimerStop(settle_timer);
+  }
+  if (proof_timer) {
+    osTimerStop(proof_timer);
   }
   osTimerStop(late_timer);
   osTimerStart(late_timer, CROS_SCO_LATE_FALLBACK_MS);
@@ -290,6 +317,9 @@ void cros_sco_probe_on_cros_disable(void) {
   }
   if (settle_timer) {
     osTimerStop(settle_timer);
+  }
+  if (proof_timer) {
+    osTimerStop(proof_timer);
   }
   probe_armed = 0;
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_close_bt);

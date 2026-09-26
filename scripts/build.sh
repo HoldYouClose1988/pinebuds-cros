@@ -5,6 +5,26 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck disable=SC1091
 source "$ROOT/.tools/env.sh"
 
+# Keep vendored SDK apps in sync with firmware/ (bootstrap does this once;
+# rebuilds must re-copy or stale .o / old strings ship).
+if [[ -d "$ROOT/firmware/stage_a" ]]; then
+  mkdir -p "$OPENPINEBUDS_ROOT/apps/cros_loopback"
+  cp -f "$ROOT/firmware/stage_a/cros_loopback.c" \
+        "$ROOT/firmware/stage_a/cros_loopback.h" \
+        "$ROOT/firmware/stage_a/Makefile" \
+        "$OPENPINEBUDS_ROOT/apps/cros_loopback/"
+fi
+if [[ -d "$ROOT/firmware/stage_b" ]]; then
+  mkdir -p "$OPENPINEBUDS_ROOT/apps/cros_tws"
+  cp -f "$ROOT/firmware/stage_b/"*.c \
+        "$ROOT/firmware/stage_b/"*.h \
+        "$ROOT/firmware/stage_b/Makefile" \
+        "$OPENPINEBUDS_ROOT/apps/cros_tws/"
+  if compgen -G "$ROOT/firmware/stage_b/"*.cpp >/dev/null; then
+    cp -f "$ROOT/firmware/stage_b/"*.cpp "$OPENPINEBUDS_ROOT/apps/cros_tws/"
+  fi
+fi
+
 cd "$OPENPINEBUDS_ROOT"
 JOBS="${JOBS:-$(nproc)}"
 TARGET="${TARGET:-open_source}"

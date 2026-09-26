@@ -6,6 +6,24 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.36] — 2026-09-26
+
+### Firmware — SCO OPENED proved; auto-close so buds do not wedge
+- **0.3.35 ear (LEFT master):** first **`[cros_sco] OPENED`** + peer
+  `BTEVENT_SCO_CONNECT_IND rem=b7:2b:…` with `CROS_SCO_SLAVE_OPEN=1`. Extra CROS
+  then went choppy → dropout; buds unresponsive until case. Phone SCO while peer
+  SCO was up likely made it worse.
+- **0.3.36:** same open path; **close SCO ~300 ms after OPENED** (proof only —
+  do not leave peer SCO up under extra L2CAP + mobile ACL).
+- Latency path forward: put CROS **on** SCO and drop extra — not both at once.
+
+### Test (LEFT master)
+1. Flash both — `init v0.3.36`.
+2. Capture LEFT. Quad-tap. **Do not** tap Phone SCO during the probe.
+3. Expect: `OPENED (… tearing down)` then `proof hold done — close` / `CLOSED`
+   / `close_link`. Extra audio should survive.
+4. Paste log.
+
 ## [0.3.35] — 2026-09-26
 
 ### Firmware — last §K lever: `CROS_SCO_SLAVE_OPEN=1`
@@ -17,6 +35,13 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 2. Capture LEFT. Quad-tap CROS.
 3. Expect settle → `open_link` on master; slave log (if captured) also `open_link`.
 4. Success = **`[cros_sco] OPENED`**. Else same wall — paste LEFT log.
+
+### Result (2026-09-26 ear — LEFT master) — **OPENED**
+`slave_open=1`. After settle: `open_link rc=0` → peer
+`BTEVENT_SCO_CONNECT_IND rem=b7:2b:11:11:22:20` → **`[cros_sco] OPENED`**.
+Extra CROS then choppy → silence; buds wedged until case (SPP died). User also
+started Phone SCO while peer SCO was up. **§K link is real**; must not coexist
+with extra media + mobile. Follow-up: **v0.3.36** auto-close after OPENED.
 
 ## [0.3.34] — 2026-09-26
 

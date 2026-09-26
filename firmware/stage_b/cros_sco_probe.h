@@ -1,9 +1,13 @@
 /***************************************************************************
- * v0.3.32 — SCO/eSCO bud↔bud probe (latency chase §K).
+ * v0.3.36 — SCO/eSCO bud↔bud probe (latency chase §K).
  *
  * No SCO on CROS enable (early register crashed RIGHT-master+TX in 0.3.31).
- * On peer READY: settle (0.5 s / 1.5 s poor), then register+open.
- * 12 s late fallback if READY never arrives. No SCO audio yet.
+ * On peer READY: settle (0.5 s / 1.5 s poor), then register+open.
+ * 12 s late fallback if READY never arrives.
+ *
+ * OPENED proved with CROS_SCO_SLAVE_OPEN=1 (0.3.35 ear). Leaving peer SCO up
+ * under extra L2CAP media + mobile ACL wedged the buds — auto-close ~300 ms
+ * after OPENED (proof only; no SCO audio yet).
  ***************************************************************************/
 #ifndef CROS_SCO_PROBE_H
 #define CROS_SCO_PROBE_H
