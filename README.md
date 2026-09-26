@@ -10,20 +10,20 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.30) — SCO READY-trigger + phone SCO reference on **extra baseline v0.3.27**
+## Current status (v0.3.31) — SCO READY-only + live BTEVENT/HFP tees on **extra baseline v0.3.27**
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still the audio path |
-| **SCO probe (v0.3.30)** | Open on peer READY (+ fallback); BTEVENT tee; phone SCO button in cros-log |
+| **SCO probe (v0.3.31)** | Open on READY only; BTEVENT in global_handle; HFP audio tee |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
-| **Latency chase** | §K: compare phone SCO BTEVENT vs peer `open_link` (see [latency-and-next.md](docs/latency-and-next.md)) |
+| **Latency chase** | §K: phone SCO should now show on bud log; peer OPENED still TBD |
 | **Industrial damp** | Not implemented (design only) |
 
 ### Extra-pipe baseline (keep / build features on this)
 
-**v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. **v0.3.28–0.3.30**
+**v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. **v0.3.28–0.3.31**
 add SCO link probes only; if SCO is unfruitful, feature work continues on 0.3.27.
 
 | Metric | Result |
@@ -56,8 +56,8 @@ Latest zip: [`flash-packages/pinebuds-cros-LATEST.zip`](flash-packages/pinebuds-
 
 Extra-path CROS is at a **usable baseline (v0.3.27)**. Eyes wanted on **bud↔bud SCO/eSCO**
 (`sco_open_link` to TWS peer) and whether anything beats ~330 ms without wrecking IBRT.
-See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.27** for daily extra;
-**v0.3.30** for SCO investigation (phone SCO button + READY open + BTEVENT tee).
+See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.27** for daily extra; **v0.3.31** for SCO investigation (READY-only open +
+fixed BTEVENT/HFP tees + phone SCO button).
 
 ## How it works (short)
 

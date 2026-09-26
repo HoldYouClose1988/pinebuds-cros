@@ -6,6 +6,26 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.31] — 2026-09-26
+
+### Firmware — §K: READY-only open + fix dead BTEVENT tee
+- **0.3.30 ear:** fallback @1.5 s raced extra defer @2 s — READY open never ran.
+  Phone SCO `CONNECTED` on Android but **zero** bud `BTEVENT_SCO_*`.
+- **Root cause of missing BTEVENT:** tee lived in `app_bt_sniff_manager_process`,
+  which is `#if !defined(IBRT)` — **dead on PineBuds**. Moved to
+  `app_bt_global_handle` (always runs).
+- **READY-only:** early `register_link` on enable; `open_link` only on peer READY
+  (or 12 s late fallback). No 1.5 s race.
+- **HFP tee:** `HF_EVENT_AUDIO_CONNECTED/DISCONNECTED` + IBRT mock → `CROS_LOG`.
+
+### Test
+1. Flash both — `init v0.3.31`.
+2. Capture LEFT. Quad-tap. Expect `registered early` then after PONG
+   `peer READY — open now` / `open_link rc=` (**not** fallback first).
+3. **Phone SCO on.** Expect bud `[cros_sco] HF_EVENT_AUDIO_CONNECTED` and/or
+   `BTEVENT_SCO_*` (proves tee). Compare to peer path `OPENED` or not.
+4. Paste log.
+
 ## [0.3.30] — 2026-09-26
 
 ### Firmware — §K next probes (still no SCO audio)

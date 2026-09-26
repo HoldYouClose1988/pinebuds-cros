@@ -1,5 +1,5 @@
 /***************************************************************************
- * SCO/eSCO bud↔bud probe — OPEN/CLOSED (+ PONG/READY trigger, v0.3.30).
+ * SCO/eSCO bud↔bud probe — OPEN/CLOSED (READY-only open, v0.3.31).
  ***************************************************************************/
 #include "cros_sco_probe.h"
 
@@ -29,10 +29,11 @@ extern btif_remote_device_t *btif_besaud_get_peer_device(void);
 extern btif_remote_device_t *
 btif_me_get_remote_device_by_handle(uint16_t hci_handle);
 
-#define CROS_SCO_DEFER_MS 1500
+/* Safety net only — must be >> extra defer (2s) + PONG. Do not race READY. */
+#define CROS_SCO_LATE_FALLBACK_MS 12000
 #define CROS_SCO_HCI_REMOTE_USER_TERM 0x13
 
-static osTimerId defer_timer;
+static osTimerId late_timer;
 static uint8_t sco_inited;
 static uint8_t probe_armed;
 static uint8_t registered;
@@ -89,12 +90,13 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
   }
 }
 
+/* Register (and optionally open) on BT thread. */
 static void cros_sco_open_bt(void *a, void *b) {
   ibrt_ctrl_t *ctx;
   void *bd;
   int8 rc;
   int should_open;
-  (void)a;
+  int do_open = (a != NULL);
   (void)b;
 
   if (!probe_armed) {
@@ -127,12 +129,12 @@ static void cros_sco_open_bt(void *a, void *b) {
 
   CROS_LOG(0,
            "[cros_sco] peer %02x:%02x:%02x:%02x:%02x:%02x tws_mode=%u "
-           "role=%u slave_open=%u",
+           "role=%u slave_open=%u do_open=%d",
            peer_ba.addr[0], peer_ba.addr[1], peer_ba.addr[2], peer_ba.addr[3],
            peer_ba.addr[4], peer_ba.addr[5],
            ctx ? (unsigned)ctx->tws_mode : 0xff,
            ctx ? (unsigned)ctx->current_role : 0xff,
-           (unsigned)CROS_SCO_SLAVE_OPEN);
+           (unsigned)CROS_SCO_SLAVE_OPEN, do_open);
 
   if (!sco_inited) {
     rc = sco_init();
@@ -148,7 +150,11 @@ static void cros_sco_open_bt(void *a, void *b) {
     }
   }
 
-  /* Master initiates; slave registers (or also opens if CROS_SCO_SLAVE_OPEN). */
+  if (!do_open) {
+    CROS_LOG(0, "[cros_sco] registered early — wait READY to open");
+    return;
+  }
+
   should_open = 0;
   if (ctx && ctx->current_role == IBRT_MASTER) {
     should_open = 1;
@@ -192,34 +198,41 @@ static void cros_sco_close_bt(void *a, void *b) {
   have_peer = 0;
 }
 
-static void defer_timer_cb(void const *arg) {
+static void late_timer_cb(void const *arg) {
   (void)arg;
-  CROS_LOG(0, "[cros_sco] fallback timer — open (no READY yet or late)");
-  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
+  if (!probe_armed || open_issued) {
+    return;
+  }
+  CROS_LOG(0, "[cros_sco] late fallback %ums — open (READY never came?)",
+           (unsigned)CROS_SCO_LATE_FALLBACK_MS);
+  app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
 }
 
-osTimerDef(CROS_SCO_DEFER, defer_timer_cb);
+osTimerDef(CROS_SCO_LATE, late_timer_cb);
 
 void cros_sco_probe_init(void) {
-  if (!defer_timer) {
-    defer_timer = osTimerCreate(osTimer(CROS_SCO_DEFER), osTimerOnce, NULL);
+  if (!late_timer) {
+    late_timer = osTimerCreate(osTimer(CROS_SCO_LATE), osTimerOnce, NULL);
   }
   CROS_LOG(1,
-           "[cros_sco] probe init (READY+fallback, slave_open=%u, no SCO audio)",
+           "[cros_sco] probe init (READY-only +%ums late, slave_open=%u)",
+           (unsigned)CROS_SCO_LATE_FALLBACK_MS,
            (unsigned)CROS_SCO_SLAVE_OPEN);
 }
 
 void cros_sco_probe_on_cros_enable(void) {
   probe_armed = 1;
   open_issued = 0;
-  if (!defer_timer) {
+  if (!late_timer) {
     cros_sco_probe_init();
   }
   CROS_LOG(0,
-           "[cros_sco] armed — wait peer READY (fallback %ums)",
-           (unsigned)CROS_SCO_DEFER_MS);
-  osTimerStop(defer_timer);
-  osTimerStart(defer_timer, CROS_SCO_DEFER_MS);
+           "[cros_sco] armed — WAIT peer READY (late fallback %ums)",
+           (unsigned)CROS_SCO_LATE_FALLBACK_MS);
+  /* Register early so slave is ready when master opens on READY. */
+  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
+  osTimerStop(late_timer);
+  osTimerStart(late_timer, CROS_SCO_LATE_FALLBACK_MS);
 }
 
 void cros_sco_probe_on_peer_ready(void) {
@@ -229,16 +242,16 @@ void cros_sco_probe_on_peer_ready(void) {
   if (open_issued) {
     return;
   }
-  if (defer_timer) {
-    osTimerStop(defer_timer);
+  if (late_timer) {
+    osTimerStop(late_timer);
   }
   CROS_LOG(0, "[cros_sco] peer READY — open now");
-  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
+  app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
 }
 
 void cros_sco_probe_on_cros_disable(void) {
-  if (defer_timer) {
-    osTimerStop(defer_timer);
+  if (late_timer) {
+    osTimerStop(late_timer);
   }
   probe_armed = 0;
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_close_bt);

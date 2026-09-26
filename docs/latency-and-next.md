@@ -239,6 +239,15 @@ codec params, mobile ACL coexistence.
    compare stack BTEVENT vs peer `open_link`.
 4. Optional `CROS_SCO_SLAVE_OPEN=1` if register-only slave looks like the race.
 
+**0.3.30 ear (LEFT master, Capture on):**  
+Fallback @1.5 s raced extra @2 s — READY open never ran; `open_link rc=0`, no
+`OPENED`. Phone SCO → Android `CONNECTED` ×2; **zero** bud `BTEVENT_SCO_*`.
+First phone SCO also closed extra. Root cause for missing BTEVENT: tee was in
+`app_bt_sniff_manager_process`, compiled out under IBRT.
+
+**v0.3.31:** READY-only open (early register; 12 s late fallback); BTEVENT tee in
+`app_bt_global_handle`; HFP `AUDIO_CONNECTED/DISCONNECTED` (+ IBRT mock) tee.
+
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
 
@@ -275,8 +284,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **v0.3.29:** `open_link rc=0`, **no OPENED**.
-   **v0.3.30:** READY-trigger + BTEVENT tee + phone SCO reference (still open).  
+4. **K** — **SCO/eSCO bud↔bud** — **v0.3.31:** READY-only + fixed BTEVENT/HFP tees
+   (0.3.30 proved sniff_manager tee was dead under IBRT).  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  

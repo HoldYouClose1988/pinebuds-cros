@@ -1,0 +1,57 @@
+--- a/services/bt_app/app_hfp.cpp
++++ b/services/bt_app/app_hfp.cpp
+@@ -38,6 +38,9 @@
+ #include "app_bt_func.h"
+ #include "app_bt_media_manager.h"
+ #include "app_fp_rfcomm.h"
++#if defined(CROS_STAGE_B)
++#include "cros_bt_log.h"
++#endif
+ #include "app_hfp.h"
+ #include "apps.h"
+ #include "besbt.h"
+@@ -1784,6 +1787,11 @@
+   }
+ #endif
+ 
++#if defined(CROS_STAGE_B)
++    CROS_LOG(0, "[cros_sco] HF_EVENT_AUDIO_CONNECTED chan=%d",
++             (int)chan_id_flag.id);
++#endif
++
+     if (bt_drv_func_cb->bt_switch_agc != NULL) {
+       bt_drv_func_cb->bt_switch_agc(BT_HFP_WORK_MODE);
+     }
+@@ -1792,6 +1800,11 @@
+     break;
+   case BTIF_HF_EVENT_AUDIO_DISCONNECTED:
+ 
++#if defined(CROS_STAGE_B)
++    CROS_LOG(0, "[cros_sco] HF_EVENT_AUDIO_DISCONNECTED chan=%d",
++             (int)chan_id_flag.id);
++#endif
++
+     if (bt_drv_func_cb->bt_switch_agc != NULL) {
+       bt_drv_func_cb->bt_switch_agc(BT_IDLE_MODE);
+     }
+@@ -2119,6 +2132,10 @@
+   ibrt_ctrl_t *p_ibrt_ctrl = NULL;
+ 
+   TRACE(0, "::HF_EVENT_AUDIO_CONNECTED mock");
++#if defined(CROS_STAGE_B)
++  CROS_LOG(0, "[cros_sco] HF_IBRT_AUDIO_CONNECTED codec=%u sco=0x%04x",
++           (unsigned)codec, (unsigned)sco_connhdl);
++#endif
+ 
+   app_bt_device.hf_audio_state[BT_DEVICE_ID_1] = BTIF_HF_AUDIO_CON;
+   btif_hf_set_negotiated_codec(app_bt_device.hf_channel[BT_DEVICE_ID_1], codec);
+@@ -2153,6 +2170,9 @@
+ int hfp_ibrt_sco_audio_disconnected(void) {
+   int ret = BT_STS_SUCCESS;
+   TRACE(0, "::HF_EVENT_AUDIO_DISCONNECTED mock");
++#if defined(CROS_STAGE_B)
++  CROS_LOG(0, "[cros_sco] HF_IBRT_AUDIO_DISCONNECTED");
++#endif
+   app_bt_device.hf_audio_state[BT_DEVICE_ID_1] = BTIF_HF_AUDIO_DISCON;
+   app_audio_manager_sendrequest(APP_BT_STREAM_MANAGER_STOP, BT_STREAM_VOICE,
+                                 BT_DEVICE_ID_1, 0);
