@@ -6,6 +6,26 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.33] — 2026-09-26
+
+### Firmware — refuse POOR/TX when it is IBRT master (stop the reboot)
+- **0.3.32 RIGHT log:** still died on local enable — after `ENABLE`, **before**
+  sniff LOCK. So not SCO register (that was already deferred). Crash is in
+  `apply_enabled` / sniff path when **RIGHT = master + mic TX**.
+- **Guard:** if poor side is IBRT master → log `REFUSE enable — POOR/TX is IBRT
+  master` and roll back (no TX start). Bud stays up.
+- Softened sniff on TX: skip `exit_sniff_with_tws` on poor side; breadcrumbs.
+- **SCO probe default OFF** (`CROS_SCO_PROBE=0`) — peer never got OPENED; isolate
+  crash. Rebuild with `CROS_SCO_PROBE=1` when chasing SCO again.
+- Override refuse: `CROS_ALLOW_POOR_MASTER=1` (still risky).
+
+### Test
+1. Flash both — `init v0.3.33`.
+2. **LEFT master:** CROS should work as before (extra audio; no SCO).
+3. **RIGHT master:** quad-tap RIGHT → expect **`REFUSE enable`** (no reboot).
+   Or enable from LEFT while RIGHT is master → RIGHT logs REFUSE, stays up.
+4. Paste RIGHT log if it still dies (should not).
+
 ## [0.3.32] — 2026-09-26
 
 ### Packaging

@@ -10,10 +10,12 @@ endif
 
 # v0.3.12: re-enable extra with coexistence (defer + single ping + no-peer retry).
 CROS_EXTRA_L2CAP ?= 1
-# v0.3.28: SCO/eSCO bud↔bud OPEN/CLOSED probe (no audio on SCO yet).
-CROS_SCO_PROBE ?= 1
+# v0.3.33: SCO probe OFF by default — peer OPENED never landed; isolate RIGHT-master crash.
+CROS_SCO_PROBE ?= 0
 # v0.3.30: slave also issues sco_open_link (default off — master-only).
 CROS_SCO_SLAVE_OPEN ?= 0
+# v0.3.33: allow POOR/TX when it is IBRT master (default refuse — known crash).
+CROS_ALLOW_POOR_MASTER ?= 0
 
 ccflags-y += \
 	$(BT_IF_INCLUDES) \
@@ -21,6 +23,7 @@ ccflags-y += \
 	-DCROS_EXTRA_L2CAP=$(CROS_EXTRA_L2CAP) \
 	-DCROS_SCO_PROBE=$(CROS_SCO_PROBE) \
 	-DCROS_SCO_SLAVE_OPEN=$(CROS_SCO_SLAVE_OPEN) \
+	-DCROS_ALLOW_POOR_MASTER=$(CROS_ALLOW_POOR_MASTER) \
 	-Iapps/cros_tws \
 	-Iapps/audioplayers \
 	-Iapps/audioplayers/a2dp_decoder \

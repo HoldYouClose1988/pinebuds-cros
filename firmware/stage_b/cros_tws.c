@@ -46,6 +46,10 @@ extern int cros_a2dp_music_ongoing(void);
 extern void cros_a2dp_suspend_for_cros(void);
 #endif
 
+#ifndef CROS_ALLOW_POOR_MASTER
+#define CROS_ALLOW_POOR_MASTER 0
+#endif
+
 #ifndef CROS_POOR_IS_RIGHT
 #define CROS_POOR_IS_RIGHT 1
 #endif
@@ -198,14 +202,26 @@ static void log_link_modes(const char *where) {
 }
 
 static void cros_sniff_lock_on(void) {
+  int poor = cros_tws_is_poor_side() ? 1 : 0;
+  CROS_LOG(0, "[cros_tws] sniff lock begin (poor=%d)", poor);
   app_ibrt_if_tws_sniff_block(CROS_SNIFF_BLOCK_SEC);
+  CROS_LOG(0, "[cros_tws] sniff block ok");
   app_ibrt_if_sniff_checker_start(CROS_SNIFF_CHECKER_USER_SPP);
-  if (app_tws_ibrt_tws_link_connected()) {
+  CROS_LOG(0, "[cros_tws] sniff checker ok");
+  /*
+   * v0.3.33: skip exit_sniff_with_tws on POOR/TX. 0.3.32 RIGHT-master died
+   * inside apply_enabled before sniff LOCK log — exit_sniff on master+TX+SPP
+   * is the top suspect (LEFT-master GOOD/RX survives the full lock).
+   */
+  if (!poor && app_tws_ibrt_tws_link_connected()) {
     app_tws_ibrt_exit_sniff_with_tws();
+    CROS_LOG(0, "[cros_tws] exit_sniff_with_tws ok");
+  } else if (poor) {
+    CROS_LOG(0, "[cros_tws] skip exit_sniff on POOR/TX");
   }
   sniff_refresh_ticks = 0;
-  CROS_LOG(0, "[cros_tws] sniff LOCK (block %us + exit_tws + checker)",
-        (unsigned)CROS_SNIFF_BLOCK_SEC);
+  CROS_LOG(0, "[cros_tws] sniff LOCK (block %us + checker%s)",
+        (unsigned)CROS_SNIFF_BLOCK_SEC, poor ? ", no exit" : " + exit_tws");
   log_link_modes("lock");
 }
 
@@ -622,7 +638,32 @@ static void stop_rx(void) {
 
 static int apply_enabled(bool on) {
   if (on) {
+    ibrt_ctrl_t *ctx;
+    int poor = cros_tws_is_poor_side() ? 1 : 0;
+    int master = 0;
+    ctx = app_tws_ibrt_get_bt_ctrl_ctx();
+    if (ctx && ctx->current_role == IBRT_MASTER) {
+      master = 1;
+    }
+    CROS_LOG(0, "[cros_tws] apply ON begin poor=%d master=%d", poor, master);
+
+    /*
+     * Known crash: POOR/TX + IBRT master (RIGHT-master with poor=RIGHT).
+     * LEFT-master + GOOD/RX is fine. Refuse rather than reboot the bud —
+     * override with CROS_ALLOW_POOR_MASTER=1 to attempt softened path.
+     */
+#if !CROS_ALLOW_POOR_MASTER
+    if (poor && master) {
+      CROS_LOG(0,
+               "[cros_tws] REFUSE enable — POOR/TX is IBRT master (crashes). "
+               "Quad-tap LEFT, or reseat so LEFT is master.");
+      return -2;
+    }
+#endif
+
+    CROS_LOG(0, "[cros_tws] apply: sysfreq 104M");
     app_sysfreq_req(APP_SYSFREQ_USER_APP_0, APP_SYSFREQ_104M);
+    CROS_LOG(0, "[cros_tws] apply: af priority");
     af_set_priority(AF_USER_TEST, osPriorityHigh);
 #if CROS_SUSPEND_A2DP
     cros_a2dp_coexist_on();
@@ -634,11 +675,13 @@ static int apply_enabled(bool on) {
       app_anc_disable();
     }
 #endif
-    if (cros_tws_is_poor_side()) {
+    if (poor) {
       stop_rx();
+      CROS_LOG(0, "[cros_tws] apply: start_tx");
       return start_tx();
     }
     stop_tx();
+    CROS_LOG(0, "[cros_tws] apply: start_rx");
     return start_rx();
   }
 
@@ -677,13 +720,14 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
-  CROS_LOG(1, "[cros_tws] init v0.3.32 SCO-settle+G floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.33 guard-poor-master+G floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
 
 int cros_tws_start(void) {
   uint8_t mode = 1;
+  int rc;
 
   if (!inited) {
     cros_tws_init();
@@ -701,9 +745,19 @@ int cros_tws_start(void) {
   cros_besaud_extra_ensure();
   cros_sco_probe_on_cros_enable();
   log_side_probe("enable");
-  CROS_LOG(2, "[cros_tws] ENABLE extra_open=%d",
+  CROS_LOG(0, "[cros_tws] ENABLE extra_open=%d",
         cros_besaud_extra_is_open() ? 1 : 0);
-  return apply_enabled(true);
+  rc = apply_enabled(true);
+  if (rc != 0) {
+    /* Roll back so a refused poor-master enable does not leave half-on state. */
+    enabled = false;
+    mode = 0;
+    if (app_tws_ibrt_tws_link_connected()) {
+      tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
+    }
+    cros_sco_probe_on_cros_disable();
+  }
+  return rc;
 }
 
 int cros_tws_stop(void) {
@@ -735,13 +789,18 @@ int cros_tws_toggle(void) {
 
 void cros_tws_on_peer_mode(uint8_t on) {
   bool want = (on != 0);
+  int rc;
   CROS_LOG(1, "[cros_tws] peer mode=%d", (int)want);
   log_side_probe("peer_mode");
   if (want == enabled) {
     if (want) {
       cros_besaud_extra_ensure();
       cros_sco_probe_on_cros_enable();
-      apply_enabled(true);
+      rc = apply_enabled(true);
+      if (rc != 0) {
+        enabled = false;
+        cros_sco_probe_on_cros_disable();
+      }
     } else {
       /* Remote stop while already disabled — still clear quiet. */
       cros_sco_probe_on_cros_disable();
@@ -753,12 +812,17 @@ void cros_tws_on_peer_mode(uint8_t on) {
   if (want) {
     cros_besaud_extra_ensure();
     cros_sco_probe_on_cros_enable();
+    rc = apply_enabled(true);
+    if (rc != 0) {
+      enabled = false;
+      cros_sco_probe_on_cros_disable();
+    }
   } else {
     /* Remote-initiated stop must leave quiet mode (local stop already does). */
     cros_sco_probe_on_cros_disable();
     cros_bt_log_set_quiet(0);
+    apply_enabled(false);
   }
-  apply_enabled(want);
 }
 
 void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {

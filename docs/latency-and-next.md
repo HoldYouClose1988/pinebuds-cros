@@ -255,6 +255,12 @@ First phone SCO also closed extra. Root cause for missing BTEVENT: tee was in
 **v0.3.32:** no SCO on enable; settle after READY (1.5 s on poor) then register+open.
 Packaging: versioned zips only (no LATEST alias).
 
+**0.3.32 ear:** LEFT OK. RIGHT still crashed on enable **before sniff LOCK** —
+not SCO. Locus = `apply_enabled` / sniff when POOR/TX is IBRT master.
+
+**v0.3.33:** refuse CROS when poor side is IBRT master (bud stays up); SCO probe
+default off; sniff skips `exit_sniff_with_tws` on poor.
+
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
 
@@ -291,8 +297,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **v0.3.32:** settle-after-READY; RIGHT-master
-   crash under test; phone BTEVENT tee confirmed on LEFT.  
+4. **K** — **SCO/eSCO bud↔bud** — paused (`CROS_SCO_PROBE=0`). Phone BTEVENT tee
+   worked on LEFT; peer never OPENED. Unblock after RIGHT-master TX is safe.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  
