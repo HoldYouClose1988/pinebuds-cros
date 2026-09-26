@@ -16,9 +16,9 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still the audio path |
-| **SCO probe (v0.3.29)** | OPEN/CLOSED only — arm on local **and** peer enable |
+| **SCO probe (v0.3.29)** | `open_link rc=0` but **no OPENED yet** — under investigation |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
-| **Latency chase** | Active: **SCO/eSCO** — look for `[cros_sco] OPENED` specifically |
+| **Latency chase** | §K SCO: API accepts peer open; complete the OPENED path (see [latency-and-next.md](docs/latency-and-next.md)) |
 | **Industrial damp** | Not implemented (design only) |
 
 ### Extra-pipe baseline (keep / build features on this)

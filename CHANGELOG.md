@@ -25,8 +25,16 @@ bud (or whichever is IBRT master — it runs `open_link`). Quad-tap CROS; wait
 `register_link` / `open_link` all **rc=0**. **Never saw `[cros_sco] OPENED` or
 `CLOSED` notify.** DISABLE: `close_link rc=1` (nothing to close). Extra L2CAP
 still READY; TWS stayed ACTIVE — probe did not brick the link.
-**WARN:** `mobile_conhandle=0x0080` (phone still connected). Retest once with
-phone fully disconnected before declaring §K dead.
+Phone/tablet stayed connected for Capture (`mobile_conhandle=0x0080`) — required
+for TOTA SPP; a fully-disconnected retest needs UART.
+
+### Status / next (§K not closed)
+**Partial success:** host SCO API accepts bud↔bud open; **OPENED callback never
+fires** under Capture conditions. Not written off — same class of “API exists,
+path incomplete” as early extra L2CAP. Next: find why OPENED is missing
+(peer register timing, IBRT policy, HCI event not reaching our notify, eSCO
+params, HFP-shaped setup, …). Keep **v0.3.27 extra** as daily audio until SCO
+audio is proven.
 
 ## [0.3.28] — 2026-09-26
 
