@@ -720,8 +720,13 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
+#if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
+  CROS_LOG(1, "[cros_tws] init v0.3.37 SCO-alone-hold+guard floor4 (poor_cfg=%s)",
+        CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+#else
   CROS_LOG(1, "[cros_tws] init v0.3.36 SCO-proof-close+guard floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+#endif
   log_side_probe("init");
 }
 
@@ -742,11 +747,19 @@ int cros_tws_start(void) {
 
   enabled = true;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
+#if !(defined(CROS_SCO_ALONE) && CROS_SCO_ALONE)
   cros_besaud_extra_ensure();
+#endif
   cros_sco_probe_on_cros_enable();
   log_side_probe("enable");
-  CROS_LOG(0, "[cros_tws] ENABLE extra_open=%d",
-        cros_besaud_extra_is_open() ? 1 : 0);
+  CROS_LOG(0, "[cros_tws] ENABLE extra_open=%d alone=%d",
+        cros_besaud_extra_is_open() ? 1 : 0,
+#if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
+        1
+#else
+        0
+#endif
+  );
   rc = apply_enabled(true);
   if (rc != 0) {
     /* Roll back so a refused poor-master enable does not leave half-on state. */
@@ -794,7 +807,9 @@ void cros_tws_on_peer_mode(uint8_t on) {
   log_side_probe("peer_mode");
   if (want == enabled) {
     if (want) {
+#if !(defined(CROS_SCO_ALONE) && CROS_SCO_ALONE)
       cros_besaud_extra_ensure();
+#endif
       cros_sco_probe_on_cros_enable();
       rc = apply_enabled(true);
       if (rc != 0) {
@@ -810,7 +825,9 @@ void cros_tws_on_peer_mode(uint8_t on) {
   }
   enabled = want;
   if (want) {
+#if !(defined(CROS_SCO_ALONE) && CROS_SCO_ALONE)
     cros_besaud_extra_ensure();
+#endif
     cros_sco_probe_on_cros_enable();
     rc = apply_enabled(true);
     if (rc != 0) {

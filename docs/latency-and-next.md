@@ -278,11 +278,19 @@ call `open_link` after READY settle).
 case (peer SCO + extra ACL + mobile; Phone SCO also started). Link is real;
 coexistence with extra is not.
 
-**v0.3.36:** auto-close SCO ~300 ms after OPENED (proof without wedging). Next
-latency work: move mic→speaker onto SCO and stop extra, not run both.
+**v0.3.36:** auto-close SCO ~300 ms after OPENED (proof without wedging).
 
-**If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
-**Daily audio until then:** **v0.3.27 extra** baseline.
+**0.3.36 ear (LEFT master):** **PASS** — `OPENED` → `proof hold done` →
+`close_link`/`unregister`/`BTEVENT_SCO_DISCONNECT`; **extra held** through SCO
+exit; clean DISABLE. §K link proof done.
+
+**v0.3.37:** `CROS_SCO_ALONE=1` — skip extra; settle from enable; leave SCO
+OPENED until disable (cmd audio only). Prove SCO without extra media.
+
+**Next after alone PASS:** wire mic→SCO→speaker and clap vs 0.3.27. Do not run
+both pipes.
+
+**Daily audio until SCO media:** **v0.3.27 extra** baseline.
 
 ### L. Parallel BLE between buds — **no idle link; VOB sample exists**
 
@@ -317,8 +325,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **OPENED** with `slave_open=1` (0.3.35). Cannot
-   leave up with extra media (hang). **v0.3.36** proof+auto-close. Next: CROS on SCO.  
+4. **K** — **SCO/eSCO bud↔bud** — **OPENED** (0.3.35) + **safe auto-close**
+   (0.3.36 ear PASS). **v0.3.37:** SCO-alone hold (no extra). Then CROS on SCO.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  

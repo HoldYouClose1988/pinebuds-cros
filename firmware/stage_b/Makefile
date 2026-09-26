@@ -9,11 +9,14 @@ endif
 endif
 
 # v0.3.12: re-enable extra with coexistence (defer + single ping + no-peer retry).
+# v0.3.37 alone mode skips opening extra even if this is 1.
 CROS_EXTRA_L2CAP ?= 1
 # v0.3.34: SCO probe ON again (settle-after-READY). Keep poor-master refuse.
 CROS_SCO_PROBE ?= 1
 # v0.3.35: last §K probe — slave also issues sco_open_link.
 CROS_SCO_SLAVE_OPEN ?= 1
+# v0.3.37: leave peer SCO up without extra L2CAP (next coexistence proof).
+CROS_SCO_ALONE ?= 1
 # v0.3.33: allow POOR/TX when it is IBRT master (default refuse — known crash).
 CROS_ALLOW_POOR_MASTER ?= 0
 
@@ -23,6 +26,7 @@ ccflags-y += \
 	-DCROS_EXTRA_L2CAP=$(CROS_EXTRA_L2CAP) \
 	-DCROS_SCO_PROBE=$(CROS_SCO_PROBE) \
 	-DCROS_SCO_SLAVE_OPEN=$(CROS_SCO_SLAVE_OPEN) \
+	-DCROS_SCO_ALONE=$(CROS_SCO_ALONE) \
 	-DCROS_ALLOW_POOR_MASTER=$(CROS_ALLOW_POOR_MASTER) \
 	-Iapps/cros_tws \
 	-Iapps/audioplayers \

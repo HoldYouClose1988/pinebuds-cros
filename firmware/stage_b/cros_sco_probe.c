@@ -1,8 +1,12 @@
 /***************************************************************************
- * SCO/eSCO bud↔bud probe — OPEN/CLOSED (v0.3.32).
+ * SCO/eSCO bud↔bud probe — OPEN/CLOSED (v0.3.37).
  *
  * No SCO work on enable (0.3.31 early register crashed RIGHT-master+TX).
- * On peer READY: settle, then register+open. Late fallback if READY never comes.
+ * Default (with extra): on peer READY → settle → register+open → auto-close
+ * after OPENED (0.3.36 — SCO+extra wedged).
+ *
+ * CROS_SCO_ALONE=1 (0.3.37): skip extra; settle from enable; leave SCO up
+ * until disable (prove SCO without extra L2CAP media).
  ***************************************************************************/
 #include "cros_sco_probe.h"
 
@@ -18,6 +22,10 @@
 
 #ifndef CROS_SCO_SLAVE_OPEN
 #define CROS_SCO_SLAVE_OPEN 0
+#endif
+
+#ifndef CROS_SCO_ALONE
+#define CROS_SCO_ALONE 0
 #endif
 
 #if CROS_SCO_PROBE
@@ -37,8 +45,9 @@ btif_me_get_remote_device_by_handle(uint16_t hci_handle);
 #define CROS_SCO_LATE_FALLBACK_MS 12000
 #define CROS_SCO_SETTLE_MS 500
 #define CROS_SCO_SETTLE_POOR_MS 1500
-/* v0.3.36: tear SCO down quickly after OPENED — leaving it up with extra L2CAP
- * media + mobile ACL wedged the buds (0.3.35 ear). */
+/* Alone mode: short settle from enable (no extra READY gate). */
+#define CROS_SCO_ALONE_SETTLE_MS 1500
+/* With extra: tear SCO down quickly after OPENED (0.3.35 hang). Alone: hold. */
 #define CROS_SCO_PROOF_HOLD_MS 300
 #define CROS_SCO_HCI_REMOTE_USER_TERM 0x13
 
@@ -94,6 +103,10 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
   (void)link_host;
   if (event == SCO_OPENED) {
     sco_up = 1;
+#if CROS_SCO_ALONE
+    CROS_LOG(0, "[cros_sco] OPENED (alone hold — no extra, leave up until "
+                "disable)");
+#else
     CROS_LOG(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
     /* Do not leave peer SCO up under extra media / phone ACL (0.3.35 hang). */
     if (proof_timer) {
@@ -103,6 +116,7 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
       app_bt_start_custom_function_in_bt_thread(0, 0,
                                                 (uint32_t)cros_sco_close_bt);
     }
+#endif
   } else if (event == SCO_CLOSED) {
     sco_up = 0;
     CROS_LOG(0, "[cros_sco] CLOSED");
@@ -149,13 +163,13 @@ static void cros_sco_open_bt(void *a, void *b) {
 
   CROS_LOG(0,
            "[cros_sco] peer %02x:%02x:%02x:%02x:%02x:%02x tws_mode=%u "
-           "role=%u poor=%d slave_open=%u do_open=%d",
+           "role=%u poor=%d slave_open=%u alone=%u do_open=%d",
            peer_ba.addr[0], peer_ba.addr[1], peer_ba.addr[2], peer_ba.addr[3],
            peer_ba.addr[4], peer_ba.addr[5],
            ctx ? (unsigned)ctx->tws_mode : 0xff,
            ctx ? (unsigned)ctx->current_role : 0xff,
            cros_tws_is_poor_side() ? 1 : 0, (unsigned)CROS_SCO_SLAVE_OPEN,
-           do_open);
+           (unsigned)CROS_SCO_ALONE, do_open);
 
   if (ctx && ctx->current_role == IBRT_MASTER && cros_tws_is_poor_side()) {
     CROS_LOG(0, "[cros_sco] WARN master+POOR/TX — 0.3.31 crash pattern; "
@@ -263,10 +277,17 @@ void cros_sco_probe_init(void) {
   if (!proof_timer) {
     proof_timer = osTimerCreate(osTimer(CROS_SCO_PROOF), osTimerOnce, NULL);
   }
+#if CROS_SCO_ALONE
+  CROS_LOG(1,
+           "[cros_sco] probe init (ALONE hold, slave_open=%u — no extra, leave "
+           "OPENED up)",
+           (unsigned)CROS_SCO_SLAVE_OPEN);
+#else
   CROS_LOG(1,
            "[cros_sco] probe init (READY+settle, slave_open=%u, auto-close "
            "after OPENED)",
            (unsigned)CROS_SCO_SLAVE_OPEN);
+#endif
 }
 
 void cros_sco_probe_on_cros_enable(void) {
@@ -275,21 +296,35 @@ void cros_sco_probe_on_cros_enable(void) {
   if (!late_timer || !settle_timer || !proof_timer) {
     cros_sco_probe_init();
   }
-  /* v0.3.32: no sco_init/register on enable — that raced TX on RIGHT-master. */
-  CROS_LOG(0,
-           "[cros_sco] armed — WAIT peer READY (no early sco; late %ums)",
-           (unsigned)CROS_SCO_LATE_FALLBACK_MS);
   if (settle_timer) {
     osTimerStop(settle_timer);
   }
   if (proof_timer) {
     osTimerStop(proof_timer);
   }
-  osTimerStop(late_timer);
+  if (late_timer) {
+    osTimerStop(late_timer);
+  }
+#if CROS_SCO_ALONE
+  /* No extra READY — settle from enable, then open and hold. */
+  CROS_LOG(0,
+           "[cros_sco] armed ALONE — settle %ums then open (hold until "
+           "disable)",
+           (unsigned)CROS_SCO_ALONE_SETTLE_MS);
+  osTimerStart(settle_timer, CROS_SCO_ALONE_SETTLE_MS);
+#else
+  /* v0.3.32: no sco_init/register on enable — that raced TX on RIGHT-master. */
+  CROS_LOG(0,
+           "[cros_sco] armed — WAIT peer READY (no early sco; late %ums)",
+           (unsigned)CROS_SCO_LATE_FALLBACK_MS);
   osTimerStart(late_timer, CROS_SCO_LATE_FALLBACK_MS);
+#endif
 }
 
 void cros_sco_probe_on_peer_ready(void) {
+#if CROS_SCO_ALONE
+  (void)0; /* Alone settles from enable; ignore extra READY if any. */
+#else
   uint32_t settle_ms;
   if (!probe_armed) {
     return;
@@ -309,6 +344,7 @@ void cros_sco_probe_on_peer_ready(void) {
   }
   osTimerStop(settle_timer);
   osTimerStart(settle_timer, settle_ms);
+#endif
 }
 
 void cros_sco_probe_on_cros_disable(void) {

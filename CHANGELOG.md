@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.37] — 2026-09-26
+
+### Firmware — SCO alone hold (no extra)
+- **0.3.36 ear PASS:** OPENED → auto-close; extra held through SCO exit.
+- **0.3.37:** `CROS_SCO_ALONE=1` — **do not open extra L2CAP**; settle ~1.5 s from
+  CROS enable; open peer SCO; **leave OPENED up** until disable.
+- Audio stays on **cmd** path (no extra). Goal: prove SCO without extra media
+  does not wedge. Next after PASS: mic→SCO→speaker.
+
+### Test (LEFT master)
+1. Flash both — `init v0.3.37` / probe init shows `ALONE hold`.
+2. Capture LEFT. Quad-tap. Leave CROS on ~10–20 s after OPENED.
+3. Expect: `armed ALONE` → `OPENED (alone hold…)` — **no** `proof hold done`.
+   Buds stay responsive; quad-tap off → `close_link` / `CLOSED`.
+4. Paste LEFT log (PASS or wedge).
+
 ## [0.3.36] — 2026-09-26
 
 ### Firmware — SCO OPENED proved; auto-close so buds do not wedge
@@ -23,6 +39,13 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 3. Expect: `OPENED (… tearing down)` then `proof hold done — close` / `CLOSED`
    / `close_link`. Extra audio should survive.
 4. Paste log.
+
+### Result (2026-09-26 ear — LEFT master) — **PASS**
+`init v0.3.36` / `auto-close after OPENED`. Sequence: `OPENED (… tearing down)` →
+`proof hold done — close` → `close_link rc=0` / `unregister rc=0` →
+`BTEVENT_SCO_DISCONNECT err=0x2a`. **Extra pipe held** through SCO exit (user).
+CROS then disabled cleanly (`DISABLE` / `RX STOP`). §K proof complete; next is
+SCO media **without** extra coexistence.
 
 ## [0.3.35] — 2026-09-26
 
