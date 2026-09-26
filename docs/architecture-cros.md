@@ -9,9 +9,29 @@
 - Phone TOTA logging with quiet-during-extra (required for coexistence)
 - Clap start→start ≈ **330 ms**; jitter floor 4 × 50 ms is required for usable stability today
 
-Still **not** a clinical product. Missing vs this design doc: BiCROS mix, media ducking, user-selectable poor side, ≪100 ms glass-to-glass, prescribed gain/limiting UX.
+Still **not** a clinical product. Missing vs this design doc: BiCROS mix, media ducking, user-selectable poor side (with role guard below), ≪100 ms glass-to-glass, prescribed gain/limiting UX.
 
 **Latency dead-ends and next ideas:** [latency-and-next.md](latency-and-next.md).
+
+## Hard constraint (v0.3.33+ / must keep for v1.0)
+
+**IBRT master must not run CROS mic TX.**
+
+Validated 2026-09-26 (v0.3.31–0.3.33 ear logs):
+
+| Poor side | IBRT role | CROS enable |
+|-----------|-----------|-------------|
+| TX (mic) | **master** | **Crash** in `apply_enabled` (before sniff LOCK) |
+| TX (mic) | slave | OK (normal: RIGHT poor + LEFT master) |
+| RX (speaker) | master | OK |
+| RX (speaker) | slave | OK |
+
+- This is **role × path**, not left/right hardware. Physical side only matters because today’s default is `poor = RIGHT`.
+- **When poor side becomes configurable (v1.0):** the same rule applies. If the user sets poor = LEFT and LEFT is IBRT master, enable must **refuse** (or force a role switch) — do not only special-case RIGHT.
+- Firmware today: `CROS_ALLOW_POOR_MASTER=0` (default) logs `REFUSE enable — POOR/TX is IBRT master` and rolls back. Ear-confirmed: bud stays up.
+- IBRT master is usually the phone-bonded primary; it can flip after reseat / reconnect. UX should prefer “enable from the good-side bud” or auto-check role before TX start.
+
+Exact fault inside `apply_enabled` / sniff (`exit_sniff_with_tws` vs capture open) is **not** pinned yet. Do not remove the guard until that path is fixed and retested on both poor=LEFT and poor=RIGHT with each as master.
 
 ## Clinical intent (non-medical framing)
 

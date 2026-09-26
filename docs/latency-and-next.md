@@ -261,6 +261,10 @@ not SCO. Locus = `apply_enabled` / sniff when POOR/TX is IBRT master.
 **v0.3.33:** refuse CROS when poor side is IBRT master (bud stays up); SCO probe
 default off; sniff skips `exit_sniff_with_tws` on poor.
 
+**0.3.33 ear (confirmed):** RIGHT master → `REFUSE enable`, no reboot. LEFT master
+→ CROS OK. Constraint is **POOR/TX × IBRT master** (not physical right). Must
+carry into v1.0 configurable poor side — [architecture-cros.md](architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
+
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
 

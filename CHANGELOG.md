@@ -26,6 +26,14 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
    Or enable from LEFT while RIGHT is master → RIGHT logs REFUSE, stays up.
 4. Paste RIGHT log if it still dies (should not).
 
+### Result (2026-09-26 ear)
+- **RIGHT master + POOR/TX:** `REFUSE enable` — bud stayed up (confirmed).
+- **LEFT master + GOOD/RX:** full enable / RX / extra READY OK. Phone SCO showed
+  `BTEVENT_SCO_CONNECT_IND` + `HF_EVENT_AUDIO_CONNECTED` (tee path works; SCO
+  probe itself still off).
+- **v1.0:** document constraint as role×TX, not “right bud” — see
+  [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
+
 ## [0.3.32] — 2026-09-26
 
 ### Packaging
