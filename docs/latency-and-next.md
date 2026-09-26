@@ -154,7 +154,11 @@ buds and want pause-on-CROS.
 **No delay increase.** Sniff lock did not stop the cutouts.
 
 **v0.3.27:** underrun-threshold lines are `CROS_LOG_STAT` (UART-only in quiet) so
-SPP does not tee 50…1750 mid-storm. Retest PC-speaker walk before blaming ACL.
+SPP does not tee 50…1750 mid-storm.
+
+**0.3.27 ear (2026-09-26):** LEFT master, Capture on, ~5 min CROS — **no cutouts**,
+`underrun=41` / `n=6336`, no phone threshold spam. Storm not reproduced; quiet
+harden holds. `rx_buf@put` still bursty (avg 165 ms, 0–270) — floor doing the work.
 
 **Why:** Sniff → bursty delivery → need deep jitter. G removed that variable.
 

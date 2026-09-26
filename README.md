@@ -26,7 +26,7 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 | Metric | Result |
 |--------|--------|
 | Clap delay (start→start) | ≈ **322–330 ms** |
-| Cutouts | Rare in quiet; **storm on 0.3.25** LEFT master during PC-speaker walk (not BT A2DP) |
+| Cutouts | **0.3.27:** none on long Capture-on wear (vs 0.3.25 LEFT storm); burstiness still in `rx_buf` |
 | Capture logs + CROS | OK if quiet mode engages after READY |
 
 ### Latency levers already tried (do not repeat blindly)

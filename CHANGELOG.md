@@ -21,6 +21,13 @@ Confirm `init v0.3.27 quiet-underrun+G`. PC-speaker walk like 0.3.25 — Capture
 OK. Expect **no** `underrun threshold` on phone during quiet (UART only). Compare
 cutouts / DISABLE `underrun=` count vs 0.3.25.
 
+### Result (2026-09-26 ear)
+LEFT master (GOOD/RX), Capture on, long wear in CROS. **No cutouts by ear.**
+Phone stayed quiet (no `underrun threshold` spam). DISABLE: `underrun=41` over
+`rx_buf@put n=6336` (~5 min @ 50 ms) — vs 0.3.25 storm `1757`/`1928`. Burstiness
+still present (`rx_buf` avg **165 ms**, 0–270) but floor absorbed it. Sniff stayed
+ACTIVE. **Quiet-underrun harden looks good; 0.3.25 storm not reproduced.**
+
 ## [0.3.26] — 2026-09-24
 
 ### Firmware — A2DP suspend while CROS on (video coexist) — **superseded**
