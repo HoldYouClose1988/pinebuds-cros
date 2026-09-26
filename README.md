@@ -20,7 +20,7 @@ steady. Quality is still call-path rough (CVSD); that is next. Details:
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO CVSD (v0.3.42)** | ≈ **140 ms** | **Latency path** (quality TBD) |
+| **SCO mSBC (v0.3.42)** | ≈ **140 ms** | **Latency + CROS path** (16 kHz) |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Daily / quality baseline until SCO is wear-ready |
 
 ## Current status (v0.3.42) — SCO CROS shape (poor→good)
