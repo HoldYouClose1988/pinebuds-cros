@@ -16,19 +16,19 @@ Peer **SCO/eSCO** between the buds carries live CVSD voice. Ear clap ≈ **140�
 vs ≈ **330 ms** on the older extra-L2CAP path — roughly **half the delay**, link held
 steady. Quality is still call-path rough (CVSD); that is next. Details:
 [CHANGELOG 0.3.39](CHANGELOG.md#0339--2026-09-26) · [latency scorecard](docs/latency-and-next.md) ·
-[release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.40).
+[release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.41).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO CVSD (v0.3.40)** | ≈ **140 ms** | **Latency path** (quality TBD) |
+| **SCO CVSD (v0.3.41)** | ≈ **140 ms** | **Latency path** (quality TBD) |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Daily / quality baseline until SCO is wear-ready |
 
-## Current status (v0.3.40) — SCO CROS shape (poor→good)
+## Current status (v0.3.41) — SCO CROS shape (poor→good)
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
-| **SCO CROS (bud↔bud)** | **~140 ms** path + **v0.3.40** asymmetric mute (poor mic → good spk) |
+| **SCO CROS (bud↔bud)** | **~140 ms** + CROS shape; **v0.3.41** louder HFP vol on good side |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still daily wear until SCO quality lands |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during media |
@@ -40,7 +40,7 @@ steady. Quality is still call-path rough (CVSD); that is next. Details:
 2. **v0.3.36** — auto-close after OPENED; extra held  
 3. **v0.3.37–38** — SCO alone held (~2 min silence); cmd ACL under SCO chops  
 4. **v0.3.39** — HFP CVSD voice on peer SCO → **~140 ms clap**  
-5. **v0.3.40** — asymmetric mute: poor mic→SCO, good SCO→speaker (CROS shape)
+5. **v0.3.41** — asymmetric mute: poor mic→SCO, good SCO→speaker (CROS shape)
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -62,7 +62,7 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (with default mapping: keep LEFT as master).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.40.zip`](flash-packages/pinebuds-cros-v0.3.40.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.41.zip`](flash-packages/pinebuds-cros-v0.3.41.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review
 
@@ -71,12 +71,12 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.40.zip`](flash-packages/pinebuds
 Extra path still at v0.3.27 for daily wear. Constraint for v1.0 configurable poor side:
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
-Flash **[v0.3.40](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.40)** for SCO CROS shape;
+Flash **[v0.3.41](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.41)** for SCO CROS shape;
 **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** for daily extra-only.
 
 ## How it works (short)
 
-**Latency / CROS path (v0.3.40) — peer SCO + CVSD, asymmetric mute:**
+**Latency / CROS path (v0.3.41) — peer SCO + CVSD, asymmetric mute:**
 
 ```
 RIGHT (poor)                         LEFT (good)
@@ -100,7 +100,7 @@ Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
 
-1. Download **[pinebuds-cros-v0.3.40.zip](flash-packages/pinebuds-cros-v0.3.40.zip)** (includes `bestool.exe`) — SCO ~140 ms.
+1. Download **[pinebuds-cros-v0.3.41.zip](flash-packages/pinebuds-cros-v0.3.41.zip)** (includes `bestool.exe`) — SCO ~140 ms.
    For daily extra-only quality, use **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** instead.
 2. Backup once, then flash **both** buds:
 

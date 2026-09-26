@@ -120,7 +120,7 @@ Build/install [`android/cros-log`](../android/cros-log/). Pair PineBuds, **Captu
 
 ### 2. Firmware — logging + CROS
 
-Flash [`flash-packages/pinebuds-cros-v0.3.40.zip`](../flash-packages/pinebuds-cros-v0.3.40.zip) (both buds). Helper: [`firmware/stage_b/cros_bt_log.*`](../firmware/stage_b/cros_bt_log.h).
+Flash [`flash-packages/pinebuds-cros-v0.3.41.zip`](../flash-packages/pinebuds-cros-v0.3.41.zip) (both buds). Helper: [`firmware/stage_b/cros_bt_log.*`](../firmware/stage_b/cros_bt_log.h).
 
 Sniff is blocked while Capture is on; that is OK for bring-up. Quiet mode keeps SPP from contending with extra ADPCM.
 

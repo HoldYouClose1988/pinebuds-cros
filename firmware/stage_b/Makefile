@@ -20,6 +20,8 @@ CROS_SCO_SLAVE_OPEN ?= 1
 CROS_SCO_ALONE ?= 1
 # v0.3.39: on OPENED, start HFP CVSD voice player against peer SCO (media probe).
 CROS_SCO_MEDIA ?= 1
+# v0.3.41: default HFP/SCO playback level on good side (0..15).
+CROS_SCO_HFP_VOL ?= 13
 # v0.3.33: allow POOR/TX when it is IBRT master (default refuse — known crash).
 CROS_ALLOW_POOR_MASTER ?= 0
 
@@ -31,6 +33,7 @@ ccflags-y += \
 	-DCROS_SCO_SLAVE_OPEN=$(CROS_SCO_SLAVE_OPEN) \
 	-DCROS_SCO_ALONE=$(CROS_SCO_ALONE) \
 	-DCROS_SCO_MEDIA=$(CROS_SCO_MEDIA) \
+	-DCROS_SCO_HFP_VOL=$(CROS_SCO_HFP_VOL) \
 	-DCROS_ALLOW_POOR_MASTER=$(CROS_ALLOW_POOR_MASTER) \
 	-Iapps/cros_tws \
 	-Iapps/audioplayers \

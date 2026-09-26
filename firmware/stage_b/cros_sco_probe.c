@@ -51,6 +51,8 @@ extern btif_remote_device_t *
 btif_me_get_remote_device_by_handle(uint16_t hci_handle);
 #if CROS_SCO_MEDIA
 extern int cros_sco_forcemute(int mic_mute, int spk_mute);
+extern int cros_sco_set_hfp_volume(int level);
+extern int cros_sco_get_hfp_volume(void);
 #endif
 
 /* Safety net only — must be >> extra defer (2s) + PONG + settle. */
@@ -93,9 +95,16 @@ static uint16_t cros_sco_peer_handle(void) {
   return h;
 }
 
+/* Default HFP/SCO playback level (0..15). 15 beeps; 13 is loud usable. */
+#ifndef CROS_SCO_HFP_VOL
+#define CROS_SCO_HFP_VOL 13
+#endif
+
 /* Asymmetric CROS on SCO: poor TX (mic), good RX (speaker). */
 static void cros_sco_apply_cros_mute(void) {
   int poor = cros_tws_is_poor_side() ? 1 : 0;
+  int vol_before;
+  int vol_after;
   if (poor) {
     /* Mic on → SCO; mute local speaker (no sidetone / no peer→poor). */
     cros_sco_forcemute(0, 1);
@@ -103,7 +112,12 @@ static void cros_sco_apply_cros_mute(void) {
   } else {
     /* SCO → speaker; mute local mic (no good-side TX). */
     cros_sco_forcemute(1, 0);
-    CROS_LOG(0, "[cros_sco] CROS shape GOOD/RX — mic OFF, spk ON");
+    vol_before = cros_sco_get_hfp_volume();
+    vol_after = cros_sco_set_hfp_volume(CROS_SCO_HFP_VOL);
+    CROS_LOG(0,
+             "[cros_sco] CROS shape GOOD/RX — mic OFF, spk ON; hfp_vol "
+             "%d→%d (bud vol keys still work)",
+             vol_before, vol_after);
   }
 }
 
@@ -409,7 +423,7 @@ void cros_sco_probe_init(void) {
 #if CROS_SCO_MEDIA
   CROS_LOG(1,
            "[cros_sco] probe init (ALONE+MEDIA+CROS, slave_open=%u — CVSD "
-           "poor TX / good RX)",
+           "poor TX / good RX, hfp_vol bump)",
            (unsigned)CROS_SCO_SLAVE_OPEN);
 #else
   CROS_LOG(1,

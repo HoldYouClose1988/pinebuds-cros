@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.41] — 2026-09-26
+
+### Firmware — raise SCO/HFP playback volume on CROS (good side)
+- **0.3.40 ear:** CROS shape worked (`GOOD/RX`); little dropout; **volume very low**.
+- No CROS-specific volume before — stock **HFP call volume** (often low; phone
+  HFP vol events never arrive on peer SCO). Bud volume keys *do* hit `hfp_vol`
+  while `APP_BT_STREAM_HFP_PCM` runs.
+- **0.3.41:** on CROS mute apply (good side), set HFP vol to **13/15** and log
+  `hfp_vol before→after`. Keys still work to trim.
+
+### Test (LEFT master)
+1. Flash both — `init v0.3.41`.
+2. Capture LEFT. Quad-tap. Expect `CROS shape GOOD/RX` + `hfp_vol N→13`.
+3. Confirm louder than 0.3.40; bud vol up/down still adjusts. Note dropouts.
+4. Paste LEFT log.
+
 ## [0.3.40] — 2026-09-26
 
 ### Firmware — asymmetric CROS on peer SCO (poor TX / good RX)
@@ -22,6 +38,10 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 3. Speak at **RIGHT** outer face — hear on **LEFT** only. LEFT mic should not
    feed RIGHT (no reverse CROS). Clap still ~140 ms-class if stable.
 4. Paste LEFT log + whether direction feels like CROS (not a phone call).
+
+### Result (2026-09-26 ear — LEFT master) — **CROS shape OK, quiet**
+`CROS shape GOOD/RX — mic OFF, spk ON`. Direction worked; some dropout; volume
+very low (HFP default). Follow-up: **v0.3.41** bump good-side hfp_vol.
 
 ## [0.3.39] — 2026-09-26
 
