@@ -48,6 +48,11 @@ if [[ "$TOTA" == "1" ]]; then
   echo "==> TOTA SPP log sink enabled (TOTA=1) — phone can capture [cros_*] over RFCOMM 12"
 fi
 
+# BiCROS: HW codec sidetone (local good-ear mic → local speaker). tgt_hardware.h
+# already sets CFG_HW_AUD_SIDETONE_*; SPEECH_SIDETONE=0 by default in common.mk.
+EXTRA+=(SPEECH_SIDETONE=1)
+echo "==> SPEECH_SIDETONE=1 (BiCROS local mic mix on good ear)"
+
 echo "==> Building T=$TARGET (jobs=$JOBS) ${EXTRA[*]:-}"
 if make -j"$JOBS" "T=$TARGET" DEBUG=1 "${EXTRA[@]}" >"$ROOT/build.log" 2>&1; then
   echo "build success"

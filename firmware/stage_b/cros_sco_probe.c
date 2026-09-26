@@ -57,6 +57,7 @@ btif_me_get_remote_device_by_handle(uint16_t hci_handle);
 extern int cros_sco_forcemute(int mic_mute, int spk_mute);
 extern int cros_sco_set_hfp_volume(int level);
 extern int cros_sco_get_hfp_volume(void);
+extern void cros_sco_sidetone_set(int on);
 #endif
 
 /* Safety net only — must be >> extra defer (2s) + PONG + settle. */
@@ -104,23 +105,28 @@ static uint16_t cros_sco_peer_handle(void) {
 #define CROS_SCO_HFP_VOL 13
 #endif
 
-/* Asymmetric CROS on SCO: poor TX (mic), good RX (speaker). */
+/* Asymmetric CROS / BiCROS on SCO:
+ *  POOR: mic→SCO, spk off, no local sidetone
+ *  GOOD: SCO→spk, mic not TX'd, HW sidetone mixes local (left) mic into spk
+ */
 static void cros_sco_apply_cros_mute(void) {
   int poor = cros_tws_is_poor_side() ? 1 : 0;
   int vol_before;
   int vol_after;
   if (poor) {
-    /* Mic on → SCO; mute local speaker (no sidetone / no peer→poor). */
     cros_sco_forcemute(0, 1);
-    CROS_LOG(0, "[cros_sco] CROS shape POOR/TX — mic ON, spk OFF");
+    cros_sco_sidetone_set(0);
+    CROS_LOG(0, "[cros_sco] CROS shape POOR/TX — mic ON, spk OFF, sidetone OFF");
   } else {
-    /* SCO → speaker; mute local mic (no good-side TX). */
+    /* Mute digital mic TX so left mic is not sent over SCO; HW sidetone still
+     * taps ADC → DAC for local mix (BiCROS). */
     cros_sco_forcemute(1, 0);
+    cros_sco_sidetone_set(1);
     vol_before = cros_sco_get_hfp_volume();
     vol_after = cros_sco_set_hfp_volume(CROS_SCO_HFP_VOL);
     CROS_LOG(0,
-             "[cros_sco] CROS shape GOOD/RX — mic OFF, spk ON; hfp_vol "
-             "%d→%d (bud vol keys still work)",
+             "[cros_sco] BiCROS GOOD/RX — SCO+local mic mix, no TX; "
+             "hfp_vol %d→%d sidetone ON",
              vol_before, vol_after);
   }
 }
@@ -197,6 +203,7 @@ static void cros_sco_voice_stop(void) {
     return;
   }
   CROS_LOG(0, "[cros_sco] voice STOP");
+  cros_sco_sidetone_set(0);
   cros_sco_forcemute(0, 0);
   hfp_ibrt_sco_audio_disconnected();
   voice_started = 0;
@@ -449,7 +456,7 @@ void cros_sco_probe_init(void) {
 #if CROS_SCO_MEDIA
   CROS_LOG(1,
            "[cros_sco] probe init (ALONE+MEDIA+CROS, slave_open=%u — %s poor "
-           "TX / good RX, hfp_vol bump)",
+           "TX / good RX + BiCROS sidetone, hfp_vol bump)",
            (unsigned)CROS_SCO_SLAVE_OPEN,
 #if CROS_SCO_MSBC
            "mSBC/16k"

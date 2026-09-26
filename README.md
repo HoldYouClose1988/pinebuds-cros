@@ -12,23 +12,23 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 
 ## Breakthrough (2026-09-26) — bud↔bud SCO media ≈ **140 ms**
 
-Peer **SCO/eSCO** between the buds carries live **mSBC 16 kHz** voice (v0.3.42;
+Peer **SCO/eSCO** between the buds carries live **mSBC 16 kHz** voice (v0.3.43;
 was CVSD 8 kHz). Ear clap ≈ **140 ms** vs ≈ **330 ms** on the older extra-L2CAP
 path — roughly **half the delay**, link held steady. Details:
 [CHANGELOG 0.3.42](CHANGELOG.md#0342--2026-09-26) · [latency scorecard](docs/latency-and-next.md) ·
-[release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.42).
+[release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC 16 kHz (v0.3.42)** | ≈ **140 ms** | **Latency + CROS path** |
+| **SCO mSBC 16 kHz (v0.3.43)** | ≈ **140 ms** | **Latency + CROS path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Fallback daily / quality baseline |
 
-## Current status (v0.3.42) — SCO CROS shape (poor→good)
+## Current status (v0.3.43) — SCO CROS shape (poor→good)
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
-| **SCO CROS (bud↔bud)** | **~140 ms** + CROS shape; **v0.3.42** mSBC 16 kHz (was CVSD 8 kHz) |
+| **SCO BiCROS (bud↔bud)** | **~140 ms** mSBC + CROS; **v0.3.43** mixes LEFT mic into good ear |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still daily wear until SCO quality lands |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during media |
@@ -42,7 +42,8 @@ path — roughly **half the delay**, link held steady. Details:
 4. **v0.3.39** — HFP CVSD voice on peer SCO → **~140 ms clap**  
 5. **v0.3.40** — asymmetric mute (CROS shape)  
 6. **v0.3.41** — bump good-side HFP/SCO volume  
-7. **v0.3.42** — **mSBC 16 kHz** (was CVSD 8 kHz)
+7. **v0.3.42** — **mSBC 16 kHz** (milestone)
+8. **v0.3.43** — BiCROS: LEFT mic sidetone mix into good ear
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -64,7 +65,7 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (with default mapping: keep LEFT as master).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.42.zip`](flash-packages/pinebuds-cros-v0.3.42.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.43.zip`](flash-packages/pinebuds-cros-v0.3.43.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review
 
@@ -73,12 +74,12 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.42.zip`](flash-packages/pinebuds
 Extra path still at v0.3.27 for daily wear. Constraint for v1.0 configurable poor side:
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
-Flash **[v0.3.42](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.42)** for SCO CROS shape;
+Flash **[v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43)** for SCO CROS shape;
 **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** for daily extra-only.
 
 ## How it works (short)
 
-**Latency / CROS path (v0.3.42) — peer SCO + mSBC 16 kHz, asymmetric mute:**
+**Latency / CROS path (v0.3.43) — peer SCO + mSBC 16 kHz, asymmetric mute:**
 
 ```
 RIGHT (poor)                         LEFT (good)
@@ -102,7 +103,7 @@ Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
 
-1. Download **[pinebuds-cros-v0.3.42.zip](flash-packages/pinebuds-cros-v0.3.42.zip)** (includes `bestool.exe`) — SCO ~140 ms.
+1. Download **[pinebuds-cros-v0.3.43.zip](flash-packages/pinebuds-cros-v0.3.43.zip)** (includes `bestool.exe`) — SCO ~140 ms.
    For daily extra-only quality, use **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** instead.
 2. Backup once, then flash **both** buds:
 

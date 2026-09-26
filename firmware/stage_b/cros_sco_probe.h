@@ -1,9 +1,9 @@
 /***************************************************************************
- * v0.3.42 — SCO CROS: mSBC 16 kHz (was CVSD 8 kHz).
+ * v0.3.43 — SCO BiCROS: mix good-ear (LEFT) mic into local playback.
  *
- * Alone + media + asymmetric mute (poor TX / good RX). Quality step after
- * stable ~140 ms latency. Tablet HFP volume does not reach peer SCO — bud
- * keys + hfp_vol bump (0.3.41) apply.
+ * mSBC 16 kHz peer SCO CROS + HW codec sidetone on GOOD only (local mic →
+ * speaker while SCO RX plays). Digital mic TX stays muted on good so left
+ * mic is not sent over SCO. POOR: sidetone off. SPEECH_SIDETONE=1 at build.
  ***************************************************************************/
 #ifndef CROS_SCO_PROBE_H
 #define CROS_SCO_PROBE_H

@@ -1,5 +1,5 @@
 /***************************************************************************
- * C bridge to SCO voice helpers (app_bt_stream / audio manager).
+ * C bridge to SCO voice helpers (app_bt_stream / audio manager / sidetone).
  ***************************************************************************/
 #include <stdbool.h>
 #include <stdint.h>
@@ -13,11 +13,12 @@ enum {
 /* C++-mangled in app_bt_stream.cpp */
 extern int bt_sco_player_forcemute(bool mic_mute, bool spk_mute);
 
-/* These are extern "C" in the SDK headers / unmangled. */
 extern "C" int app_audio_manager_ctrl_volume(int volume_ctrl,
                                             uint16_t volume_level);
 extern "C" int app_bt_stream_volumeset(int8_t vol);
 extern "C" uint8_t app_bt_stream_hfpvolume_get(void);
+extern "C" void hal_codec_sidetone_enable(void);
+extern "C" void hal_codec_sidetone_disable(void);
 
 extern "C" int cros_sco_forcemute(int mic_mute, int spk_mute) {
   return bt_sco_player_forcemute(mic_mute != 0, spk_mute != 0);
@@ -37,4 +38,13 @@ extern "C" int cros_sco_set_hfp_volume(int level) {
 
 extern "C" int cros_sco_get_hfp_volume(void) {
   return (int)app_bt_stream_hfpvolume_get();
+}
+
+/* HW codec sidetone: local mic → local speaker (independent of SCO TX mute). */
+extern "C" void cros_sco_sidetone_set(int on) {
+  if (on) {
+    hal_codec_sidetone_enable();
+  } else {
+    hal_codec_sidetone_disable();
+  }
 }

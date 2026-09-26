@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.43] — 2026-09-26
+
+### Firmware — BiCROS: mix LEFT (good) mic into local playback
+- **0.3.42 ear MILESTONE:** mSBC/16k — “good quality phone call,” great latency,
+  very usable. EQ later.
+- **0.3.43:** on GOOD/RX enable **HW codec sidetone** (tgt −20 dB, CH4) so local
+  left mic mixes into left speaker with contralateral SCO. Digital mic TX stays
+  muted (left not sent over SCO). POOR keeps sidetone OFF. Build: `SPEECH_SIDETONE=1`.
+
+### Test (LEFT master)
+1. Flash both — `init v0.3.43` / `BiCROS-sidetone`.
+2. Capture LEFT. Quad-tap. Expect `BiCROS GOOD/RX` + `sidetone ON`.
+3. Cover/speak at RIGHT — hear on LEFT (CROS). Speak near LEFT — should also
+   hear own voice on LEFT (local mix). RIGHT should stay quiet.
+4. Paste LEFT log + whether local left mic is audible in the mix.
+
 ## [0.3.42] — 2026-09-26
 
 ### Firmware — mSBC **16 kHz** on peer SCO CROS (was CVSD 8 kHz)
@@ -21,6 +37,11 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
    `hfp_vol →13`.
 3. Speech should sound clearer than 8 kHz. Note stability + rough clap delay.
 4. Paste LEFT log. If broken/silent, we can fall back (`CROS_SCO_MSBC=0`).
+
+### Result (2026-09-26 ear — LEFT master) — **MILESTONE**
+`codec=2` mSBC/16k. “Sounds like a good quality phone call” with great latency;
+very usable. EQ/smooth later. **SCO CROS latency+quality milestone met.**
+Next: mix LEFT (good-ear) mic into playback (BiCROS).
 
 ## [0.3.41] — 2026-09-26
 
