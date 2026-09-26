@@ -16,7 +16,7 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still the audio path |
-| **RIGHT as IBRT master** | CROS **refused** (known crash on POOR/TX+master) — use LEFT master |
+| **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
 | **SCO probe** | **Off** by default (`CROS_SCO_PROBE=0`); peer OPENED never landed |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
 | **Industrial damp** | Not implemented (design only) |
@@ -24,7 +24,8 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 ### Extra-pipe baseline (keep / build features on this)
 
 **v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. SCO probes
-paused until RIGHT-master TX path is safe.
+paused. **v1.0 note:** configurable poor side must keep the IBRT-master×TX
+guard — see [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
 | Metric | Result |
 |--------|--------|
@@ -48,7 +49,9 @@ Experiment trail: v0.3.23 media · 0.3.24 B+H · 0.3.25 sniff · **0.3.27 baseli
 
 Most of the 330 ms is the **200 ms jitter floor** required for stable extra under bursty ACL. Next latency bet is **SCO/eSCO** (§K), not thinning this floor again. Full scorecard: [docs/latency-and-next.md](docs/latency-and-next.md).
 
-Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap toggles CROS (needs TWS link).
+Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
+Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
+(with default mapping: keep LEFT as master).
 
 Latest zip: [`flash-packages/pinebuds-cros-v0.3.33.zip`](flash-packages/pinebuds-cros-v0.3.33.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
@@ -56,8 +59,9 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.33.zip`](flash-packages/pinebuds
 
 Extra-path CROS is at a **usable baseline (v0.3.27)**. Eyes wanted on **bud↔bud SCO/eSCO**
 (`sco_open_link` to TWS peer) and whether anything beats ~330 ms without wrecking IBRT.
-See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.27** for daily extra; keep **LEFT as IBRT master** for CROS (RIGHT-master
-is refused in v0.3.33).
+See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.27** for daily extra;
+keep poor side as IBRT **slave** (default: LEFT master). Constraint for v1.0
+configurable poor side: [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
 ## How it works (short)
 

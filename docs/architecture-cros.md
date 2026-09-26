@@ -71,7 +71,7 @@ FF mic capture  ──PCM/comp over──►   decode → mix → speaker
 | BiCROS | muted | remote mic + local mic + media | full |
 | Media priority | CROS ducked | media + attenuated CROS | A2DP focus |
 
-Configurable which physical side is “poor” (NV record + touch gesture). Default: left = poor (common SSD pattern; user-selectable).
+Configurable which physical side is “poor” (NV record + touch gesture). Compile-time default today: **RIGHT = poor** (`CROS_POOR_IS_RIGHT=1`). **v1.0 must keep the IBRT-master×TX guard** above when the choice is runtime — otherwise left-poor + left-master will reboot the same way right-poor + right-master did.
 
 ## Latency budget
 
@@ -114,8 +114,9 @@ ANC binary blob remains opaque; CROS should **not** depend on finished ANC. FF A
 
 | Slice | Status |
 |-------|--------|
-| 1. Mode plumbing (NV/touch/TWS sync) | Done (quad-tap + peer MODE cmd; poor side compile-time default RIGHT) |
+| 1. Mode plumbing (NV/touch/TWS sync) | Done (quad-tap + peer MODE cmd; poor side compile-time default RIGHT; master×TX refuse) |
 | 2. Loopback prototype (Stage A) | Done earlier; optional bring-up |
 | 3. Cross-bud audio + measure latency | **Done on extra L2CAP** (~330 ms start→start); further cuts blocked on burstiness — see [latency-and-next.md](latency-and-next.md) |
 | 4. Good-ear mix with A2DP ducking | Not started |
 | 5. BiCROS / presets / power polish | Not started |
+| 6. User-selectable poor side | Not started — **requires** master×TX guard (see Hard constraint) |
