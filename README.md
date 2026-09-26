@@ -12,16 +12,16 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 
 ## Breakthrough (2026-09-26) — bud↔bud SCO media ≈ **140 ms**
 
-Peer **SCO/eSCO** between the buds carries live CVSD voice. Ear clap ≈ **140 ms**
-vs ≈ **330 ms** on the older extra-L2CAP path — roughly **half the delay**, link held
-steady. Quality is still call-path rough (CVSD); that is next. Details:
-[CHANGELOG 0.3.39](CHANGELOG.md#0339--2026-09-26) · [latency scorecard](docs/latency-and-next.md) ·
+Peer **SCO/eSCO** between the buds carries live **mSBC 16 kHz** voice (v0.3.42;
+was CVSD 8 kHz). Ear clap ≈ **140 ms** vs ≈ **330 ms** on the older extra-L2CAP
+path — roughly **half the delay**, link held steady. Details:
+[CHANGELOG 0.3.42](CHANGELOG.md#0342--2026-09-26) · [latency scorecard](docs/latency-and-next.md) ·
 [release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.42).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC (v0.3.42)** | ≈ **140 ms** | **Latency + CROS path** (16 kHz) |
-| Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Daily / quality baseline until SCO is wear-ready |
+| **SCO mSBC 16 kHz (v0.3.42)** | ≈ **140 ms** | **Latency + CROS path** |
+| Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Fallback daily / quality baseline |
 
 ## Current status (v0.3.42) — SCO CROS shape (poor→good)
 
@@ -78,12 +78,12 @@ Flash **[v0.3.42](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag
 
 ## How it works (short)
 
-**Latency / CROS path (v0.3.42) — peer SCO + CVSD, asymmetric mute:**
+**Latency / CROS path (v0.3.42) — peer SCO + mSBC 16 kHz, asymmetric mute:**
 
 ```
 RIGHT (poor)                         LEFT (good)
 ────────────                         ───────────
-FF/call mic ──► CVSD / SCO ────────────► CVSD / speaker
+mic ──► mSBC / SCO ──────────────────► mSBC / speaker
    (POOR: mic ON, spk OFF)     (GOOD: mic OFF, spk ON)
 ```
 
