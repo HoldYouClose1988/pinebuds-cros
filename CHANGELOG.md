@@ -6,6 +6,24 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.28] — 2026-09-26
+
+### Firmware — SCO/eSCO bud↔bud OPEN/CLOSED probe (§K)
+- **Extra baseline unchanged** (v0.3.27 media + quiet underrun + sniff lock).
+- On CROS enable: after 1.5 s, master `sco_open_link(tws_peer)`; slave
+  `sco_register_link` only. Log `[cros_sco] OPENED` / `CLOSED` / `open_link rc=`.
+- **No SCO audio yet** — mic/speaker stay on extra L2CAP.
+- Prefer **phone disconnected** (logs WARN if `mobile_conhandle` set).
+- Disable with `CROS_SCO_PROBE=0`.
+
+### Test
+1. Flash both buds — `init v0.3.28 SCO-probe+G`.
+2. Forget/disconnect phone from buds (cleanest); TWS still paired.
+3. Capture on; quad-tap CROS; wait ≥2 s.
+4. Look for `[cros_sco] open_link` then **`OPENED`** (success) or only CLOSED /
+   TWS drop (fail). Extra CROS audio should still work either way.
+5. Quad-tap off — expect `close_link` / `CLOSED`. Paste log.
+
 ## [0.3.27] — 2026-09-24 — **extra-pipe baseline**
 
 ### Status

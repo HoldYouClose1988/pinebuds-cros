@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.27 — A2DP-suspend off (misread); underrun logs UART-only while quiet.
+ * v0.3.28 — SCO bud↔bud OPEN/CLOSED probe (§K); extra baseline unchanged.
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -15,6 +15,7 @@
 #include "cros_besaud_extra.h"
 #include "cros_bt_log.h"
 #include "cros_lat.h"
+#include "cros_sco_probe.h"
 #include "hal_trace.h"
 #include "string.h"
 #include "tgt_hardware.h"
@@ -668,6 +669,7 @@ void cros_tws_init(void) {
   }
   cros_bt_log_init();
   cros_besaud_extra_init();
+  cros_sco_probe_init();
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
   enabled = false;
   tx_running = rx_running = false;
@@ -675,7 +677,7 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
-  CROS_LOG(1, "[cros_tws] init v0.3.27 quiet-underrun+G floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.28 SCO-probe+G floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
@@ -697,6 +699,7 @@ int cros_tws_start(void) {
   enabled = true;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
   cros_besaud_extra_ensure();
+  cros_sco_probe_on_cros_enable();
   log_side_probe("enable");
   CROS_LOG(2, "[cros_tws] ENABLE extra_open=%d",
         cros_besaud_extra_is_open() ? 1 : 0);
@@ -713,6 +716,7 @@ int cros_tws_stop(void) {
   if (app_tws_ibrt_tws_link_connected()) {
     tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
   }
+  cros_sco_probe_on_cros_disable();
   cros_bt_log_set_quiet(0);
   CROS_LOG(0, "[cros_tws] DISABLE");
   return apply_enabled(false);

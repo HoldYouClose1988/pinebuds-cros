@@ -10,21 +10,21 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.27) — **extra-pipe baseline**
+## Current status (v0.3.28) — SCO probe on top of **extra baseline v0.3.27**
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
-| **Stage B CROS (extra L2CAP)** | **Usable baseline** — BESAUD extra `0x0b0e`, ear-validated |
+| **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still the audio path |
+| **SCO probe (v0.3.28)** | OPEN/CLOSED only to TWS peer — **no SCO audio yet** |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
-| **Latency chase** | Next: **SCO/eSCO bud↔bud** probe — see [latency-and-next.md](docs/latency-and-next.md) §K |
+| **Latency chase** | Active: **SCO/eSCO** — see [latency-and-next.md](docs/latency-and-next.md) §K |
 | **Industrial damp** | Not implemented (design only) |
 
 ### Extra-pipe baseline (keep / build features on this)
 
-**v0.3.27** is the freeze point for the **extra L2CAP** CROS path. Further product
-features (UX, EQ hooks, logging polish, …) land here if the SCO experiment does
-not beat ~330 ms. Latency hunting moves to a **different pipe** first.
+**v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. **v0.3.28**
+adds a SCO link probe only; if SCO is unfruitful, feature work continues on 0.3.27.
 
 | Metric | Result |
 |--------|--------|

@@ -216,8 +216,11 @@ keep the log line for regressions.
 
 **Unknowns / risks:** No open bud↔bud caller. IBRT may refuse SCO on the TWS ACL. PCM/AF path is wired for HFP sniffer, not peer mic. CVSD/mSBC quality + phone-call conflict. Medium–high brick risk.
 
-**Smallest probe:** With mobile disconnected, `sco_open_link(tws_peer)` once; log OPEN/CLOSED only; **no** audio until both sides open. Abort if TWS drops. If OPEN holds, wire mic→SCO→speaker and clap vs 0.3.27.
+**Smallest probe:** **v0.3.28** — With CROS enable, master `sco_open_link(tws_peer)`
+after 1.5 s; slave registers only. Log OPEN/CLOSED; **no** SCO audio. Extra CROS
+unchanged. Prefer mobile disconnected. Abort path: CROS disable → close/unregister.
 
+**If OPENED:** next flash wires mic→SCO→speaker and clap vs 0.3.27.  
 **If unfruitful:** return to **v0.3.27 extra** for all further features (PLC, UX, …).
 
 ### L. Parallel BLE between buds — **no idle link; VOB sample exists**
@@ -253,7 +256,7 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **next** (latency).  
+4. **K** — **SCO/eSCO bud↔bud** — **v0.3.28 probe (OPEN/CLOSED)**.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts.  
 7. **L** — VOB / peer BLE media (bench first).  
