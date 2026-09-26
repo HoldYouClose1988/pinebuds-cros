@@ -21,6 +21,11 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
    buds responsive for 10–20 s; off → `close_link`.
 3. Paste LEFT log (should stay short — no underrun flood).
 
+### Result (2026-09-26 ear — LEFT master) — **PASS (~2 min)**
+Silence + `OPENED (alone hold…)`; stayed up ~2 min with Capture on; clean
+DISABLE → `close_link`/`unregister`. No underrun flood. Peer SCO without ACL
+CROS is stable. Next: mic→SCO→speaker.
+
 ## [0.3.37] — 2026-09-26
 
 ### Firmware — SCO alone hold (no extra)
