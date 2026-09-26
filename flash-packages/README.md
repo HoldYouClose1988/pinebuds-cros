@@ -2,15 +2,15 @@
 
 > **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product.
 
-**Current version: v0.3.28 — SCO OPEN/CLOSED probe (extra audio = 0.3.27)**
+**Current version: v0.3.29**
 
-Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.28.zip](./pinebuds-cros-v0.3.28.zip)**.
+Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[pinebuds-cros-v0.3.29.zip](./pinebuds-cros-v0.3.29.zip)**.
 
-Extra L2CAP CROS unchanged. This zip probes bud↔bud SCO link only (no SCO audio yet).
-Prefer phone disconnected when testing.
+Each zip includes `bestool.exe`, `BESTOOL.md`, `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps.
 
 | Package | Version |
 |---------|---------|
+| [pinebuds-cros-v0.3.29.zip](./pinebuds-cros-v0.3.29.zip) | v0.3.29 |
 | [pinebuds-cros-v0.3.28.zip](./pinebuds-cros-v0.3.28.zip) | v0.3.28 |
 | [pinebuds-cros-v0.3.27.zip](./pinebuds-cros-v0.3.27.zip) | v0.3.27 |
 | [pinebuds-cros-v0.3.26.zip](./pinebuds-cros-v0.3.26.zip) | v0.3.26 |

@@ -6,6 +6,20 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.29] — 2026-09-26
+
+### Firmware — SCO probe: arm on peer-mode too
+- **0.3.28 miss:** remote enable (`peer mode=1`) never called
+  `cros_sco_probe_on_cros_enable` — only local quad-tap did. Ear log showed
+  `[cros_extra] OPEN` (L2CAP), **not** `[cros_sco] OPENED`.
+- Both local and peer enable/disable now arm/disarm the SCO probe.
+- Same OPEN/CLOSED-only probe otherwise.
+
+### Test
+Flash both — `init v0.3.29`. Prefer phone disconnected. Capture the **LEFT**
+bud (or whichever is IBRT master — it runs `open_link`). Quad-tap CROS; wait
+≥2 s. Success line is exactly **`[cros_sco] OPENED`** (not `cros_extra] OPEN`).
+
 ## [0.3.28] — 2026-09-26
 
 ### Firmware — SCO/eSCO bud↔bud OPEN/CLOSED probe (§K)

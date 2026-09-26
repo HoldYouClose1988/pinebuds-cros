@@ -1,7 +1,7 @@
 /***************************************************************************
  * Stage B: poor-side FF mic → TWS → good-side speaker (experimental CROS).
  *
- * v0.3.28 — SCO bud↔bud OPEN/CLOSED probe (§K); extra baseline unchanged.
+ * v0.3.29 — SCO probe: also arm on peer-mode enable (0.3.28 missed that path).
  ***************************************************************************/
 #include "cros_tws.h"
 
@@ -677,7 +677,7 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
-  CROS_LOG(1, "[cros_tws] init v0.3.28 SCO-probe+G floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.29 SCO-probe+G floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }
@@ -740,9 +740,11 @@ void cros_tws_on_peer_mode(uint8_t on) {
   if (want == enabled) {
     if (want) {
       cros_besaud_extra_ensure();
+      cros_sco_probe_on_cros_enable();
       apply_enabled(true);
     } else {
       /* Remote stop while already disabled — still clear quiet. */
+      cros_sco_probe_on_cros_disable();
       cros_bt_log_set_quiet(0);
     }
     return;
@@ -750,8 +752,10 @@ void cros_tws_on_peer_mode(uint8_t on) {
   enabled = want;
   if (want) {
     cros_besaud_extra_ensure();
+    cros_sco_probe_on_cros_enable();
   } else {
     /* Remote-initiated stop must leave quiet mode (local stop already does). */
+    cros_sco_probe_on_cros_disable();
     cros_bt_log_set_quiet(0);
   }
   apply_enabled(want);

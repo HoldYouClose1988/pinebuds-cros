@@ -10,15 +10,15 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.28) — SCO probe on top of **extra baseline v0.3.27**
+## Current status (v0.3.29) — SCO probe fix on top of **extra baseline v0.3.27**
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still the audio path |
-| **SCO probe (v0.3.28)** | OPEN/CLOSED only to TWS peer — **no SCO audio yet** |
+| **SCO probe (v0.3.29)** | OPEN/CLOSED only — arm on local **and** peer enable |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
-| **Latency chase** | Active: **SCO/eSCO** — see [latency-and-next.md](docs/latency-and-next.md) §K |
+| **Latency chase** | Active: **SCO/eSCO** — look for `[cros_sco] OPENED` specifically |
 | **Industrial damp** | Not implemented (design only) |
 
 ### Extra-pipe baseline (keep / build features on this)
