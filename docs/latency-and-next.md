@@ -218,14 +218,22 @@ keep the log line for regressions.
 
 **Smallest probe:** **v0.3.29** — With CROS enable, master `sco_open_link(tws_peer)`
 after 1.5 s; slave registers only. Log OPEN/CLOSED; **no** SCO audio. Extra CROS
-unchanged. Prefer mobile disconnected.
+unchanged. Capture requires tablet classic BT (TOTA) — cannot also be
+“phone disconnected” for SPP logs; UART only for that case.
 
-**0.3.29 ear (LEFT master, phone still up):** `open_link rc=0` but **no OPENED
-callback**. TWS survived. One clean retry with phone disconnected still owed
-before closing §K.
+**0.3.29 ear (LEFT master, Capture on):**  
+`sco_init` / `register_link` / `open_link` all **rc=0** → API accepts peer SCO.  
+**No `[cros_sco] OPENED` / `CLOSED` notify** → link never completes to our
+callback. TWS + extra survived. `close_link rc=1` on DISABLE (nothing open).
 
-**If OPENED:** next flash wires mic→SCO→speaker and clap vs 0.3.27.  
-**If still no OPENED with phone gone:** return to **v0.3.27 extra** for features.
+**§K status: open investigation, not dead.** Same pattern as early extra (create
+returned but path needed READY/coexist work). Hypotheses for no-OPENED:
+peer register race, IBRT refusing SCO on TWS ACL after HCI accept, missing HCI
+SCO complete → `sco_conn_opened_ind`, wrong notify registration, need eSCO /
+codec params, mobile ACL coexistence.
+
+**If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
+**Daily audio until then:** **v0.3.27 extra** baseline.
 
 ### L. Parallel BLE between buds — **no idle link; VOB sample exists**
 
@@ -260,12 +268,13 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **v0.3.28 probe (OPEN/CLOSED)**.  
+4. **K** — **SCO/eSCO bud↔bud** — **v0.3.29:** `open_link rc=0`, **no OPENED** —
+   investigate (not closed).  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
-6. **L′** — BLE GATT log sink if Capture+SPP still hurts.  
+6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  
 — **J** — BES_OTA RFCOMM: research closed; not a media path.  
-— If **K** fails → resume feature work on **v0.3.27 extra**.
+— Daily CROS audio: **v0.3.27 extra** until SCO proves out.
 
 ## Suggested review questions
 
