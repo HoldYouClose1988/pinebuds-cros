@@ -32,6 +32,10 @@
 #define CROS_SCO_MEDIA 0
 #endif
 
+#ifndef CROS_SCO_MSBC
+#define CROS_SCO_MSBC 1
+#endif
+
 #if CROS_SCO_PROBE
 
 #include "sco_i.h"
@@ -137,8 +141,13 @@ static void cros_sco_voice_start(void) {
     return;
   }
   sco_hdl = cros_sco_peer_handle();
-  CROS_LOG(0, "[cros_sco] voice START try sco_hdl=0x%04x (CVSD + CROS mute)",
+#if CROS_SCO_MSBC
+  CROS_LOG(0, "[cros_sco] voice START try sco_hdl=0x%04x (mSBC 16k + CROS)",
            (unsigned)sco_hdl);
+#else
+  CROS_LOG(0, "[cros_sco] voice START try sco_hdl=0x%04x (CVSD 8k + CROS)",
+           (unsigned)sco_hdl);
+#endif
   if (!sco_hdl) {
     CROS_LOG(0, "[cros_sco] voice START — no handle yet, retry %ums",
              (unsigned)CROS_SCO_VOICE_RETRY_MS);
@@ -148,10 +157,27 @@ static void cros_sco_voice_start(void) {
     }
     return;
   }
+#if CROS_SCO_MSBC
+  {
+    ibrt_ctrl_t *ctx = app_tws_ibrt_get_bt_ctrl_ctx();
+    if (ctx) {
+      ctx->ibrt_sco_codec = BTIF_HF_SCO_CODEC_MSBC;
+    }
+    rc = hfp_ibrt_sco_audio_connected(BTIF_HF_SCO_CODEC_MSBC, sco_hdl);
+  }
+#else
   rc = hfp_ibrt_sco_audio_connected(BTIF_HF_SCO_CODEC_CVSD, sco_hdl);
+#endif
   voice_started = 1;
-  CROS_LOG(0, "[cros_sco] voice START done rc=%d — schedule CROS mute %ums",
-           rc, (unsigned)CROS_SCO_CROS_MUTE_MS);
+  CROS_LOG(0, "[cros_sco] voice START done rc=%d codec=%s — schedule CROS mute "
+              "%ums",
+           rc,
+#if CROS_SCO_MSBC
+           "mSBC/16k",
+#else
+           "CVSD/8k",
+#endif
+           (unsigned)CROS_SCO_CROS_MUTE_MS);
   if (cros_mute_timer) {
     osTimerStop(cros_mute_timer);
     osTimerStart(cros_mute_timer, CROS_SCO_CROS_MUTE_MS);
@@ -422,9 +448,15 @@ void cros_sco_probe_init(void) {
 #if CROS_SCO_ALONE
 #if CROS_SCO_MEDIA
   CROS_LOG(1,
-           "[cros_sco] probe init (ALONE+MEDIA+CROS, slave_open=%u — CVSD "
-           "poor TX / good RX, hfp_vol bump)",
-           (unsigned)CROS_SCO_SLAVE_OPEN);
+           "[cros_sco] probe init (ALONE+MEDIA+CROS, slave_open=%u — %s poor "
+           "TX / good RX, hfp_vol bump)",
+           (unsigned)CROS_SCO_SLAVE_OPEN,
+#if CROS_SCO_MSBC
+           "mSBC/16k"
+#else
+           "CVSD/8k"
+#endif
+  );
 #else
   CROS_LOG(1,
            "[cros_sco] probe init (ALONE hold, slave_open=%u — no extra, leave "

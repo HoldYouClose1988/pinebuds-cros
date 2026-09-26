@@ -1,10 +1,9 @@
 /***************************************************************************
- * v0.3.40 — SCO/eSCO bud↔bud CROS shape (latency chase §K).
+ * v0.3.42 — SCO CROS: mSBC 16 kHz (was CVSD 8 kHz).
  *
- * CROS_SCO_ALONE=1: skip extra L2CAP; settle from enable; leave SCO up.
- * CROS_SCO_MEDIA=1: on OPENED start HFP CVSD voice on peer SCO, then
- *   asymmetric mute — POOR/TX: mic ON spk OFF; GOOD/RX: mic OFF spk ON.
- * Quality later (Stability → Latency → Quality).
+ * Alone + media + asymmetric mute (poor TX / good RX). Quality step after
+ * stable ~140 ms latency. Tablet HFP volume does not reach peer SCO — bud
+ * keys + hfp_vol bump (0.3.41) apply.
  ***************************************************************************/
 #ifndef CROS_SCO_PROBE_H
 #define CROS_SCO_PROBE_H

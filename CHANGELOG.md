@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.42] — 2026-09-26
+
+### Firmware — mSBC **16 kHz** on peer SCO CROS (was CVSD 8 kHz)
+- **0.3.41 ear:** louder (`hfp_vol 6→13`); **no dropouts**; latency/stability good.
+  Tablet volume does **not** work in CROS (no HFP AG on peer SCO) — bud keys do.
+  “Rough / dropout-like” was **8 kHz CVSD**, not link loss.
+- **0.3.42:** `hfp_ibrt_sco_audio_connected(MSBC)` + `ibrt_sco_codec=MSBC`.
+  Expect log `codec=mSBC/16k` / `HF_IBRT_AUDIO_CONNECTED codec=2`.
+
+### Test (LEFT master)
+1. Flash both — `init v0.3.42` / probe init shows `mSBC/16k`.
+2. Capture LEFT. Quad-tap. Expect voice START `mSBC 16k`, `codec=2`, CROS shape,
+   `hfp_vol →13`.
+3. Speech should sound clearer than 8 kHz. Note stability + rough clap delay.
+4. Paste LEFT log. If broken/silent, we can fall back (`CROS_SCO_MSBC=0`).
+
 ## [0.3.41] — 2026-09-26
 
 ### Firmware — raise SCO/HFP playback volume on CROS (good side)
@@ -21,6 +37,10 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 2. Capture LEFT. Quad-tap. Expect `CROS shape GOOD/RX` + `hfp_vol N→13`.
 3. Confirm louder than 0.3.40; bud vol up/down still adjusts. Note dropouts.
 4. Paste LEFT log.
+
+### Result (2026-09-26 ear — LEFT master) — **louder, stable**
+`hfp_vol 6→13`. No dropouts; latency/stability good. Tablet vol N/A on peer SCO.
+Roughness = CVSD 8 kHz. Follow-up: **v0.3.42** mSBC 16 kHz.
 
 ## [0.3.40] — 2026-09-26
 

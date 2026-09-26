@@ -309,11 +309,11 @@ overrun from underrun STAT spam.
 
 **v0.3.39 ear:** **PASS** — CVSD voice on peer SCO; **clap ≈140 ms**.
 
-**v0.3.40:** asymmetric CROS mute on that path — poor mic ON/spk OFF, good
-mic OFF/spk ON. Priority Stability → Latency → **CROS shape**; quality last.
+**v0.3.40–41:** CROS shape + hfp_vol bump; stable ~140 ms; tablet vol N/A.
 
-Do not run ACL CROS with peer SCO. Daily extra still v0.3.27 until SCO is
-wear-ready.
+**v0.3.42:** **mSBC 16 kHz** (was CVSD 8 kHz roughness). Quality step on SCO path.
+
+Do not run ACL CROS with peer SCO. Daily extra still v0.3.27 if needed.
 
 **Daily audio until SCO media:** **v0.3.27 extra** baseline.
 
