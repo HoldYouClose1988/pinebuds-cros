@@ -216,12 +216,16 @@ keep the log line for regressions.
 
 **Unknowns / risks:** No open bud↔bud caller. IBRT may refuse SCO on the TWS ACL. PCM/AF path is wired for HFP sniffer, not peer mic. CVSD/mSBC quality + phone-call conflict. Medium–high brick risk.
 
-**Smallest probe:** **v0.3.28** — With CROS enable, master `sco_open_link(tws_peer)`
+**Smallest probe:** **v0.3.29** — With CROS enable, master `sco_open_link(tws_peer)`
 after 1.5 s; slave registers only. Log OPEN/CLOSED; **no** SCO audio. Extra CROS
-unchanged. Prefer mobile disconnected. Abort path: CROS disable → close/unregister.
+unchanged. Prefer mobile disconnected.
+
+**0.3.29 ear (LEFT master, phone still up):** `open_link rc=0` but **no OPENED
+callback**. TWS survived. One clean retry with phone disconnected still owed
+before closing §K.
 
 **If OPENED:** next flash wires mic→SCO→speaker and clap vs 0.3.27.  
-**If unfruitful:** return to **v0.3.27 extra** for all further features (PLC, UX, …).
+**If still no OPENED with phone gone:** return to **v0.3.27 extra** for features.
 
 ### L. Parallel BLE between buds — **no idle link; VOB sample exists**
 

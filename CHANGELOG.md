@@ -20,6 +20,14 @@ Flash both — `init v0.3.29`. Prefer phone disconnected. Capture the **LEFT**
 bud (or whichever is IBRT master — it runs `open_link`). Quad-tap CROS; wait
 ≥2 s. Success line is exactly **`[cros_sco] OPENED`** (not `cros_extra] OPEN`).
 
+### Result (2026-09-26 ear — LEFT master)
+`init v0.3.29`, Capture LEFT, `role=0` (MASTER). Probe armed; `sco_init` /
+`register_link` / `open_link` all **rc=0**. **Never saw `[cros_sco] OPENED` or
+`CLOSED` notify.** DISABLE: `close_link rc=1` (nothing to close). Extra L2CAP
+still READY; TWS stayed ACTIVE — probe did not brick the link.
+**WARN:** `mobile_conhandle=0x0080` (phone still connected). Retest once with
+phone fully disconnected before declaring §K dead.
+
 ## [0.3.28] — 2026-09-26
 
 ### Firmware — SCO/eSCO bud↔bud OPEN/CLOSED probe (§K)
