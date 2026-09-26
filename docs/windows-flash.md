@@ -40,7 +40,7 @@ For **community** firmware: program **APP only** (untick Factory mode). For **fa
 
 **Preferred:** download a flash package from GitHub (bin + PowerShell helpers + `FLASH.md`):
 
-- [pinebuds-cros-v0.3.33.zip](../flash-packages/pinebuds-cros-v0.3.33.zip) — current iteration (versioned; no LATEST alias)  
+- [pinebuds-cros-v0.3.34.zip](../flash-packages/pinebuds-cros-v0.3.34.zip) — current iteration (versioned; no LATEST alias)  
 - [flash-packages/](../flash-packages/) — history + checksums  
 
 Or build on WSL2/Linux/Docker, then run `./scripts/package-flash.sh` (or copy `open_source.bin` yourself).

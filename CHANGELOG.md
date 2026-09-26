@@ -6,6 +6,23 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.34] — 2026-09-26
+
+### Firmware — SCO probe back on (keep master×TX refuse)
+- **CROS_SCO_PROBE=1** again: settle-after-READY register+open (from 0.3.32).
+- **Still refuse** POOR/TX when IBRT master (0.3.33 guard) — test SCO only with
+  poor side as slave (default: LEFT master, RIGHT TX).
+- Extra baseline unchanged. No SCO audio yet — looking for `[cros_sco] OPENED`.
+
+### Test (LEFT must be IBRT master)
+1. Flash both — `init v0.3.34`.
+2. Confirm LEFT master (`role=` / reseat if RIGHT is master).
+3. Capture LEFT. Quad-tap CROS.
+4. Expect: extra READY → `[cros_sco] peer READY — settle …` → `open_link rc=` →
+   **`[cros_sco] OPENED`** (success) or still nothing after settle.
+5. Optional: Phone SCO on — expect `BTEVENT_SCO_*` / `HF_EVENT_AUDIO_*` (known-good).
+6. Paste LEFT log. Do **not** force RIGHT master for this test.
+
 ## [0.3.33] — 2026-09-26
 
 ### Firmware — refuse POOR/TX when it is IBRT master (stop the reboot)

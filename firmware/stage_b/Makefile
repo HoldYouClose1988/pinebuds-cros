@@ -10,8 +10,8 @@ endif
 
 # v0.3.12: re-enable extra with coexistence (defer + single ping + no-peer retry).
 CROS_EXTRA_L2CAP ?= 1
-# v0.3.33: SCO probe OFF by default — peer OPENED never landed; isolate RIGHT-master crash.
-CROS_SCO_PROBE ?= 0
+# v0.3.34: SCO probe ON again (settle-after-READY). Keep poor-master refuse.
+CROS_SCO_PROBE ?= 1
 # v0.3.30: slave also issues sco_open_link (default off — master-only).
 CROS_SCO_SLAVE_OPEN ?= 0
 # v0.3.33: allow POOR/TX when it is IBRT master (default refuse — known crash).

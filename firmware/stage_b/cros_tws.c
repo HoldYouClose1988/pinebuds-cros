@@ -720,7 +720,7 @@ void cros_tws_init(void) {
   tx_stuck_ticks = 0;
   inited = true;
   cros_lat_reset();
-  CROS_LOG(1, "[cros_tws] init v0.3.33 guard-poor-master+G floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.34 SCO-on+guard-poor-master floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
   log_side_probe("init");
 }

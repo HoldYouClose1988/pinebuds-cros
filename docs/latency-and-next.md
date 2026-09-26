@@ -301,8 +301,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — paused (`CROS_SCO_PROBE=0`). Phone BTEVENT tee
-   worked on LEFT; peer never OPENED. Unblock after RIGHT-master TX is safe.  
+4. **K** — **SCO/eSCO bud↔bud** — **v0.3.34:** probe on again (LEFT master only;
+   poor-master refused). Still need peer `OPENED`.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  
