@@ -265,6 +265,12 @@ default off; sniff skips `exit_sniff_with_tws` on poor.
 → CROS OK. Constraint is **POOR/TX × IBRT master** (not physical right). Must
 carry into v1.0 configurable poor side — [architecture-cros.md](architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
+**v0.3.34:** SCO probe on again (settle-after-READY); poor-master refuse kept.
+
+**0.3.34 ear (LEFT master, Capture on):** settle → `open_link rc=0`; **no OPENED**,
+**no peer BTEVENT**. Phone SCO still shows `BTEVENT_SCO_*`. §K open — undecided
+next (`CROS_SCO_SLAVE_OPEN=1` vs phone-disconnected UART retest).
+
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
 

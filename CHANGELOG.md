@@ -23,6 +23,15 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 5. Optional: Phone SCO on — expect `BTEVENT_SCO_*` / `HF_EVENT_AUDIO_*` (known-good).
 6. Paste LEFT log. Do **not** force RIGHT master for this test.
 
+### Result (2026-09-26 ear — LEFT master)
+`init v0.3.34`, Capture on, `role=0` master, GOOD/RX. Settle path ran;
+`sco_init` / `register_link` / `open_link` all **rc=0**. **No** `[cros_sco] OPENED`
+or peer `BTEVENT_SCO_*` (peer rem `b7:2b:…`). Phone SCO produced
+`BTEVENT_SCO_CONNECT_IND` / disconnect (`rem=9c:65:…`) — tee + phone path OK.
+DISABLE: `close_link rc=1` (nothing open). Same §K wall as 0.3.29–0.3.32:
+API accepts peer open; link never completes. Next levers (undecided):
+`CROS_SCO_SLAVE_OPEN=1`, or UART / phone-disconnected retest (`mobile_conhandle=0`).
+
 ## [0.3.33] — 2026-09-26
 
 ### Firmware — refuse POOR/TX when it is IBRT master (stop the reboot)

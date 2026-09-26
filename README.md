@@ -17,7 +17,7 @@ The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPi
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still the audio path |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
-| **SCO probe** | **On** (settle-after-READY) — still chasing peer `OPENED` |
+| **SCO probe** | **On** — `open_link rc=0`, still **no peer OPENED** (0.3.34 ear) |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
 | **Industrial damp** | Not implemented (design only) |
 
