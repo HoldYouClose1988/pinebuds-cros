@@ -6,6 +6,18 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.35] — 2026-09-26
+
+### Firmware — last §K lever: `CROS_SCO_SLAVE_OPEN=1`
+- Both buds issue `sco_open_link` after READY settle (not master-only).
+- Poor-master refuse unchanged. Extra baseline unchanged. No SCO audio yet.
+
+### Test (LEFT = IBRT master)
+1. Flash both — `init v0.3.35` / `slave_open=1` in sco probe init.
+2. Capture LEFT. Quad-tap CROS.
+3. Expect settle → `open_link` on master; slave log (if captured) also `open_link`.
+4. Success = **`[cros_sco] OPENED`**. Else same wall — paste LEFT log.
+
 ## [0.3.34] — 2026-09-26
 
 ### Firmware — SCO probe back on (keep master×TX refuse)

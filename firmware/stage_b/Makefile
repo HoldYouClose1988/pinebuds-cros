@@ -12,8 +12,8 @@ endif
 CROS_EXTRA_L2CAP ?= 1
 # v0.3.34: SCO probe ON again (settle-after-READY). Keep poor-master refuse.
 CROS_SCO_PROBE ?= 1
-# v0.3.30: slave also issues sco_open_link (default off — master-only).
-CROS_SCO_SLAVE_OPEN ?= 0
+# v0.3.35: last §K probe — slave also issues sco_open_link.
+CROS_SCO_SLAVE_OPEN ?= 1
 # v0.3.33: allow POOR/TX when it is IBRT master (default refuse — known crash).
 CROS_ALLOW_POOR_MASTER ?= 0
 

@@ -268,8 +268,10 @@ carry into v1.0 configurable poor side — [architecture-cros.md](architecture-c
 **v0.3.34:** SCO probe on again (settle-after-READY); poor-master refuse kept.
 
 **0.3.34 ear (LEFT master, Capture on):** settle → `open_link rc=0`; **no OPENED**,
-**no peer BTEVENT**. Phone SCO still shows `BTEVENT_SCO_*`. §K open — undecided
-next (`CROS_SCO_SLAVE_OPEN=1` vs phone-disconnected UART retest).
+**no peer BTEVENT**. Phone SCO still shows `BTEVENT_SCO_*`.
+
+**v0.3.35:** last planned lever on this pipe — `CROS_SCO_SLAVE_OPEN=1` (both buds
+call `open_link` after READY settle).
 
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
@@ -307,8 +309,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **v0.3.34:** probe on again (LEFT master only;
-   poor-master refused). Still need peer `OPENED`.  
+4. **K** — **SCO/eSCO bud↔bud** — **v0.3.35:** last lever `CROS_SCO_SLAVE_OPEN=1`
+   (0.3.34: `open_link rc=0`, no OPENED / no peer BTEVENT).  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  
