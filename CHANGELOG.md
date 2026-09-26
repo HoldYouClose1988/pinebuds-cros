@@ -6,6 +6,23 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.40] — 2026-09-26
+
+### Firmware — asymmetric CROS on peer SCO (poor TX / good RX)
+- Priority: **Stability → Latency → Quality** (quality still deferred).
+- **0.3.39:** SCO media ~140 ms full-duplex (call-shaped).
+- **0.3.40:** after voice START, `bt_sco_player_forcemute`:
+  - **POOR/TX (RIGHT):** mic ON, spk OFF
+  - **GOOD/RX (LEFT):** mic OFF, spk ON
+- Same alone+CVSD path. Expect log lines `CROS shape POOR/TX` / `GOOD/RX`.
+
+### Test (LEFT master, poor=RIGHT)
+1. Flash both — `init v0.3.40` / `ALONE+MEDIA+CROS`.
+2. Capture LEFT. Quad-tap. Expect OPENED → voice START → `CROS shape GOOD/RX`.
+3. Speak at **RIGHT** outer face — hear on **LEFT** only. LEFT mic should not
+   feed RIGHT (no reverse CROS). Clap still ~140 ms-class if stable.
+4. Paste LEFT log + whether direction feels like CROS (not a phone call).
+
 ## [0.3.39] — 2026-09-26
 
 ### Breakthrough — bud↔bud SCO media ≈ **140 ms** (ear)

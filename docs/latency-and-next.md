@@ -307,12 +307,13 @@ overrun from underrun STAT spam.
 
 **0.3.38 ear (~2 min):** **PASS** — silence, OPENED held, clean close.
 
-**v0.3.39 ear:** **PASS** — CVSD voice on peer SCO (`sco_hdl=0x0181`).
-**Clap ≈140 ms** (extra baseline ≈330 ms). Link steady. Quality rough — later
-(MSBC / tuning / asymmetric poor→good). **SCO is the latency path.**
+**v0.3.39 ear:** **PASS** — CVSD voice on peer SCO; **clap ≈140 ms**.
 
-Do not run ACL CROS with peer SCO. Daily extra still v0.3.27 until SCO quality
-is wear-ready.
+**v0.3.40:** asymmetric CROS mute on that path — poor mic ON/spk OFF, good
+mic OFF/spk ON. Priority Stability → Latency → **CROS shape**; quality last.
+
+Do not run ACL CROS with peer SCO. Daily extra still v0.3.27 until SCO is
+wear-ready.
 
 **Daily audio until SCO media:** **v0.3.27 extra** baseline.
 
@@ -349,8 +350,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO media PASS ~140 ms** (0.3.39 CVSD). Next: quality (MSBC /
-   tuning) + asymmetric CROS (poor mic → good speaker only).  
+4. **K** — SCO ~140 ms (0.3.39) + **CROS shape** (0.3.40 mute). Next: prove
+   direction ear; quality last (MSBC / FF mic / tuning).  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  

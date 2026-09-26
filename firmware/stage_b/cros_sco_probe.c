@@ -49,6 +49,9 @@ extern bt_bdaddr_t *btif_me_get_remote_device_bdaddr(btif_remote_device_t *rdev)
 extern btif_remote_device_t *btif_besaud_get_peer_device(void);
 extern btif_remote_device_t *
 btif_me_get_remote_device_by_handle(uint16_t hci_handle);
+#if CROS_SCO_MEDIA
+extern int cros_sco_forcemute(int mic_mute, int spk_mute);
+#endif
 
 /* Safety net only — must be >> extra defer (2s) + PONG + settle. */
 #define CROS_SCO_LATE_FALLBACK_MS 12000
@@ -76,7 +79,10 @@ static void cros_sco_close_bt(void *a, void *b);
 
 #if CROS_SCO_MEDIA
 static osTimerId voice_timer;
+static osTimerId cros_mute_timer;
 #define CROS_SCO_VOICE_RETRY_MS 100
+/* Player clears forcemute on open — apply CROS shape after it settles. */
+#define CROS_SCO_CROS_MUTE_MS 400
 
 static uint16_t cros_sco_peer_handle(void) {
   ibrt_ctrl_t *ctx = app_tws_ibrt_get_bt_ctrl_ctx();
@@ -87,6 +93,29 @@ static uint16_t cros_sco_peer_handle(void) {
   return h;
 }
 
+/* Asymmetric CROS on SCO: poor TX (mic), good RX (speaker). */
+static void cros_sco_apply_cros_mute(void) {
+  int poor = cros_tws_is_poor_side() ? 1 : 0;
+  if (poor) {
+    /* Mic on → SCO; mute local speaker (no sidetone / no peer→poor). */
+    cros_sco_forcemute(0, 1);
+    CROS_LOG(0, "[cros_sco] CROS shape POOR/TX — mic ON, spk OFF");
+  } else {
+    /* SCO → speaker; mute local mic (no good-side TX). */
+    cros_sco_forcemute(1, 0);
+    CROS_LOG(0, "[cros_sco] CROS shape GOOD/RX — mic OFF, spk ON");
+  }
+}
+
+static void cros_mute_timer_cb(void const *arg) {
+  (void)arg;
+  if (!sco_up || !voice_started) {
+    return;
+  }
+  cros_sco_apply_cros_mute();
+}
+osTimerDef(CROS_SCO_CROS_MUTE, cros_mute_timer_cb);
+
 static void cros_sco_voice_start(void) {
   uint16_t sco_hdl;
   int rc;
@@ -94,7 +123,7 @@ static void cros_sco_voice_start(void) {
     return;
   }
   sco_hdl = cros_sco_peer_handle();
-  CROS_LOG(0, "[cros_sco] voice START try sco_hdl=0x%04x (CVSD via HFP path)",
+  CROS_LOG(0, "[cros_sco] voice START try sco_hdl=0x%04x (CVSD + CROS mute)",
            (unsigned)sco_hdl);
   if (!sco_hdl) {
     CROS_LOG(0, "[cros_sco] voice START — no handle yet, retry %ums",
@@ -105,20 +134,30 @@ static void cros_sco_voice_start(void) {
     }
     return;
   }
-  /* Reuse phone-call voice player against peer SCO (first media probe). */
   rc = hfp_ibrt_sco_audio_connected(BTIF_HF_SCO_CODEC_CVSD, sco_hdl);
   voice_started = 1;
-  CROS_LOG(0, "[cros_sco] voice START done rc=%d", rc);
+  CROS_LOG(0, "[cros_sco] voice START done rc=%d — schedule CROS mute %ums",
+           rc, (unsigned)CROS_SCO_CROS_MUTE_MS);
+  if (cros_mute_timer) {
+    osTimerStop(cros_mute_timer);
+    osTimerStart(cros_mute_timer, CROS_SCO_CROS_MUTE_MS);
+  } else {
+    cros_sco_apply_cros_mute();
+  }
 }
 
 static void cros_sco_voice_stop(void) {
   if (voice_timer) {
     osTimerStop(voice_timer);
   }
+  if (cros_mute_timer) {
+    osTimerStop(cros_mute_timer);
+  }
   if (!voice_started) {
     return;
   }
   CROS_LOG(0, "[cros_sco] voice STOP");
+  cros_sco_forcemute(0, 0);
   hfp_ibrt_sco_audio_disconnected();
   voice_started = 0;
 }
@@ -174,7 +213,7 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
     sco_up = 1;
 #if CROS_SCO_ALONE
 #if CROS_SCO_MEDIA
-    CROS_LOG(0, "[cros_sco] OPENED (alone + media — start voice path)");
+    CROS_LOG(0, "[cros_sco] OPENED (alone + media — start voice + CROS shape)");
     cros_sco_voice_start();
 #else
     CROS_LOG(0, "[cros_sco] OPENED (alone hold — no extra, leave up until "
@@ -361,12 +400,16 @@ void cros_sco_probe_init(void) {
   if (!voice_timer) {
     voice_timer = osTimerCreate(osTimer(CROS_SCO_VOICE), osTimerOnce, NULL);
   }
+  if (!cros_mute_timer) {
+    cros_mute_timer =
+        osTimerCreate(osTimer(CROS_SCO_CROS_MUTE), osTimerOnce, NULL);
+  }
 #endif
 #if CROS_SCO_ALONE
 #if CROS_SCO_MEDIA
   CROS_LOG(1,
-           "[cros_sco] probe init (ALONE+MEDIA, slave_open=%u — CVSD voice on "
-           "OPENED)",
+           "[cros_sco] probe init (ALONE+MEDIA+CROS, slave_open=%u — CVSD "
+           "poor TX / good RX)",
            (unsigned)CROS_SCO_SLAVE_OPEN);
 #else
   CROS_LOG(1,

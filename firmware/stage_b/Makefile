@@ -1,7 +1,8 @@
 cur_dir := $(dir $(lastword $(MAKEFILE_LIST)))
 
 ifeq ($(CROS_STAGE_B),1)
-obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o cros_lat.o cros_sco_probe.o
+obj-y := cros_tws.o cros_besaud_extra.o cros_bt_log.o cros_lat.o cros_sco_probe.o \
+	cros_sco_voice_bridge.o
 ifeq ($(CROS_SUSPEND_A2DP),1)
 obj-y += cros_a2dp_bridge.o
 ccflags-y += -DCROS_SUSPEND_A2DP=1
