@@ -40,7 +40,8 @@ steady. Quality is still call-path rough (CVSD); that is next. Details:
 2. **v0.3.36** — auto-close after OPENED; extra held  
 3. **v0.3.37–38** — SCO alone held (~2 min silence); cmd ACL under SCO chops  
 4. **v0.3.39** — HFP CVSD voice on peer SCO → **~140 ms clap**  
-5. **v0.3.41** — asymmetric mute: poor mic→SCO, good SCO→speaker (CROS shape)
+5. **v0.3.40** — asymmetric mute: poor mic→SCO, good SCO→speaker (CROS shape)  
+6. **v0.3.41** — bump good-side HFP/SCO volume (was very quiet)
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
