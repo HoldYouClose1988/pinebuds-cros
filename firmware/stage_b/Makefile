@@ -17,6 +17,8 @@ CROS_SCO_PROBE ?= 1
 CROS_SCO_SLAVE_OPEN ?= 1
 # v0.3.37: leave peer SCO up without extra L2CAP (next coexistence proof).
 CROS_SCO_ALONE ?= 1
+# v0.3.39: on OPENED, start HFP CVSD voice player against peer SCO (media probe).
+CROS_SCO_MEDIA ?= 1
 # v0.3.33: allow POOR/TX when it is IBRT master (default refuse — known crash).
 CROS_ALLOW_POOR_MASTER ?= 0
 
@@ -27,6 +29,7 @@ ccflags-y += \
 	-DCROS_SCO_PROBE=$(CROS_SCO_PROBE) \
 	-DCROS_SCO_SLAVE_OPEN=$(CROS_SCO_SLAVE_OPEN) \
 	-DCROS_SCO_ALONE=$(CROS_SCO_ALONE) \
+	-DCROS_SCO_MEDIA=$(CROS_SCO_MEDIA) \
 	-DCROS_ALLOW_POOR_MASTER=$(CROS_ALLOW_POOR_MASTER) \
 	-Iapps/cros_tws \
 	-Iapps/audioplayers \

@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.39] — 2026-09-26
+
+### Firmware — first SCO media: CVSD voice player on peer OPENED
+- **0.3.38 ear PASS (~2 min):** silence + SCO alone held; clean close.
+- **0.3.39:** still alone (no extra). On OPENED call
+  `hfp_ibrt_sco_audio_connected(CVSD, peer_sco_hdl)` — stock call PCM path
+  against bud↔bud SCO. Full-duplex trial (not asymmetric CROS yet).
+- Expect: `voice START` / `HF_IBRT_AUDIO_CONNECTED`. Talk/clap — hear peer?
+  Clap timing vs ~330 ms extra baseline. May be noisy/wrong/crash — paste log.
+
+### Test (LEFT master)
+1. Flash both — `init v0.3.39` / `ALONE+MEDIA`.
+2. Capture LEFT. Quad-tap. Expect silence ACL, then OPENED → `voice START`.
+3. Talk into RIGHT (poor), listen LEFT; clap if anything is audible.
+4. Quad-tap off. Paste LEFT log + what you heard.
+
 ## [0.3.38] — 2026-09-26
 
 ### Firmware — SCO alone = silence (no ACL CROS under SCO)

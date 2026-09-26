@@ -28,9 +28,18 @@
 #define CROS_SCO_ALONE 0
 #endif
 
+#ifndef CROS_SCO_MEDIA
+#define CROS_SCO_MEDIA 0
+#endif
+
 #if CROS_SCO_PROBE
 
 #include "sco_i.h"
+#if CROS_SCO_MEDIA
+#include "app_ibrt_hf.h"
+#include "hfp_api.h"
+#include "me_api.h"
+#endif
 
 extern int app_bt_start_custom_function_in_bt_thread(uint32_t param0,
                                                      uint32_t param1,
@@ -59,10 +68,70 @@ static uint8_t probe_armed;
 static uint8_t registered;
 static uint8_t open_issued;
 static uint8_t sco_up;
+static uint8_t voice_started;
 static struct bdaddr_t peer_ba;
 static uint8_t have_peer;
 
 static void cros_sco_close_bt(void *a, void *b);
+
+#if CROS_SCO_MEDIA
+static osTimerId voice_timer;
+#define CROS_SCO_VOICE_RETRY_MS 100
+
+static uint16_t cros_sco_peer_handle(void) {
+  ibrt_ctrl_t *ctx = app_tws_ibrt_get_bt_ctrl_ctx();
+  uint16_t h = 0;
+  if (ctx && ctx->tws_conhandle) {
+    h = btif_me_get_scohdl_by_connhdl(ctx->tws_conhandle);
+  }
+  return h;
+}
+
+static void cros_sco_voice_start(void) {
+  uint16_t sco_hdl;
+  int rc;
+  if (voice_started) {
+    return;
+  }
+  sco_hdl = cros_sco_peer_handle();
+  CROS_LOG(0, "[cros_sco] voice START try sco_hdl=0x%04x (CVSD via HFP path)",
+           (unsigned)sco_hdl);
+  if (!sco_hdl) {
+    CROS_LOG(0, "[cros_sco] voice START — no handle yet, retry %ums",
+             (unsigned)CROS_SCO_VOICE_RETRY_MS);
+    if (voice_timer) {
+      osTimerStop(voice_timer);
+      osTimerStart(voice_timer, CROS_SCO_VOICE_RETRY_MS);
+    }
+    return;
+  }
+  /* Reuse phone-call voice player against peer SCO (first media probe). */
+  rc = hfp_ibrt_sco_audio_connected(BTIF_HF_SCO_CODEC_CVSD, sco_hdl);
+  voice_started = 1;
+  CROS_LOG(0, "[cros_sco] voice START done rc=%d", rc);
+}
+
+static void cros_sco_voice_stop(void) {
+  if (voice_timer) {
+    osTimerStop(voice_timer);
+  }
+  if (!voice_started) {
+    return;
+  }
+  CROS_LOG(0, "[cros_sco] voice STOP");
+  hfp_ibrt_sco_audio_disconnected();
+  voice_started = 0;
+}
+
+static void voice_timer_cb(void const *arg) {
+  (void)arg;
+  if (!sco_up || voice_started) {
+    return;
+  }
+  cros_sco_voice_start();
+}
+osTimerDef(CROS_SCO_VOICE, voice_timer_cb);
+#endif
 
 static void *cros_sco_peer_bdaddr(void) {
   btif_remote_device_t *dev;
@@ -104,8 +173,13 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
   if (event == SCO_OPENED) {
     sco_up = 1;
 #if CROS_SCO_ALONE
+#if CROS_SCO_MEDIA
+    CROS_LOG(0, "[cros_sco] OPENED (alone + media — start voice path)");
+    cros_sco_voice_start();
+#else
     CROS_LOG(0, "[cros_sco] OPENED (alone hold — no extra, leave up until "
                 "disable)");
+#endif
 #else
     CROS_LOG(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
     /* Do not leave peer SCO up under extra media / phone ACL (0.3.35 hang). */
@@ -119,6 +193,9 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
 #endif
   } else if (event == SCO_CLOSED) {
     sco_up = 0;
+#if CROS_SCO_MEDIA
+    cros_sco_voice_stop();
+#endif
     CROS_LOG(0, "[cros_sco] CLOSED");
   } else {
     CROS_LOG(0, "[cros_sco] notify event=%d", (int)event);
@@ -223,6 +300,9 @@ static void cros_sco_close_bt(void *a, void *b) {
   (void)b;
   probe_armed = 0;
   open_issued = 0;
+#if CROS_SCO_MEDIA
+  cros_sco_voice_stop();
+#endif
   if (have_peer) {
     if (sco_up || registered) {
       rc = sco_close_link(&peer_ba, CROS_SCO_HCI_REMOTE_USER_TERM);
@@ -277,11 +357,23 @@ void cros_sco_probe_init(void) {
   if (!proof_timer) {
     proof_timer = osTimerCreate(osTimer(CROS_SCO_PROOF), osTimerOnce, NULL);
   }
+#if CROS_SCO_MEDIA
+  if (!voice_timer) {
+    voice_timer = osTimerCreate(osTimer(CROS_SCO_VOICE), osTimerOnce, NULL);
+  }
+#endif
 #if CROS_SCO_ALONE
+#if CROS_SCO_MEDIA
+  CROS_LOG(1,
+           "[cros_sco] probe init (ALONE+MEDIA, slave_open=%u — CVSD voice on "
+           "OPENED)",
+           (unsigned)CROS_SCO_SLAVE_OPEN);
+#else
   CROS_LOG(1,
            "[cros_sco] probe init (ALONE hold, slave_open=%u — no extra, leave "
            "OPENED up)",
            (unsigned)CROS_SCO_SLAVE_OPEN);
+#endif
 #else
   CROS_LOG(1,
            "[cros_sco] probe init (READY+settle, slave_open=%u, auto-close "

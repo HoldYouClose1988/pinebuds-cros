@@ -733,8 +733,13 @@ void cros_tws_init(void) {
   inited = true;
   cros_lat_reset();
 #if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
+#if defined(CROS_SCO_MEDIA) && CROS_SCO_MEDIA
+  CROS_LOG(1, "[cros_tws] init v0.3.39 SCO-alone+media+guard (poor_cfg=%s)",
+        CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+#else
   CROS_LOG(1, "[cros_tws] init v0.3.38 SCO-alone-silence+guard (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+#endif
 #else
   CROS_LOG(1, "[cros_tws] init v0.3.36 SCO-proof-close+guard floor4 (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");

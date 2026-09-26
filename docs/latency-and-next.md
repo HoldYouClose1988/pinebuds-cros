@@ -291,10 +291,12 @@ overrun from underrun STAT spam.
 
 **v0.3.38:** alone = **no ACL TX/RX** (silence + SCO hold).
 
-**0.3.38 ear (~2 min):** **PASS** — silence, OPENED held, clean close. Peer SCO
-without ACL CROS is stable.
+**0.3.38 ear (~2 min):** **PASS** — silence, OPENED held, clean close.
 
-**Next:** mic→SCO→speaker (clap vs 0.3.27). Do not run ACL CROS with peer SCO.
+**v0.3.39:** on OPENED start HFP CVSD voice player on peer SCO handle (full-duplex
+trial). Clap vs 0.3.27; then asymmetric CROS if audible.
+
+Do not run ACL CROS with peer SCO.
 
 **Daily audio until SCO media:** **v0.3.27 extra** baseline.
 
@@ -331,8 +333,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — alone silence **PASS** ~2 min (0.3.38).
-   Next: CROS **on** SCO (mic→SCO→speaker).  
+4. **K** — alone silence **PASS** (0.3.38). **v0.3.39:** CVSD voice on peer
+   SCO (first media). Then asymmetric CROS if path works.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  
