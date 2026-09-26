@@ -8,13 +8,16 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
 ## [0.3.39] — 2026-09-26
 
+### Breakthrough — bud↔bud SCO media ≈ **140 ms** (ear)
+Peer SCO carries live CVSD voice. Clap ≈ **140 ms** vs ≈ **330 ms** on extra L2CAP
+(v0.3.27) — roughly **half the delay**. Link held steady. Quality still call-path
+rough; latency path is proven.
+
 ### Firmware — first SCO media: CVSD voice player on peer OPENED
 - **0.3.38 ear PASS (~2 min):** silence + SCO alone held; clean close.
 - **0.3.39:** still alone (no extra). On OPENED call
   `hfp_ibrt_sco_audio_connected(CVSD, peer_sco_hdl)` — stock call PCM path
   against bud↔bud SCO. Full-duplex trial (not asymmetric CROS yet).
-- Expect: `voice START` / `HF_IBRT_AUDIO_CONNECTED`. Talk/clap — hear peer?
-  Clap timing vs ~330 ms extra baseline. May be noisy/wrong/crash — paste log.
 
 ### Test (LEFT master)
 1. Flash both — `init v0.3.39` / `ALONE+MEDIA`.
@@ -25,8 +28,11 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 ### Result (2026-09-26 ear — LEFT master) — **PASS ~140 ms**
 `sco_hdl=0x0181` → `HF_IBRT_AUDIO_CONNECTED codec=1` → `voice START done rc=0`.
 Link held steady. **Clap ~140 ms** (vs ~330 ms extra v0.3.27). Audio quality
-rough (CVSD / call path) — defer; latency path is real. Clean
+rough (CVSD / call path) — defer; **SCO is the latency path**. Clean
 DISCONNECT/STOP/CLOSED.
+
+**Next:** quality (MSBC / tuning) + asymmetric CROS (poor mic → good speaker only).
+Daily wear until then: **v0.3.27** extra.
 
 ## [0.3.38] — 2026-09-26
 

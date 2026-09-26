@@ -10,47 +10,52 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.39) — SCO media **~140 ms PASS**; **extra baseline v0.3.27**
+## Breakthrough (2026-09-26) — bud↔bud SCO media ≈ **140 ms**
+
+Peer **SCO/eSCO** between the buds carries live CVSD voice. Ear clap ≈ **140 ms**
+vs ≈ **330 ms** on the older extra-L2CAP path — roughly **half the delay**, link held
+steady. Quality is still call-path rough (CVSD); that is next. Details:
+[CHANGELOG 0.3.39](CHANGELOG.md#0339--2026-09-26) · [latency scorecard](docs/latency-and-next.md) ·
+[release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.39).
+
+| Path | Clap (ear) | Role |
+|------|------------|------|
+| **SCO CVSD (v0.3.39)** | ≈ **140 ms** | **Latency path** (quality TBD) |
+| Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Daily / quality baseline until SCO is wear-ready |
+
+## Current status (v0.3.39)
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
-| **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still daily audio |
+| **SCO media (bud↔bud)** | **Ear PASS ~140 ms** — CVSD via stock HFP voice player on peer SCO |
+| **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still daily wear until SCO quality lands |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
-| **SCO media** | **Ear PASS ~140 ms** (CVSD on peer SCO). Quality TBD; extra still daily |
-| **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
+| **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during media |
 | **Industrial damp** | Not implemented (design only) |
 
-### Extra-pipe baseline (keep / build features on this)
+### How we got here (SCO)
 
-**v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. **v0.3.35–36**
-proved peer SCO **OPENED** and safe tear-down (extra held). **v0.3.39** holds SCO
-**without** extra; 0.3.38 silence. Next: CROS **on** SCO. **v1.0 note:** configurable poor side
-must keep the IBRT-master×TX guard — see
+1. **v0.3.35** — first peer SCO **OPENED** (`slave_open=1`); left up with extra → wedge  
+2. **v0.3.36** — auto-close after OPENED; extra held  
+3. **v0.3.37–38** — SCO alone held (~2 min silence); cmd ACL under SCO chops  
+4. **v0.3.39** — start HFP CVSD voice on peer SCO handle → **~140 ms clap**
+
+**v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
-| Metric | Result |
-|--------|--------|
-| Clap delay (extra L2CAP) | ≈ **322–330 ms** (mostly 200 ms jitter floor) |
-| Clap delay (**SCO CVSD**) | ≈ **140 ms** (v0.3.39 ear) |
-| Cutouts | **None** on long Capture-on wear (2026-09-26); `underrun=41` / ~5 min |
-| Capture logs + CROS | OK — quiet mode; no SPP underrun-threshold spam |
-| Known ceiling | ACL delivery bursty (`rx_buf` 0–270 ms); closed BT stack blocks ACL-pool bump |
+### Extra-pipe baseline (still useful)
 
-Experiment trail: v0.3.23 media · 0.3.24 B+H · 0.3.25 sniff · **0.3.27 baseline** (skip 0.3.26).
+**v0.3.27** remains the freeze for **extra L2CAP** when you want stable daily audio
+and Capture-friendly wear. Most of its ~330 ms is a **200 ms jitter floor** forced by
+bursty ACL — do not thin that floor again. Full lever history:
+[docs/latency-and-next.md](docs/latency-and-next.md).
 
-### Latency levers already tried on extra (do not repeat blindly)
-
-| Lever | Outcome |
-|-------|---------|
-| Jitter floor 4→3 | Cutouts unusable (~2/s) |
-| Frames 50→40 ms | No delay win; more chop |
-| TX poll 50→10 ms | No delay win; cutouts returned |
-| Sniff lock (G) | ACTIVE; no clap win; not the cutout fix |
-| ACL buffer header (C) | **Blocked** — pool lives in closed `.a` |
-| Quiet underrun SPP (0.3.27) | Stopped 0.3.25-class Capture storms |
-
-Most of the 330 ms is the **200 ms jitter floor** required for stable extra under bursty ACL. Next latency bet is **SCO/eSCO** (§K), not thinning this floor again. Full scorecard: [docs/latency-and-next.md](docs/latency-and-next.md).
+| Metric (extra) | Result |
+|----------------|--------|
+| Clap delay | ≈ **322–330 ms** |
+| Cutouts | **None** on long Capture-on wear; `underrun=41` / ~5 min |
+| Known ceiling | ACL bursty; closed BT stack blocks ACL-pool bump |
 
 Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
@@ -60,18 +65,32 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.39.zip`](flash-packages/pinebuds
 
 ## Looking for review
 
-Extra-path CROS is at a **usable baseline (v0.3.27)**. Eyes wanted on **bud↔bud SCO/eSCO**
-(`sco_open_link` to TWS peer) and whether anything beats ~330 ms without wrecking IBRT.
-See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.39** for SCO media (~140 ms); **v0.3.27** for daily extra-only. Constraint for v1.0
-configurable poor side: [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
+**SCO latency breakthrough is in** (~140 ms). Eyes wanted on **audio quality**
+(MSBC vs CVSD, call-path artifacts) and **asymmetric CROS** (poor mic → good speaker
+only — today’s SCO path is full-duplex like a call). Extra path still needs wear
+testers at v0.3.27. Constraint for v1.0 configurable poor side:
+[architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
+
+Flash **[v0.3.39](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.39)** for SCO media;
+**[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** for daily extra-only.
 
 ## How it works (short)
+
+**Latency path (v0.3.39) — peer SCO + CVSD voice player:**
+
+```
+RIGHT (poor)                         LEFT (good)
+────────────                         ───────────
+FF mic ──► CVSD / SCO ◄────────────► CVSD / speaker
+              (bud↔bud eSCO/SCO; stock HFP PCM path)
+```
+
+**Legacy daily path (v0.3.27) — extra L2CAP:**
 
 ```
 RIGHT (poor)                         LEFT (good)
 ────────────                         ───────────
 FF mic → 50 ms ADPCM ──extra L2CAP──► decode → speaker
-                 ╲                   (cmd path if extra not READY)
                   └─ MODE sync on IBRT custom cmd
 ```
 
@@ -81,7 +100,8 @@ Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
 
-1. Download **[pinebuds-cros-v0.3.39.zip](flash-packages/pinebuds-cros-v0.3.39.zip)** (includes `bestool.exe`).
+1. Download **[pinebuds-cros-v0.3.39.zip](flash-packages/pinebuds-cros-v0.3.39.zip)** (includes `bestool.exe`) — SCO ~140 ms.
+   For daily extra-only quality, use **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** instead.
 2. Backup once, then flash **both** buds:
 
 ```powershell
@@ -91,45 +111,21 @@ See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows
 
 3. Seat both buds in the case ~30–60 s so TWS re-pairs.
 4. Wear both; **quad-tap** to toggle CROS. Speak near the **right** outer face — hear it in the **left** ear.
-5. Optional logs: [android/cros-log](android/cros-log/) → **Capture logs** on. After `peer READY` expect `[cros_log] quiet=1` (periodic stats suppressed on purpose).
+5. Optional logs: [android/cros-log](android/cros-log/) → **Capture logs** on.
 
-Avoid phone music while testing CROS (A2DP fights the stream).
+Avoid phone music while testing CROS (A2DP fights the stream). On SCO builds, prefer
+not starting Phone SCO during the probe.
 
 ## Build from source
 
 ```bash
-./scripts/setup-public-git.sh   # optional anonymous git identity
-./scripts/bootstrap-sdk.sh      # OpenPineBuds + ARM GCC; syncs firmware/ + patches
-TOTA=1 ./scripts/build.sh       # Stage B CROS + TOTA log sink
-# → vendor/OpenPineBuds/out/open_source/open_source.bin
-./scripts/package-flash.sh      # optional Windows zip under flash-packages/
+./scripts/bootstrap-sdk.sh
+./scripts/build.sh
+./scripts/package-flash.sh   # TOTA=1 by default for phone logs
 ```
 
-Details: [docs/development.md](docs/development.md).
-
-## Documentation
-
-| Doc | Topic |
-|-----|--------|
-| [docs/latency-and-next.md](docs/latency-and-next.md) | **Latency scorecard + brainstorm (start here for review)** |
-| [CHANGELOG.md](CHANGELOG.md) | Version history / ear results |
-| [flash-packages/](flash-packages/) | Downloadable bins |
-| [docs/cros-transport.md](docs/cros-transport.md) | Cmd vs extra L2CAP, lessons learned |
-| [docs/bt-log-sink.md](docs/bt-log-sink.md) | TOTA/SPP phone logging |
-| [docs/architecture-cros.md](docs/architecture-cros.md) | Longer-term CROS/BiCROS design |
-| [docs/windows-flash.md](docs/windows-flash.md) / [bestool-windows.md](docs/bestool-windows.md) | Flashing |
-| [docs/hardware.md](docs/hardware.md) | Hardware overview |
-| [docs/architecture-noise-damping.md](docs/architecture-noise-damping.md) | Industrial damp (design only) |
-
-## Known limits (honest)
-
-- Not clinical; no gain prescription, no safety certification
-- ~**330 ms** glass-to-glass today; conversational CROS usually wants ≪100 ms
-- Codec is simple ADPCM — telephone character, not hi-fi
-- Extra path needs deep jitter under current ACL burstiness; thinner buffer = cutouts
-- Heavy TOTA logging during extra media can kill the link (quiet mode mitigates)
-- BiCROS / media mix / user-selectable poor side: not done
+See [scripts](scripts/) and [docs](docs/).
 
 ## License
 
-Project docs and scripts: [LICENSE](LICENSE). SDK under `vendor/OpenPineBuds`: BES / OpenPineBuds terms — see [NOTICE](NOTICE).
+See [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -2,9 +2,14 @@
 
 > **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product.
 
-**Current version: v0.3.39**
+**Current version: v0.3.39** — **SCO media breakthrough ≈140 ms** (vs ~330 ms extra)
 
 Download **[pinebuds-cros-v0.3.39.zip](./pinebuds-cros-v0.3.39.zip)** (versioned only — no LATEST alias).
+
+> **2026-09-26:** Peer SCO + CVSD voice — ear clap ≈140 ms, link steady. Quality
+> still rough; daily wear can stay on [v0.3.27](./pinebuds-cros-v0.3.27.zip).
+> Write-up: [CHANGELOG](../CHANGELOG.md) · [latency](../docs/latency-and-next.md) ·
+> [GitHub release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.39).
 
 Each zip includes `bestool.exe`, `BESTOOL.md`, `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps.
 

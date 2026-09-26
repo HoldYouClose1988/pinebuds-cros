@@ -1,14 +1,26 @@
 # Latency, stability, and next ideas (review welcome)
 
-**Extra-pipe baseline:** **v0.3.27** — floor 4 × 50 ms ADPCM on BESAUD extra L2CAP;
-quiet underrun + sniff lock; ear-validated (no cutouts, Capture on). **Keep this
-build for features** if SCO does not win on latency.  
-**Measurement build:** **v0.3.24** — same media path + hop timestamps (B) + L2CAP mode log (H).  
-**Measured clap:** **start→start ≈ 322–330 ms**.  
-**Usability:** daily-wear quality on extra; DIY / not a hearing aid.
+## Breakthrough — SCO media ≈ **140 ms** (v0.3.39 ear)
 
-**Strategy:** **SCO media works (~140 ms, v0.3.39)**. Extra (~330 ms) remains the
-fallback product pipe. Do not thin the jitter floor again without a new delivery story.
+Bud↔bud **SCO/eSCO** + stock HFP **CVSD** voice player: clap ≈ **140 ms**, link
+steady. Extra L2CAP path remains ≈ **330 ms** (v0.3.27). **SCO is the latency path**;
+quality (MSBC / tuning / asymmetric CROS) is next. See
+[CHANGELOG 0.3.39](../CHANGELOG.md#0339--2026-09-26) and
+[release v0.3.39](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.39).
+
+| Path | Clap | Status |
+|------|------|--------|
+| **SCO CVSD (0.3.39)** | ≈ **140 ms** | Latency path — quality TBD |
+| Extra L2CAP (0.3.27) | ≈ **322–330 ms** | Daily / quality baseline |
+
+**Extra-pipe baseline:** **v0.3.27** — floor 4 × 50 ms ADPCM on BESAUD extra L2CAP;
+quiet underrun + sniff lock; ear-validated (no cutouts, Capture on). Keep for daily
+wear until SCO quality is ready.  
+**Measurement build (extra):** **v0.3.24** — hop timestamps (B) + L2CAP mode log (H).  
+**Usability:** DIY / not a hearing aid.
+
+**Strategy:** ship quality on the SCO path; do not thin the extra jitter floor again
+without a new delivery story.
 
 This note is for **fresh eyes**: what we proved, what failed, where the delay lives, and ranked ideas that are *not* “thin the jitter floor again.”
 
@@ -20,11 +32,12 @@ Related: [cros-transport.md](cros-transport.md) · [architecture-cros.md](archit
 
 | Piece | Detail |
 |-------|--------|
-| Transport | BESAUD **extra L2CAP** CID `0x0b0e` after PING/PONG (or PING) READY |
+| **SCO media (0.3.39)** | Peer `sco_open_link` + `hfp_ibrt_sco_audio_connected(CVSD)` → **~140 ms** clap |
+| Transport (extra) | BESAUD **extra L2CAP** CID `0x0b0e` after PING/PONG (or PING) READY |
 | Fallback | IBRT custom-cmd ADPCM until READY / if extra down |
 | Peer addr on phone master | `ibrt_ctrl_t::p_tws_remote_dev` (besaud peer is NULL there) |
-| Logging coexistence | TOTA SPP **quiet** while extra media runs — chatty SPP kills the link |
-| RX jitter floor | **4 frames × 50 ms = 200 ms** minimum while on extra |
+| Logging coexistence | TOTA SPP **quiet** while media runs — chatty SPP kills the link |
+| RX jitter floor (extra) | **4 frames × 50 ms = 200 ms** minimum while on extra |
 
 ## Lever scorecard (ear + clap)
 
@@ -36,9 +49,10 @@ Measure clap as **waveform start → output start**. Earlier “243 ms” was 
 | 0.3.18 | Floor 4→3 | ~243 ms? | Mild / storms | Floor thin — unstable under stress |
 | 0.3.19 | 50→40 ms frames, floor 3 | **≈323 ms** | ~3 / 10 s | Shorter frames ≠ better; worse chop |
 | 0.3.20 | Back to 50 ms, floor 3 | **≈336 ms** | **~2 / s** | Floor 3 unusable |
-| **0.3.21 / 23** | **Floor 4 × 50 ms** | **≈330 ms** | Rare | **Baseline** |
+| **0.3.21 / 23** | **Floor 4 × 50 ms** | **≈330 ms** | Rare | **Extra baseline** |
 | 0.3.22 | 10 ms TX poll, same frames | ≈330 ms | Back / unusable | Poll ≠ delay; side effects |
 | **0.3.24** | **B+H probe only** | **≈322 ms** | **None while logging** | Measurement; media = 0.3.23 |
+| **0.3.39** | **Peer SCO + CVSD voice** | **≈140 ms** | Steady | **Latency breakthrough** |
 
 ## B+H results (v0.3.24 ear log)
 
