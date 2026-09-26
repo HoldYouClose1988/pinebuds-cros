@@ -7,7 +7,7 @@ build for features** if SCO does not win on latency.
 **Measured clap:** **start→start ≈ 322–330 ms**.  
 **Usability:** daily-wear quality on extra; DIY / not a hearing aid.
 
-**Strategy:** latency chase → **SCO/eSCO bud↔bud (§K)** next. Extra remains the
+**Strategy:** **SCO media works (~140 ms, v0.3.39)**. Extra (~330 ms) remains the
 fallback product pipe. Do not thin the jitter floor again without a new delivery story.
 
 This note is for **fresh eyes**: what we proved, what failed, where the delay lives, and ranked ideas that are *not* “thin the jitter floor again.”
@@ -293,10 +293,12 @@ overrun from underrun STAT spam.
 
 **0.3.38 ear (~2 min):** **PASS** — silence, OPENED held, clean close.
 
-**v0.3.39:** on OPENED start HFP CVSD voice player on peer SCO handle (full-duplex
-trial). Clap vs 0.3.27; then asymmetric CROS if audible.
+**v0.3.39 ear:** **PASS** — CVSD voice on peer SCO (`sco_hdl=0x0181`).
+**Clap ≈140 ms** (extra baseline ≈330 ms). Link steady. Quality rough — later
+(MSBC / tuning / asymmetric poor→good). **SCO is the latency path.**
 
-Do not run ACL CROS with peer SCO.
+Do not run ACL CROS with peer SCO. Daily extra still v0.3.27 until SCO quality
+is wear-ready.
 
 **Daily audio until SCO media:** **v0.3.27 extra** baseline.
 
@@ -333,8 +335,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — alone silence **PASS** (0.3.38). **v0.3.39:** CVSD voice on peer
-   SCO (first media). Then asymmetric CROS if path works.  
+4. **K** — **SCO media PASS ~140 ms** (0.3.39 CVSD). Next: quality (MSBC /
+   tuning) + asymmetric CROS (poor mic → good speaker only).  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  

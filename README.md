@@ -10,14 +10,14 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.39) — SCO media probe (CVSD on peer OPENED); **extra baseline v0.3.27**
+## Current status (v0.3.39) — SCO media **~140 ms PASS**; **extra baseline v0.3.27**
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still daily audio |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
-| **SCO probe** | Alone silence **PASS** (0.3.38). **0.3.39** CVSD voice on peer SCO |
+| **SCO media** | **Ear PASS ~140 ms** (CVSD on peer SCO). Quality TBD; extra still daily |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
 | **Industrial damp** | Not implemented (design only) |
 
@@ -31,7 +31,8 @@ must keep the IBRT-master×TX guard — see
 
 | Metric | Result |
 |--------|--------|
-| Clap delay (start→start) | ≈ **322–330 ms** (mostly 200 ms jitter floor) |
+| Clap delay (extra L2CAP) | ≈ **322–330 ms** (mostly 200 ms jitter floor) |
+| Clap delay (**SCO CVSD**) | ≈ **140 ms** (v0.3.39 ear) |
 | Cutouts | **None** on long Capture-on wear (2026-09-26); `underrun=41` / ~5 min |
 | Capture logs + CROS | OK — quiet mode; no SPP underrun-threshold spam |
 | Known ceiling | ACL delivery bursty (`rx_buf` 0–270 ms); closed BT stack blocks ACL-pool bump |
@@ -61,8 +62,7 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.39.zip`](flash-packages/pinebuds
 
 Extra-path CROS is at a **usable baseline (v0.3.27)**. Eyes wanted on **bud↔bud SCO/eSCO**
 (`sco_open_link` to TWS peer) and whether anything beats ~330 ms without wrecking IBRT.
-See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.39** for silent SCO-alone
-hold; **v0.3.27** for daily extra-only. Constraint for v1.0
+See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.39** for SCO media (~140 ms); **v0.3.27** for daily extra-only. Constraint for v1.0
 configurable poor side: [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
 ## How it works (short)

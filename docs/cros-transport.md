@@ -188,7 +188,7 @@ No other proprietary PSMs or extra CIDs appear in open headers. Dynamic PSM regi
 | Path | Why not |
 |------|---------|
 | `app_tws_ibrt_audio_sync_*` / A2DP store | Phone ACL sniff + sync; not mic relay |
-| SCO/eSCO | Phone HFP + sniffer today; `sco_open_link(peer)` untried — see latency §K |
+| SCO/eSCO | Phone HFP + sniffer today; `sco_open_link(peer)` **works** — CVSD media ~140 ms (v0.3.39); see latency §K |
 | TOTA / `through_put` / BLE datapath alone | Phone-centric; through_put rides AI/BLE cmds |
 | ISO/CIS / LE Audio | `BLE_AUDIO` stubs only; no bud↔bud CIS |
 | `btsnoop` / `btif_me_write_dbg_sniffer` | Capture/debug, not a payload pipe |

@@ -22,6 +22,12 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 3. Talk into RIGHT (poor), listen LEFT; clap if anything is audible.
 4. Quad-tap off. Paste LEFT log + what you heard.
 
+### Result (2026-09-26 ear — LEFT master) — **PASS ~140 ms**
+`sco_hdl=0x0181` → `HF_IBRT_AUDIO_CONNECTED codec=1` → `voice START done rc=0`.
+Link held steady. **Clap ~140 ms** (vs ~330 ms extra v0.3.27). Audio quality
+rough (CVSD / call path) — defer; latency path is real. Clean
+DISCONNECT/STOP/CLOSED.
+
 ## [0.3.38] — 2026-09-26
 
 ### Firmware — SCO alone = silence (no ACL CROS under SCO)
