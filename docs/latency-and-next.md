@@ -284,11 +284,14 @@ coexistence with extra is not.
 `close_link`/`unregister`/`BTEVENT_SCO_DISCONNECT`; **extra held** through SCO
 exit; clean DISABLE. §K link proof done.
 
-**v0.3.37:** `CROS_SCO_ALONE=1` — skip extra; settle from enable; leave SCO
-OPENED until disable (cmd audio only). Prove SCO without extra media.
+**v0.3.37:** `CROS_SCO_ALONE=1` — skip extra; leave SCO OPENED (cmd audio).
 
-**Next after alone PASS:** wire mic→SCO→speaker and clap vs 0.3.27. Do not run
-both pipes.
+**0.3.37 ear:** SCO **held** (no wedge). Cmd under SCO = very choppy; Capture
+overrun from underrun STAT spam.
+
+**v0.3.38:** alone = **no ACL TX/RX** (silence + SCO hold). Next: mic→SCO→speaker.
+
+**Do not** run ACL CROS and peer SCO together.
 
 **Daily audio until SCO media:** **v0.3.27 extra** baseline.
 
@@ -325,8 +328,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **OPENED** (0.3.35) + **safe auto-close**
-   (0.3.36 ear PASS). **v0.3.37:** SCO-alone hold (no extra). Then CROS on SCO.  
+4. **K** — **SCO/eSCO bud↔bud** — OPENED (0.3.35–36) + alone **held** (0.3.37)
+   but cmd under SCO chops. **v0.3.38:** silence ACL. Next: CROS **on** SCO.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  

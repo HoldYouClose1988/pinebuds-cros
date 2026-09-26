@@ -675,6 +675,18 @@ static int apply_enabled(bool on) {
       app_anc_disable();
     }
 #endif
+#if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
+    /*
+     * 0.3.37 ear: cmd ACL CROS under peer SCO = continuous underruns / chop.
+     * Alone hold is SCO coexistence proof only — no ACL media until SCO audio.
+     */
+    stop_tx();
+    stop_rx();
+    cros_bt_log_set_quiet(1);
+    CROS_LOG(0, "[cros_tws] apply: SCO-alone — no ACL TX/RX (silence until "
+                "SCO media)");
+    return 0;
+#endif
     if (poor) {
       stop_rx();
       CROS_LOG(0, "[cros_tws] apply: start_tx");
@@ -721,7 +733,7 @@ void cros_tws_init(void) {
   inited = true;
   cros_lat_reset();
 #if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
-  CROS_LOG(1, "[cros_tws] init v0.3.37 SCO-alone-hold+guard floor4 (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.38 SCO-alone-silence+guard (poor_cfg=%s)",
         CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
 #else
   CROS_LOG(1, "[cros_tws] init v0.3.36 SCO-proof-close+guard floor4 (poor_cfg=%s)",
@@ -900,7 +912,9 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
   }
   /* Rare event while quiet: underrun cliff. Use STAT so it stays UART-only
    * during quiet — SPP-teeing these mid-storm can feed ACL contention
-   * (0.3.25 LEFT session logged thresholds 50…1750 over the air). */
+   * (0.3.25 LEFT session logged thresholds 50…1750 over the air).
+   * 0.3.37 alone/cmd: resetting armed every packet re-fired at 50 forever
+   * and overran Capture — only reset when the cliff clears. */
   {
     static uint32_t underrun_armed = 50;
     if (underruns >= underrun_armed) {
@@ -909,7 +923,7 @@ void cros_tws_on_peer_audio(uint8_t *data, uint16_t len) {
             (unsigned)jitter_target_frames);
       underrun_armed += 100;
     }
-    if (!on_extra_media()) {
+    if (underruns < 50) {
       underrun_armed = 50;
     }
   }

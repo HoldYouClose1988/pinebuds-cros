@@ -10,22 +10,22 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.37) — SCO-alone hold (no extra); **0.3.36 ear PASS**; **extra baseline v0.3.27**
+## Current status (v0.3.38) — SCO-alone **silence** hold; **extra baseline v0.3.27**
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still daily audio |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
-| **SCO probe** | **0.3.36 PASS** (OPENED+close, extra held). **0.3.37** leave SCO up without extra |
+| **SCO probe** | Alone **held** (0.3.37); cmd under SCO chops. **0.3.38** silence ACL under SCO |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
 | **Industrial damp** | Not implemented (design only) |
 
 ### Extra-pipe baseline (keep / build features on this)
 
 **v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. **v0.3.35–36**
-proved peer SCO **OPENED** and safe tear-down (extra held). **v0.3.37** holds SCO
-**without** extra. Then CROS **on** SCO. **v1.0 note:** configurable poor side
+proved peer SCO **OPENED** and safe tear-down (extra held). **v0.3.38** holds SCO
+**without** extra; 0.3.38 silence. Next: CROS **on** SCO. **v1.0 note:** configurable poor side
 must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
@@ -55,13 +55,13 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (with default mapping: keep LEFT as master).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.37.zip`](flash-packages/pinebuds-cros-v0.3.37.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.38.zip`](flash-packages/pinebuds-cros-v0.3.38.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review
 
 Extra-path CROS is at a **usable baseline (v0.3.27)**. Eyes wanted on **bud↔bud SCO/eSCO**
 (`sco_open_link` to TWS peer) and whether anything beats ~330 ms without wrecking IBRT.
-See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.37** for SCO-alone
+See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.38** for silent SCO-alone
 hold; **v0.3.27** for daily extra-only. Constraint for v1.0
 configurable poor side: [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
@@ -81,7 +81,7 @@ Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
 
-1. Download **[pinebuds-cros-v0.3.37.zip](flash-packages/pinebuds-cros-v0.3.37.zip)** (includes `bestool.exe`).
+1. Download **[pinebuds-cros-v0.3.38.zip](flash-packages/pinebuds-cros-v0.3.38.zip)** (includes `bestool.exe`).
 2. Backup once, then flash **both** buds:
 
 ```powershell

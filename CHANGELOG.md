@@ -6,6 +6,21 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.38] — 2026-09-26
+
+### Firmware — SCO alone = silence (no ACL CROS under SCO)
+- **0.3.37 ear:** SCO **held** alone (no wedge). Cmd-path CROS under SCO was
+  **very choppy** (with and without Capture). Capture overrun = underrun STAT
+  spam on SPP (alone never quiets; armed reset re-fired every packet).
+- **0.3.38:** alone mode **does not start ACL TX/RX** — sniff lock + SCO hold
+  only (silence). Fix underrun-threshold armed reset. Next: mic→SCO→speaker.
+
+### Test (LEFT master)
+1. Flash both — `init v0.3.38` / `SCO-alone-silence`.
+2. Capture LEFT. Quad-tap. Expect silence (no chop), `OPENED (alone hold…)`,
+   buds responsive for 10–20 s; off → `close_link`.
+3. Paste LEFT log (should stay short — no underrun flood).
+
 ## [0.3.37] — 2026-09-26
 
 ### Firmware — SCO alone hold (no extra)
@@ -21,6 +36,11 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 3. Expect: `armed ALONE` → `OPENED (alone hold…)` — **no** `proof hold done`.
    Buds stay responsive; quad-tap off → `close_link` / `CLOSED`.
 4. Paste LEFT log (PASS or wedge).
+
+### Result (2026-09-26 ear — LEFT master) — **held, cmd choppy**
+`OPENED (alone hold…)` stayed up (also held with Capture off). Cmd ACL CROS
+under SCO: **very choppy**; Capture overrun from underrun STAT flood (quiet
+never on). Follow-up: **v0.3.38** silence ACL under alone SCO.
 
 ## [0.3.36] — 2026-09-26
 
