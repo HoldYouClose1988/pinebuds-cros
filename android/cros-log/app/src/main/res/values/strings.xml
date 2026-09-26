@@ -11,4 +11,7 @@
     <string name="share">Share log</string>
     <string name="share_title">CROS bud log</string>
     <string name="share_empty">Nothing to share yet</string>
+    <string name="sco_start">Phone SCO on</string>
+    <string name="sco_stop">Phone SCO off</string>
+    <string name="sco_hint">Reference: startBluetoothSco to the paired buds. Watch bud log for BTEVENT_SCO_* vs peer open_link.</string>
 </resources>

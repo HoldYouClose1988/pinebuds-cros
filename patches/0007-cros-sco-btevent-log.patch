@@ -1,0 +1,77 @@
+diff --git a/services/bt_app/Makefile b/services/bt_app/Makefile
+index 45335d7..482b5df 100644
+--- a/services/bt_app/Makefile
++++ b/services/bt_app/Makefile
+@@ -156,6 +156,9 @@ ifeq ($(IBRT),1)
+ ccflags-y += -Iservices/ibrt/inc
+ endif
+ 
++ifeq ($(CROS_STAGE_B),1)
++ccflags-y += -Iapps/cros_tws
++endif
+ 
+ ifeq ($(AUDIO_QUEUE_SUPPORT),1)
+ CFLAGS_app_bt_media_manager.o += -D__AUDIO_QUEUE_SUPPORT__
+diff --git a/services/bt_app/app_bt.cpp b/services/bt_app/app_bt.cpp
+index 4a7539e..043a9f6 100644
+--- a/services/bt_app/app_bt.cpp
++++ b/services/bt_app/app_bt.cpp
+@@ -38,6 +38,9 @@
+ #include "hci_api.h"
+ #include "hfp_api.h"
+ #include "l2cap_api.h"
++#if defined(CROS_STAGE_B)
++#include "cros_bt_log.h"
++#endif
+ #include "me_api.h"
+ #include "mei_api.h"
+ #include "nvrecord.h"
+@@ -1170,7 +1173,24 @@ void app_bt_sniff_manager_process(const btif_event_t *Event) {
+       app_bt_CMGR_SetSniffTimer(cmgrHandler, NULL, BTIF_CMGR_SNIFF_TIMER);
+     break;
+   case BTIF_BTEVENT_SCO_CONNECT_IND:
+-  case BTIF_BTEVENT_SCO_CONNECT_CNF:
++  case BTIF_BTEVENT_SCO_CONNECT_CNF: {
++#if defined(CROS_STAGE_B)
++    {
++      uint8_t sco_evt = btif_me_get_callback_event_type(Event);
++      uint8_t sco_err = btif_me_get_callback_event_err_code(Event);
++      bt_bdaddr_t *sco_bd =
++          btif_me_get_callback_event_rem_dev_bd_addr(Event);
++      CROS_LOG(0,
++               "[cros_sco] BTEVENT_%s err=0x%02x rem=%02x:%02x:%02x:%02x:"
++               "%02x:%02x",
++               (sco_evt == BTIF_BTEVENT_SCO_CONNECT_IND) ? "SCO_CONNECT_IND"
++                                                         : "SCO_CONNECT_CNF",
++               (unsigned)sco_err,
++               sco_bd ? sco_bd->address[0] : 0, sco_bd ? sco_bd->address[1] : 0,
++               sco_bd ? sco_bd->address[2] : 0, sco_bd ? sco_bd->address[3] : 0,
++               sco_bd ? sco_bd->address[4] : 0, sco_bd ? sco_bd->address[5] : 0);
++    }
++#endif
+     TRACE(1, "BTEVENT_SCO_CONNECT_IND/CNF cur_remDev = %p",
+           btif_me_get_callback_event_rem_dev(Event));
+     currbtif_cmgr_handler_t = btif_cmgr_get_conn_ind_handler(
+@@ -1216,7 +1236,22 @@ void app_bt_sniff_manager_process(const btif_event_t *Event) {
+       }
+     }
+     break;
++  }
+   case BTIF_BTEVENT_SCO_DISCONNECT:
++#if defined(CROS_STAGE_B)
++    {
++      uint8_t sco_err = btif_me_get_callback_event_err_code(Event);
++      bt_bdaddr_t *sco_bd =
++          btif_me_get_callback_event_rem_dev_bd_addr(Event);
++      CROS_LOG(0,
++               "[cros_sco] BTEVENT_SCO_DISCONNECT err=0x%02x rem=%02x:%02x:"
++               "%02x:%02x:%02x:%02x",
++               (unsigned)sco_err,
++               sco_bd ? sco_bd->address[0] : 0, sco_bd ? sco_bd->address[1] : 0,
++               sco_bd ? sco_bd->address[2] : 0, sco_bd ? sco_bd->address[3] : 0,
++               sco_bd ? sco_bd->address[4] : 0, sco_bd ? sco_bd->address[5] : 0);
++    }
++#endif
+     app_bt_profile_reconnect_pending_process();
+     if (a2dp_is_music_ongoing()) {
+       break;

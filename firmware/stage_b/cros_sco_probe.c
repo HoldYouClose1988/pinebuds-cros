@@ -1,5 +1,5 @@
 /***************************************************************************
- * SCO/eSCO bud↔bud probe — OPEN/CLOSED only (v0.3.28).
+ * SCO/eSCO bud↔bud probe — OPEN/CLOSED (+ PONG/READY trigger, v0.3.30).
  ***************************************************************************/
 #include "cros_sco_probe.h"
 
@@ -10,6 +10,10 @@
 
 #ifndef CROS_SCO_PROBE
 #define CROS_SCO_PROBE 1
+#endif
+
+#ifndef CROS_SCO_SLAVE_OPEN
+#define CROS_SCO_SLAVE_OPEN 0
 #endif
 
 #if CROS_SCO_PROBE
@@ -123,11 +127,12 @@ static void cros_sco_open_bt(void *a, void *b) {
 
   CROS_LOG(0,
            "[cros_sco] peer %02x:%02x:%02x:%02x:%02x:%02x tws_mode=%u "
-           "role=%u",
+           "role=%u slave_open=%u",
            peer_ba.addr[0], peer_ba.addr[1], peer_ba.addr[2], peer_ba.addr[3],
            peer_ba.addr[4], peer_ba.addr[5],
            ctx ? (unsigned)ctx->tws_mode : 0xff,
-           ctx ? (unsigned)ctx->current_role : 0xff);
+           ctx ? (unsigned)ctx->current_role : 0xff,
+           (unsigned)CROS_SCO_SLAVE_OPEN);
 
   if (!sco_inited) {
     rc = sco_init();
@@ -143,12 +148,17 @@ static void cros_sco_open_bt(void *a, void *b) {
     }
   }
 
-  /* Master initiates; slave only accepts. */
+  /* Master initiates; slave registers (or also opens if CROS_SCO_SLAVE_OPEN). */
   should_open = 0;
   if (ctx && ctx->current_role == IBRT_MASTER) {
     should_open = 1;
   } else if (ctx && ctx->current_role == IBRT_SLAVE) {
-    CROS_LOG(0, "[cros_sco] slave — registered only, wait for peer open");
+    if (CROS_SCO_SLAVE_OPEN) {
+      should_open = 1;
+      CROS_LOG(0, "[cros_sco] slave — also open_link (CROS_SCO_SLAVE_OPEN=1)");
+    } else {
+      CROS_LOG(0, "[cros_sco] slave — registered only, wait for peer open");
+    }
   } else {
     should_open = 1;
     CROS_LOG(0, "[cros_sco] role unclear — this bud will open");
@@ -184,6 +194,7 @@ static void cros_sco_close_bt(void *a, void *b) {
 
 static void defer_timer_cb(void const *arg) {
   (void)arg;
+  CROS_LOG(0, "[cros_sco] fallback timer — open (no READY yet or late)");
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
 }
 
@@ -193,7 +204,9 @@ void cros_sco_probe_init(void) {
   if (!defer_timer) {
     defer_timer = osTimerCreate(osTimer(CROS_SCO_DEFER), osTimerOnce, NULL);
   }
-  CROS_LOG(1, "[cros_sco] probe init (OPEN/CLOSED only, extra audio unchanged)");
+  CROS_LOG(1,
+           "[cros_sco] probe init (READY+fallback, slave_open=%u, no SCO audio)",
+           (unsigned)CROS_SCO_SLAVE_OPEN);
 }
 
 void cros_sco_probe_on_cros_enable(void) {
@@ -202,9 +215,25 @@ void cros_sco_probe_on_cros_enable(void) {
   if (!defer_timer) {
     cros_sco_probe_init();
   }
-  CROS_LOG(0, "[cros_sco] arm open in %ums", (unsigned)CROS_SCO_DEFER_MS);
+  CROS_LOG(0,
+           "[cros_sco] armed — wait peer READY (fallback %ums)",
+           (unsigned)CROS_SCO_DEFER_MS);
   osTimerStop(defer_timer);
   osTimerStart(defer_timer, CROS_SCO_DEFER_MS);
+}
+
+void cros_sco_probe_on_peer_ready(void) {
+  if (!probe_armed) {
+    return;
+  }
+  if (open_issued) {
+    return;
+  }
+  if (defer_timer) {
+    osTimerStop(defer_timer);
+  }
+  CROS_LOG(0, "[cros_sco] peer READY — open now");
+  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
 }
 
 void cros_sco_probe_on_cros_disable(void) {
@@ -220,5 +249,6 @@ void cros_sco_probe_on_cros_disable(void) {
 void cros_sco_probe_init(void) {}
 void cros_sco_probe_on_cros_enable(void) {}
 void cros_sco_probe_on_cros_disable(void) {}
+void cros_sco_probe_on_peer_ready(void) {}
 
 #endif /* CROS_SCO_PROBE */

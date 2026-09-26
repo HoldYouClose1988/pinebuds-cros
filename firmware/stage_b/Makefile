@@ -12,12 +12,15 @@ endif
 CROS_EXTRA_L2CAP ?= 1
 # v0.3.28: SCO/eSCO bud↔bud OPEN/CLOSED probe (no audio on SCO yet).
 CROS_SCO_PROBE ?= 1
+# v0.3.30: slave also issues sco_open_link (default off — master-only).
+CROS_SCO_SLAVE_OPEN ?= 0
 
 ccflags-y += \
 	$(BT_IF_INCLUDES) \
 	$(BT_PROFILES_INCLUDES) \
 	-DCROS_EXTRA_L2CAP=$(CROS_EXTRA_L2CAP) \
 	-DCROS_SCO_PROBE=$(CROS_SCO_PROBE) \
+	-DCROS_SCO_SLAVE_OPEN=$(CROS_SCO_SLAVE_OPEN) \
 	-Iapps/cros_tws \
 	-Iapps/audioplayers \
 	-Iapps/audioplayers/a2dp_decoder \

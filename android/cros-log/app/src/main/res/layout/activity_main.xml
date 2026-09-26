@@ -95,7 +95,25 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="@string/clear" />
+
+        <Button
+            android:id="@+id/scoButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/sco_start" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/scoHint"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/sco_hint"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/actionRow" />
 
     <ScrollView
         android:id="@+id/logScroll"
@@ -108,7 +126,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/actionRow">
+        app:layout_constraintTop_toBottomOf="@id/scoHint">
 
         <TextView
             android:id="@+id/logView"

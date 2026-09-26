@@ -5,8 +5,12 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.ArrayAdapter
@@ -38,11 +42,38 @@ class MainActivity : AppCompatActivity() {
     private var bonded: List<BluetoothDevice> = emptyList()
     /** Ignore programmatic switch updates while we sync UI after connect/fail. */
     private var suppressSwitchCallback = false
+    private var scoWanted = false
+    private lateinit var audioManager: AudioManager
+
+    private val scoReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED) return
+            val state = intent.getIntExtra(
+                AudioManager.EXTRA_SCO_AUDIO_STATE,
+                AudioManager.SCO_AUDIO_STATE_ERROR,
+            )
+            val label = when (state) {
+                AudioManager.SCO_AUDIO_STATE_CONNECTED -> "CONNECTED"
+                AudioManager.SCO_AUDIO_STATE_CONNECTING -> "CONNECTING"
+                AudioManager.SCO_AUDIO_STATE_DISCONNECTED -> "DISCONNECTED"
+                AudioManager.SCO_AUDIO_STATE_ERROR -> "ERROR"
+                else -> "state=$state"
+            }
+            appendUi("[phone_sco] ACTION_SCO_AUDIO_STATE_UPDATED → $label")
+            if (state == AudioManager.SCO_AUDIO_STATE_DISCONNECTED ||
+                state == AudioManager.SCO_AUDIO_STATE_ERROR
+            ) {
+                scoWanted = false
+                binding.scoButton.text = getString(R.string.sco_start)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        audioManager = getSystemService(AudioManager::class.java)
 
         deviceAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, mutableListOf())
         binding.deviceSpinner.adapter = deviceAdapter
@@ -53,6 +84,7 @@ class MainActivity : AppCompatActivity() {
             binding.logView.text = ""
         }
         binding.shareButton.setOnClickListener { shareLog() }
+        binding.scoButton.setOnClickListener { togglePhoneSco() }
         binding.loggingSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressSwitchCallback) return@setOnCheckedChangeListener
             if (checked) {
@@ -66,7 +98,27 @@ class MainActivity : AppCompatActivity() {
         refreshDevices()
     }
 
+    override fun onStart() {
+        super.onStart()
+        val filter = IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(scoReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(scoReceiver, filter)
+        }
+    }
+
+    override fun onStop() {
+        try {
+            unregisterReceiver(scoReceiver)
+        } catch (_: IllegalArgumentException) {
+        }
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        stopPhoneSco(userMessage = null)
         stopLogging(userMessage = null)
         super.onDestroy()
     }
@@ -85,8 +137,65 @@ class MainActivity : AppCompatActivity() {
                 needed += Manifest.permission.BLUETOOTH_SCAN
             }
         }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            needed += Manifest.permission.RECORD_AUDIO
+        }
         if (needed.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQ_BT)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun togglePhoneSco() {
+        if (scoWanted) {
+            stopPhoneSco(userMessage = "Phone SCO off")
+            return
+        }
+        if (!audioManager.isBluetoothScoAvailableOffCall) {
+            toast("Phone reports SCO unavailable off-call")
+            appendUi("[phone_sco] isBluetoothScoAvailableOffCall=false")
+            return
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            toast("Microphone permission required for SCO")
+            ensurePermissions()
+            return
+        }
+        scoWanted = true
+        binding.scoButton.text = getString(R.string.sco_stop)
+        appendUi("[phone_sco] startBluetoothSco() — watch bud for BTEVENT_SCO_*")
+        try {
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            audioManager.startBluetoothSco()
+            audioManager.isBluetoothScoOn = true
+        } catch (e: Exception) {
+            scoWanted = false
+            binding.scoButton.text = getString(R.string.sco_start)
+            appendUi("[phone_sco] start failed: ${e.message}")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun stopPhoneSco(userMessage: String?) {
+        if (!scoWanted && !audioManager.isBluetoothScoOn) {
+            binding.scoButton.text = getString(R.string.sco_start)
+            return
+        }
+        scoWanted = false
+        binding.scoButton.text = getString(R.string.sco_start)
+        try {
+            audioManager.stopBluetoothSco()
+            audioManager.isBluetoothScoOn = false
+            audioManager.mode = AudioManager.MODE_NORMAL
+        } catch (e: Exception) {
+            appendUi("[phone_sco] stop failed: ${e.message}")
+        }
+        if (userMessage != null) {
+            appendUi(userMessage)
         }
     }
 

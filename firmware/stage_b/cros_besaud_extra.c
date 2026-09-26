@@ -8,6 +8,7 @@
 
 #include "cmsis_os.h"
 #include "cros_bt_log.h"
+#include "cros_sco_probe.h"
 #include "cros_lat.h"
 #include "hal_trace.h"
 #include "string.h"
@@ -212,6 +213,7 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
       cros_bt_log_set_quiet(1);
       CROS_LOG(1, "[cros_extra] peer READY (ping=%u) — switch audio to extra",
             (unsigned)rx_ping);
+      cros_sco_probe_on_peer_ready();
     }
     return;
   }
@@ -222,6 +224,7 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
       cros_bt_log_set_quiet(1);
       CROS_LOG(1, "[cros_extra] peer READY (pong=%u) — switch audio to extra",
             (unsigned)rx_pong);
+      cros_sco_probe_on_peer_ready();
     }
     return;
   }
@@ -229,6 +232,7 @@ static void cros_extra_datarecv(uint32 l2cap_handle, struct pp_buff *ppb) {
     peer_ready = 1;
     cros_bt_log_set_quiet(1);
     CROS_LOG(0, "[cros_extra] peer READY (audio rx) — switch audio to extra");
+    cros_sco_probe_on_peer_ready();
   }
   cros_tws_on_peer_audio(ppb->data, (uint16_t)ppb->len);
   rx_ok++;

@@ -232,6 +232,13 @@ peer register race, IBRT refusing SCO on TWS ACL after HCI accept, missing HCI
 SCO complete → `sco_conn_opened_ind`, wrong notify registration, need eSCO /
 codec params, mobile ACL coexistence.
 
+**v0.3.30 next probes (still OPEN/CLOSED only, no SCO audio):**
+1. **PONG/READY trigger** — open as soon as extra peer READY (1.5 s fallback kept).
+2. **BTEVENT tee** — `SCO_CONNECT_IND/CNF/DISCONNECT` → `CROS_LOG` with err + rem.
+3. **Phone SCO reference** — cros-log **Phone SCO on** (`startBluetoothSco`);
+   compare stack BTEVENT vs peer `open_link`.
+4. Optional `CROS_SCO_SLAVE_OPEN=1` if register-only slave looks like the race.
+
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
 
@@ -268,8 +275,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **v0.3.29:** `open_link rc=0`, **no OPENED** —
-   investigate (not closed).  
+4. **K** — **SCO/eSCO bud↔bud** — **v0.3.29:** `open_link rc=0`, **no OPENED**.
+   **v0.3.30:** READY-trigger + BTEVENT tee + phone SCO reference (still open).  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  

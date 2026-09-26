@@ -14,6 +14,7 @@ Keep patches minimal and feature-scoped.
 | `0004-cros-besaud-extra-hook.patch` | BESAUD disconnect cleanup for extra L2CAP (create deferred to CROS activate) |
 | `0005-tota-force-test-over-the-air.patch` | Make `TOTA=1` actually build on open_source: force `TEST_OVER_THE_AIR=1`, stub ANC tool when `APP_ANC_TEST=0`, fix missing stdint includes |
 | `0006-cros-sniff-lock.patch` | While `cros_tws_is_enabled()`, `app_ibrt_if_tws_sniff_allowed()` returns false (G) |
+| `0007-cros-sco-btevent-log.patch` | Tee `BTEVENT_SCO_*` to `CROS_LOG` (err + rem BDADDR) for §K debug |
 
 Sources:
 - Stage A: `firmware/stage_a/` → `apps/cros_loopback/`

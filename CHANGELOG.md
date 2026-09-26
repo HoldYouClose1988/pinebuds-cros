@@ -6,6 +6,31 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.30] — 2026-09-26
+
+### Firmware — §K next probes (still no SCO audio)
+- **PONG/READY open:** `cros_sco_probe_on_peer_ready()` fires `sco_open_link`
+  as soon as extra peer READY (PING/PONG/audio). 1.5 s timer kept as fallback.
+- **Stack tee:** `BTEVENT_SCO_CONNECT_IND/CNF/DISCONNECT` → `CROS_LOG` with
+  `err=` + rem BDADDR (compare phone SCO vs peer open).
+- **Optional:** `CROS_SCO_SLAVE_OPEN=1` so slave also issues `open_link`
+  (default 0). Extra baseline unchanged.
+
+### Android cros-log v0.2.0
+- **Phone SCO on/off** button: `AudioManager.startBluetoothSco()` +
+  `ACTION_SCO_AUDIO_STATE_UPDATED` lines in the log pane.
+- Use with Capture on: phone SCO is the known-good stack reference; peer
+  `open_link` is the experiment.
+
+### Test
+1. Flash both — `init v0.3.30`. Rebuild/install cros-log.
+2. Capture LEFT (master). Quad-tap CROS. Expect
+   `[cros_sco] peer READY — open now` then `open_link rc=` (not only the
+   fallback timer).
+3. Tap **Phone SCO on** (buds still paired). Expect bud
+   `[cros_sco] BTEVENT_SCO_CONNECT_*` — that proves the tee + stack path.
+4. Paste: did peer path get `OPENED` or only BTEVENT / nothing?
+
 ## [0.3.29] — 2026-09-26
 
 ### Firmware — SCO probe: arm on peer-mode too

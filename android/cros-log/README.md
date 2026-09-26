@@ -24,6 +24,9 @@ I can’t produce an APK in this cloud environment (no Android SDK). Build on yo
 7. After `peer READY` you should see `[cros_log] quiet=1` — periodic stats stop on
    purpose so SPP does not kill extra-path audio. Transition lines (OPEN/READY/DISABLE)
    still show. Use **Share log** to export a `.txt` via the system share sheet.
+8. **Phone SCO on** (v0.2.0): reference `AudioManager.startBluetoothSco()` to the
+   paired buds. Compare bud log `BTEVENT_SCO_*` / `[cros_sco]` lines vs peer
+   `open_link` (Capture can stay on — same ACL as phone HFP SCO).
 
 Debug APK output (after a local build):
 
