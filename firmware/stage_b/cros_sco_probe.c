@@ -1,11 +1,15 @@
 /***************************************************************************
- * SCO/eSCO bud↔bud probe — OPEN/CLOSED (READY-only open, v0.3.31).
+ * SCO/eSCO bud↔bud probe — OPEN/CLOSED (v0.3.32).
+ *
+ * No SCO work on enable (0.3.31 early register crashed RIGHT-master+TX).
+ * On peer READY: settle, then register+open. Late fallback if READY never comes.
  ***************************************************************************/
 #include "cros_sco_probe.h"
 
 #include "app_tws_ibrt.h"
 #include "cmsis_os.h"
 #include "cros_bt_log.h"
+#include "cros_tws.h"
 #include "string.h"
 
 #ifndef CROS_SCO_PROBE
@@ -29,11 +33,14 @@ extern btif_remote_device_t *btif_besaud_get_peer_device(void);
 extern btif_remote_device_t *
 btif_me_get_remote_device_by_handle(uint16_t hci_handle);
 
-/* Safety net only — must be >> extra defer (2s) + PONG. Do not race READY. */
+/* Safety net only — must be >> extra defer (2s) + PONG + settle. */
 #define CROS_SCO_LATE_FALLBACK_MS 12000
+#define CROS_SCO_SETTLE_MS 500
+#define CROS_SCO_SETTLE_POOR_MS 1500
 #define CROS_SCO_HCI_REMOTE_USER_TERM 0x13
 
 static osTimerId late_timer;
+static osTimerId settle_timer;
 static uint8_t sco_inited;
 static uint8_t probe_armed;
 static uint8_t registered;
@@ -90,7 +97,6 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
   }
 }
 
-/* Register (and optionally open) on BT thread. */
 static void cros_sco_open_bt(void *a, void *b) {
   ibrt_ctrl_t *ctx;
   void *bd;
@@ -129,12 +135,18 @@ static void cros_sco_open_bt(void *a, void *b) {
 
   CROS_LOG(0,
            "[cros_sco] peer %02x:%02x:%02x:%02x:%02x:%02x tws_mode=%u "
-           "role=%u slave_open=%u do_open=%d",
+           "role=%u poor=%d slave_open=%u do_open=%d",
            peer_ba.addr[0], peer_ba.addr[1], peer_ba.addr[2], peer_ba.addr[3],
            peer_ba.addr[4], peer_ba.addr[5],
            ctx ? (unsigned)ctx->tws_mode : 0xff,
            ctx ? (unsigned)ctx->current_role : 0xff,
-           (unsigned)CROS_SCO_SLAVE_OPEN, do_open);
+           cros_tws_is_poor_side() ? 1 : 0, (unsigned)CROS_SCO_SLAVE_OPEN,
+           do_open);
+
+  if (ctx && ctx->current_role == IBRT_MASTER && cros_tws_is_poor_side()) {
+    CROS_LOG(0, "[cros_sco] WARN master+POOR/TX — 0.3.31 crash pattern; "
+                "proceed after settle");
+  }
 
   if (!sco_inited) {
     rc = sco_init();
@@ -151,7 +163,7 @@ static void cros_sco_open_bt(void *a, void *b) {
   }
 
   if (!do_open) {
-    CROS_LOG(0, "[cros_sco] registered early — wait READY to open");
+    CROS_LOG(0, "[cros_sco] registered only — wait open");
     return;
   }
 
@@ -208,14 +220,27 @@ static void late_timer_cb(void const *arg) {
   app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
 }
 
+static void settle_timer_cb(void const *arg) {
+  (void)arg;
+  if (!probe_armed || open_issued) {
+    return;
+  }
+  CROS_LOG(0, "[cros_sco] settle done — register+open");
+  app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
+}
+
 osTimerDef(CROS_SCO_LATE, late_timer_cb);
+osTimerDef(CROS_SCO_SETTLE, settle_timer_cb);
 
 void cros_sco_probe_init(void) {
   if (!late_timer) {
     late_timer = osTimerCreate(osTimer(CROS_SCO_LATE), osTimerOnce, NULL);
   }
+  if (!settle_timer) {
+    settle_timer = osTimerCreate(osTimer(CROS_SCO_SETTLE), osTimerOnce, NULL);
+  }
   CROS_LOG(1,
-           "[cros_sco] probe init (READY-only +%ums late, slave_open=%u)",
+           "[cros_sco] probe init (READY+settle, late=%ums, slave_open=%u)",
            (unsigned)CROS_SCO_LATE_FALLBACK_MS,
            (unsigned)CROS_SCO_SLAVE_OPEN);
 }
@@ -223,19 +248,22 @@ void cros_sco_probe_init(void) {
 void cros_sco_probe_on_cros_enable(void) {
   probe_armed = 1;
   open_issued = 0;
-  if (!late_timer) {
+  if (!late_timer || !settle_timer) {
     cros_sco_probe_init();
   }
+  /* v0.3.32: no sco_init/register on enable — that raced TX on RIGHT-master. */
   CROS_LOG(0,
-           "[cros_sco] armed — WAIT peer READY (late fallback %ums)",
+           "[cros_sco] armed — WAIT peer READY (no early sco; late %ums)",
            (unsigned)CROS_SCO_LATE_FALLBACK_MS);
-  /* Register early so slave is ready when master opens on READY. */
-  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
+  if (settle_timer) {
+    osTimerStop(settle_timer);
+  }
   osTimerStop(late_timer);
   osTimerStart(late_timer, CROS_SCO_LATE_FALLBACK_MS);
 }
 
 void cros_sco_probe_on_peer_ready(void) {
+  uint32_t settle_ms;
   if (!probe_armed) {
     return;
   }
@@ -245,13 +273,23 @@ void cros_sco_probe_on_peer_ready(void) {
   if (late_timer) {
     osTimerStop(late_timer);
   }
-  CROS_LOG(0, "[cros_sco] peer READY — open now");
-  app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
+  settle_ms = cros_tws_is_poor_side() ? CROS_SCO_SETTLE_POOR_MS
+                                      : CROS_SCO_SETTLE_MS;
+  CROS_LOG(0, "[cros_sco] peer READY — settle %ums then open (poor=%d)",
+           (unsigned)settle_ms, cros_tws_is_poor_side() ? 1 : 0);
+  if (!settle_timer) {
+    cros_sco_probe_init();
+  }
+  osTimerStop(settle_timer);
+  osTimerStart(settle_timer, settle_ms);
 }
 
 void cros_sco_probe_on_cros_disable(void) {
   if (late_timer) {
     osTimerStop(late_timer);
+  }
+  if (settle_timer) {
+    osTimerStop(settle_timer);
   }
   probe_armed = 0;
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_close_bt);

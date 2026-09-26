@@ -10,20 +10,20 @@ Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** o
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Current status (v0.3.31) — SCO READY-only + live BTEVENT/HFP tees on **extra baseline v0.3.27**
+## Current status (v0.3.32) — SCO settle-after-READY; versioned zips only; **extra baseline v0.3.27**
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
 | **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still the audio path |
-| **SCO probe (v0.3.31)** | Open on READY only; BTEVENT in global_handle; HFP audio tee |
+| **SCO probe (v0.3.32)** | No early sco; settle after READY; phone BTEVENT tee live |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during extra media |
-| **Latency chase** | §K: phone SCO should now show on bud log; peer OPENED still TBD |
+| **Latency chase** | §K: peer OPENED still missing; RIGHT-master crash under test |
 | **Industrial damp** | Not implemented (design only) |
 
 ### Extra-pipe baseline (keep / build features on this)
 
-**v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. **v0.3.28–0.3.31**
+**v0.3.27** remains the freeze point for **extra L2CAP** CROS audio. **v0.3.28–0.3.32**
 add SCO link probes only; if SCO is unfruitful, feature work continues on 0.3.27.
 
 | Metric | Result |
@@ -50,14 +50,14 @@ Most of the 330 ms is the **200 ms jitter floor** required for stable extra 
 
 Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**. Quad-tap toggles CROS (needs TWS link).
 
-Latest zip: [`flash-packages/pinebuds-cros-LATEST.zip`](flash-packages/pinebuds-cros-LATEST.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.32.zip`](flash-packages/pinebuds-cros-v0.3.32.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review
 
 Extra-path CROS is at a **usable baseline (v0.3.27)**. Eyes wanted on **bud↔bud SCO/eSCO**
 (`sco_open_link` to TWS peer) and whether anything beats ~330 ms without wrecking IBRT.
-See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.27** for daily extra; **v0.3.31** for SCO investigation (READY-only open +
-fixed BTEVENT/HFP tees + phone SCO button).
+See [latency-and-next.md](docs/latency-and-next.md). Flash **v0.3.27** for daily extra; **v0.3.32** for SCO investigation (settle-after-READY;
+RIGHT-master crash mitigation).
 
 ## How it works (short)
 
@@ -75,7 +75,7 @@ Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
 
-1. Download **[pinebuds-cros-LATEST.zip](flash-packages/pinebuds-cros-LATEST.zip)** (includes `bestool.exe`).
+1. Download **[pinebuds-cros-v0.3.32.zip](flash-packages/pinebuds-cros-v0.3.32.zip)** (includes `bestool.exe`).
 2. Backup once, then flash **both** buds:
 
 ```powershell

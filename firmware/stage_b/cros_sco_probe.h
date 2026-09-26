@@ -1,11 +1,9 @@
 /***************************************************************************
- * v0.3.31 — SCO/eSCO bud↔bud probe (latency chase §K).
+ * v0.3.32 — SCO/eSCO bud↔bud probe (latency chase §K).
  *
- * Register early on CROS enable; open on peer READY only (no 1.5 s race).
- * 12 s late fallback if READY never arrives. No SCO audio yet.
- *
- * Optional CROS_SCO_SLAVE_OPEN=1 so slave also issues open_link.
- * Phone SCO reference: android/cros-log "Phone SCO on" + HFP/BTEVENT tees.
+ * No SCO on CROS enable (early register crashed RIGHT-master+TX in 0.3.31).
+ * On peer READY: settle (0.5 s / 1.5 s poor), then register+open.
+ * 12 s late fallback if READY never arrives. No SCO audio yet.
  ***************************************************************************/
 #ifndef CROS_SCO_PROBE_H
 #define CROS_SCO_PROBE_H
@@ -15,11 +13,9 @@ extern "C" {
 #endif
 
 void cros_sco_probe_init(void);
-/* Arm probe + early register; open waits for peer READY. */
+/* Arm probe only — no sco_init/register until READY settle. */
 void cros_sco_probe_on_cros_enable(void);
-/* Close/unregister on CROS disable. */
 void cros_sco_probe_on_cros_disable(void);
-/* Peer READY on extra — open SCO now. */
 void cros_sco_probe_on_peer_ready(void);
 
 #ifdef __cplusplus

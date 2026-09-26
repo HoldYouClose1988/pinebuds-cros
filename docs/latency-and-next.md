@@ -248,6 +248,13 @@ First phone SCO also closed extra. Root cause for missing BTEVENT: tee was in
 **v0.3.31:** READY-only open (early register; 12 s late fallback); BTEVENT tee in
 `app_bt_global_handle`; HFP `AUDIO_CONNECTED/DISCONNECTED` (+ IBRT mock) tee.
 
+**0.3.31 ear:** LEFT-master OK — READY open, phone `BTEVENT_SCO_CONNECT_IND`
+(tee live), peer still no `OPENED`. RIGHT-master+POOR/TX **crashed** right after
+`registered early` (SPP died).
+
+**v0.3.32:** no SCO on enable; settle after READY (1.5 s on poor) then register+open.
+Packaging: versioned zips only (no LATEST alias).
+
 **If OPENED:** wire mic→SCO→speaker + clap vs 0.3.27.  
 **Daily audio until then:** **v0.3.27 extra** baseline.
 
@@ -284,8 +291,8 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 3. **C** — ACL header bump **blocked** (closed `.a`; Erik/openqore same libs).  
 3′. **C′** — A2DP suspend — optional only; not the 0.3.25 cause.  
 3″. **Quiet underrun** — **v0.3.27** — **extra baseline declared**.  
-4. **K** — **SCO/eSCO bud↔bud** — **v0.3.31:** READY-only + fixed BTEVENT/HFP tees
-   (0.3.30 proved sniff_manager tee was dead under IBRT).  
+4. **K** — **SCO/eSCO bud↔bud** — **v0.3.32:** settle-after-READY; RIGHT-master
+   crash under test; phone BTEVENT tee confirmed on LEFT.  
 5. **A** — PLC on extra if daily wear shows audible holes (quality, not delay).  
 6. **L′** — BLE GATT log sink if Capture+SPP still hurts / for UART-free logging.  
 7. **L** — VOB / peer BLE media (bench first).  
@@ -303,5 +310,5 @@ Latency chase leaves extra; do not thin floor 4 again without new evidence.
 ## How to help
 
 - Comment on this doc / open a GitHub Discussion or Issue.  
-- Reproduce baseline: flash [LATEST](../flash-packages/pinebuds-cros-LATEST.zip), clap start→start, note cutouts.  
+- Reproduce baseline: flash [v0.3.27](../flash-packages/pinebuds-cros-v0.3.27.zip) or current probe zip, clap start→start, note cutouts.  
 - If you have HCI logs around an underrun storm (`underrun threshold` lines), that’s gold.

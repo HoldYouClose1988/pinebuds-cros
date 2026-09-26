@@ -6,6 +6,28 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.32] — 2026-09-26
+
+### Packaging
+- **No more `pinebuds-cros-LATEST.zip`.** Ship versioned zips only
+  (`pinebuds-cros-v0.3.32.zip`). `CURRENT.txt` points at the current version.
+
+### Firmware — RIGHT-master crash mitigation (SCO)
+- **0.3.31 RIGHT log:** IBRT master + POOR/TX; after `registered early` the bud
+  died (SPP cut). LEFT-master (GOOD/RX) survived; phone `BTEVENT_SCO_CONNECT_IND`
+  tee worked; peer `open_link` still no `OPENED`.
+- **Change:** no `sco_init`/`register` on CROS enable. On peer READY wait settle
+  (500 ms GOOD / 1500 ms POOR) then register+open. Avoids racing mic TX start.
+
+### Test
+1. Flash both — `init v0.3.32`.
+2. **LEFT master** (usual): Capture LEFT → quad-tap → expect READY → settle →
+   `open_link` (no early register). Phone SCO → `BTEVENT_SCO_*`.
+3. **RIGHT master** (force role if you know how): Capture RIGHT → enable CROS →
+   bud must **stay up**; expect `peer READY — settle 1500ms` then sco lines (or
+   paste if it still dies — note last line).
+4. Paste both if possible.
+
 ## [0.3.31] — 2026-09-26
 
 ### Firmware — §K: READY-only open + fix dead BTEVENT tee

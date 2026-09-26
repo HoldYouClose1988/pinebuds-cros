@@ -241,9 +241,8 @@ EOF
 )
 
 cp -f "$OUT_DIR/$ZIP_NAME" "$OUT_DIR/$ALIAS_NAME"
-cp -f "$OUT_DIR/$ZIP_NAME" "$OUT_DIR/pinebuds-cros-LATEST.zip"
 
-cat >"$OUT_DIR/LATEST.txt" <<EOF
+cat >"$OUT_DIR/CURRENT.txt" <<EOF
 version=$VERSION
 zip=$ZIP_NAME
 alias=$ALIAS_NAME
@@ -251,9 +250,11 @@ stage=$STAGE
 git_sha=$GIT_SHA
 built_utc=$BUILT_UTC
 bin_sha256=$SHA256
-download=flash-packages/pinebuds-cros-LATEST.zip
-versioned=flash-packages/$ZIP_NAME
+download=flash-packages/$ZIP_NAME
 EOF
+
+# Keep a tiny pointer for old scripts that still open LATEST.txt
+cp -f "$OUT_DIR/CURRENT.txt" "$OUT_DIR/LATEST.txt"
 
 {
   echo "# Flash packages"
@@ -262,7 +263,7 @@ EOF
   echo
   echo "**Current version: v$VERSION**"
   echo
-  echo "Download **[pinebuds-cros-LATEST.zip](./pinebuds-cros-LATEST.zip)** or **[$ZIP_NAME](./$ZIP_NAME)**."
+  echo "Download **[$ZIP_NAME](./$ZIP_NAME)** (versioned only — no LATEST alias)."
   echo
   echo "Each zip includes \`bestool.exe\`, \`BESTOOL.md\`, \`CHANGELOG.md\`, \`RELEASE_NOTES.txt\`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps."
   echo
@@ -284,7 +285,6 @@ EOF
 rm -rf "$STAGE_DIR"
 
 echo "==> Packaged v$VERSION -> $OUT_DIR/$ZIP_NAME"
-echo "    + $OUT_DIR/pinebuds-cros-LATEST.zip"
 echo "    + $OUT_DIR/$ALIAS_NAME"
-ls -lh "$OUT_DIR/$ZIP_NAME" "$OUT_DIR/pinebuds-cros-LATEST.zip"
-cat "$OUT_DIR/LATEST.txt"
+ls -lh "$OUT_DIR/$ZIP_NAME"
+cat "$OUT_DIR/CURRENT.txt"
