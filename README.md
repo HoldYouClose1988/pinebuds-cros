@@ -23,7 +23,7 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.64](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.64)** + app **0.4.2** (fw **0.3.65** source ready — `phone=` on status) |
+| **Flash** | **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** + app **0.4.2** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
