@@ -1,28 +1,51 @@
 # Latency, stability, and next ideas (review welcome)
 
-## Breakthrough — SCO media ≈ **140 ms** (v0.3.39 ear)
+## Where we are — suggested next (2026-09-26)
 
-Bud↔bud **SCO/eSCO** + stock HFP **CVSD** voice player: clap ≈ **140 ms**, link
-steady. Extra L2CAP path remains ≈ **330 ms** (v0.3.27). **SCO is the latency path**;
-quality (MSBC / tuning / asymmetric CROS) is next. See
-[CHANGELOG 0.3.39](../CHANGELOG.md#0339--2026-09-26) and
-[release v0.3.39](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.39).
+### Shipped (ear-validated)
+
+| Goal | Result |
+|------|--------|
+| Stability | Peer SCO alone holds; no wedge with ACL CROS off |
+| Latency | Clap ≈ **140 ms** on SCO (vs ≈330 ms extra L2CAP) |
+| CROS shape | Poor TX / good RX mute |
+| Quality (usable) | **mSBC 16 kHz** — call-like, very usable |
+| BiCROS | LEFT mic HW sidetone mix into good ear — **PASS (v0.3.43)** |
+
+**Current flash:** [v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43).
+
+### Suggested next (priority order)
+
+1. **Wear / mix balance** — sidetone is fixed −20 dB in `tgt_hardware.h`; make
+   BiCROS mix gain tunable (or a few presets) if local mic is too loud/quiet.
+2. **EQ / smoothing** — user deferred; mild high-shelf / noise gate / AGC on
+   SCO or sidetone path without adding much delay.
+3. **Volume UX** — tablet/phone HFP vol does not reach peer SCO; document clearly;
+   optional long-press or companion control of `hfp_vol`.
+4. **Mic choice** — confirm talk mic vs FF mic for poor TX and good sidetone;
+   FF may be better for “environment” CROS.
+5. **v1.0 productization** — configurable poor side (keep master×TX refuse),
+   stock restore docs, longer wear tests, case/TWS edge cases.
+6. **Industrial damp** — still design-only; separate from BiCROS audio path.
+7. **Defer** — thinning extra L2CAP jitter floor; BLE VOB media; running SCO+extra
+   together (known bad).
+
+---
+
+## Breakthrough — SCO media ≈ **140 ms** → BiCROS (v0.3.39–43)
+
+Bud↔bud **SCO/eSCO** + **mSBC 16 kHz** + asymmetric CROS + good-ear sidetone.
+Clap ≈ **140 ms**. Extra L2CAP remains ≈ **330 ms** (v0.3.27 fallback).
 
 | Path | Clap | Status |
 |------|------|--------|
-| **SCO CVSD (0.3.39)** | ≈ **140 ms** | Latency path — quality TBD |
-| Extra L2CAP (0.3.27) | ≈ **322–330 ms** | Daily / quality baseline |
+| **SCO mSBC BiCROS (0.3.43)** | ≈ **140 ms** | **Current product path** |
+| Extra L2CAP (0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-**Extra-pipe baseline:** **v0.3.27** — floor 4 × 50 ms ADPCM on BESAUD extra L2CAP;
-quiet underrun + sniff lock; ear-validated (no cutouts, Capture on). Keep for daily
-wear until SCO quality is ready.  
-**Measurement build (extra):** **v0.3.24** — hop timestamps (B) + L2CAP mode log (H).  
+**Extra-pipe baseline:** **v0.3.27** — floor 4 × 50 ms ADPCM; keep if SCO path
+needs a fallback. Do not thin that jitter floor again without a new delivery story.
+
 **Usability:** DIY / not a hearing aid.
-
-**Strategy:** ship quality on the SCO path; do not thin the extra jitter floor again
-without a new delivery story.
-
-This note is for **fresh eyes**: what we proved, what failed, where the delay lives, and ranked ideas that are *not* “thin the jitter floor again.”
 
 Related: [cros-transport.md](cros-transport.md) · [architecture-cros.md](architecture-cros.md) · [CHANGELOG.md](../CHANGELOG.md) · [references.md](references.md)
 

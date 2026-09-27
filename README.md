@@ -6,95 +6,92 @@
 > It is **not** a medical device, prescribed CROS/BiCROS, or certified hearing protection.
 > Flash only if you can restore stock firmware. Keep a backup.
 
-Custom OpenPineBuds-based firmware: **poor-side FF mic → good-side speaker** over the bud↔bud link, while stock TWS / media / calls remain the baseline when CROS is off. A separate **industrial damping** track is still design-only.
+Custom OpenPineBuds-based firmware: **poor-side mic → good-side speaker** over a
+bud↔bud link (plus local good-ear mic mix). Stock TWS / media / calls remain when
+CROS is off. A separate **industrial damping** track is still design-only.
 
 The BES SDK is **not** vendored here; `./scripts/bootstrap-sdk.sh` pulls [OpenPineBuds](https://github.com/pine64/OpenPineBuds) locally.
 
-## Breakthrough (2026-09-26) — bud↔bud SCO media ≈ **140 ms**
+## Milestone (2026-09-26) — usable **BiCROS** ≈ **140 ms**
 
-Peer **SCO/eSCO** between the buds carries live **mSBC 16 kHz** voice (v0.3.43;
-was CVSD 8 kHz). Ear clap ≈ **140 ms** vs ≈ **330 ms** on the older extra-L2CAP
-path — roughly **half the delay**, link held steady. Details:
-[CHANGELOG 0.3.42](CHANGELOG.md#0342--2026-09-26) · [latency scorecard](docs/latency-and-next.md) ·
-[release](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43).
+Ear-validated on hardware:
+
+| | |
+|--|--|
+| **Transport** | Bud↔bud **SCO/eSCO** + stock HFP **mSBC 16 kHz** voice path |
+| **Latency** | Clap ≈ **140 ms** (vs ≈ **330 ms** on extra L2CAP v0.3.27) |
+| **Shape** | RIGHT (poor) mic → LEFT (good) speaker; LEFT mic mixed locally (BiCROS) |
+| **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
+| **Flash** | **[v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43)** |
+
+Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
+[next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC 16 kHz (v0.3.43)** | ≈ **140 ms** | **Latency + CROS path** |
-| Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Fallback daily / quality baseline |
+| **SCO mSBC BiCROS (v0.3.43)** | ≈ **140 ms** | **Current product path** |
+| Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.43) — SCO CROS shape (poor→good)
+## Current status (v0.3.43)
 
 | Mode | Status |
 |------|--------|
-| **Stock TWS** | Upstream OpenPineBuds baseline when CROS is off |
-| **SCO BiCROS (bud↔bud)** | **~140 ms** mSBC + CROS; **v0.3.43** mixes LEFT mic into good ear |
-| **Stage B CROS (extra L2CAP)** | **Usable baseline (v0.3.27)** — still daily wear until SCO quality lands |
+| **Stock TWS** | Upstream OpenPineBuds when CROS is off |
+| **SCO BiCROS** | **Ear PASS** — mSBC 16 kHz, ~140 ms, CROS + LEFT sidetone mix |
+| **Extra L2CAP CROS** | v0.3.27 freeze (~330 ms) — keep as fallback |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
-| **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/); **quiets** during media |
+| **Phone / tablet volume** | Does **not** drive peer-SCO HFP vol; **bud volume keys** do (+ boot bump to 13/15) |
+| **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/) |
 | **Industrial damp** | Not implemented (design only) |
 
 ### How we got here (SCO)
 
-1. **v0.3.35** — first peer SCO **OPENED** (`slave_open=1`); left up with extra → wedge  
+1. **v0.3.35** — first peer SCO **OPENED**; left up with extra → wedge  
 2. **v0.3.36** — auto-close after OPENED; extra held  
-3. **v0.3.37–38** — SCO alone held (~2 min silence); cmd ACL under SCO chops  
-4. **v0.3.39** — HFP CVSD voice on peer SCO → **~140 ms clap**  
-5. **v0.3.40** — asymmetric mute (CROS shape)  
-6. **v0.3.41** — bump good-side HFP/SCO volume  
-7. **v0.3.42** — **mSBC 16 kHz** (milestone)
-8. **v0.3.43** — BiCROS: LEFT mic sidetone mix into good ear
+3. **v0.3.37–38** — SCO alone held; silence under SCO (no ACL fight)  
+4. **v0.3.39** — CVSD voice on peer SCO → **~140 ms**  
+5. **v0.3.40** — asymmetric CROS mute (poor TX / good RX)  
+6. **v0.3.41** — good-side HFP volume bump  
+7. **v0.3.42** — **mSBC 16 kHz** usable call quality  
+8. **v0.3.43** — **BiCROS** LEFT mic HW sidetone mix — **ear PASS**
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
 
-### Extra-pipe baseline (still useful)
-
-**v0.3.27** remains the freeze for **extra L2CAP** when you want stable daily audio
-and Capture-friendly wear. Most of its ~330 ms is a **200 ms jitter floor** forced by
-bursty ACL — do not thin that floor again. Full lever history:
-[docs/latency-and-next.md](docs/latency-and-next.md).
-
-| Metric (extra) | Result |
-|----------------|--------|
-| Clap delay | ≈ **322–330 ms** |
-| Cutouts | **None** on long Capture-on wear; `underrun=41` / ~5 min |
-| Known ceiling | ACL bursty; closed BT stack blocks ACL-pool bump |
-
 Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
-(with default mapping: keep LEFT as master).
+(keep LEFT as master with default mapping).
 
 Latest zip: [`flash-packages/pinebuds-cros-v0.3.43.zip`](flash-packages/pinebuds-cros-v0.3.43.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
-## Looking for review
+## Looking for review / next work
 
-**SCO latency (~140 ms) + CROS shape (0.3.40) are in.** Eyes wanted on **direction**
-(poor→good only, not call duplex) and stability. **Quality last** (MSBC / FF mic).
-Extra path still at v0.3.27 for daily wear. Constraint for v1.0 configurable poor side:
-[architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
+**Product path is in.** Eyes wanted on wear testing, mix balance (sidetone −20 dB),
+and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
+EQ / smoothing, mix gain, tablet volume UX, FF mic vs talk mic, configurable poor side.
 
-Flash **[v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43)** for SCO CROS shape;
-**[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** for daily extra-only.
+Flash **[v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43)**.
+Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)
 
-**Latency / CROS path (v0.3.43) — peer SCO + mSBC 16 kHz, asymmetric mute:**
+**Current path (v0.3.43) — peer SCO mSBC + BiCROS:**
 
 ```
-RIGHT (poor)                         LEFT (good)
-────────────                         ───────────
-mic ──► mSBC / SCO ──────────────────► mSBC / speaker
-   (POOR: mic ON, spk OFF)     (GOOD: mic OFF, spk ON)
+RIGHT (poor)                              LEFT (good)
+────────────                              ───────────
+mic ──► mSBC / SCO ─────────────────────► mSBC ──┐
+   (mic ON, spk OFF,                      (spk ON) ├──► speaker
+    sidetone OFF)                         local mic ──┘  (HW sidetone)
+                                          (SCO TX muted)
 ```
 
-**Legacy daily path (v0.3.27) — extra L2CAP:**
+**Legacy path (v0.3.27) — extra L2CAP (~330 ms):**
 
 ```
 RIGHT (poor)                         LEFT (good)
 ────────────                         ───────────
 FF mic → 50 ms ADPCM ──extra L2CAP──► decode → speaker
-                  └─ MODE sync on IBRT custom cmd
 ```
 
 Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
@@ -103,8 +100,7 @@ Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
 
-1. Download **[pinebuds-cros-v0.3.43.zip](flash-packages/pinebuds-cros-v0.3.43.zip)** (includes `bestool.exe`) — SCO ~140 ms.
-   For daily extra-only quality, use **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** instead.
+1. Download **[pinebuds-cros-v0.3.43.zip](flash-packages/pinebuds-cros-v0.3.43.zip)** (includes `bestool.exe`).
 2. Backup once, then flash **both** buds:
 
 ```powershell
@@ -113,18 +109,18 @@ See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows
 ```
 
 3. Seat both buds in the case ~30–60 s so TWS re-pairs.
-4. Wear both; **quad-tap** to toggle CROS. Speak near the **right** outer face — hear it in the **left** ear.
+4. Wear both; **quad-tap** to toggle CROS. Speak near the **right** outer face — hear it in the **left** ear; left-side speech should also appear in the left ear (BiCROS mix).
 5. Optional logs: [android/cros-log](android/cros-log/) → **Capture logs** on.
 
-Avoid phone music while testing CROS (A2DP fights the stream). On SCO builds, prefer
-not starting Phone SCO during the probe.
+Avoid phone music while testing CROS (A2DP fights the stream). Prefer not starting
+Phone SCO during the probe. Use **bud** volume keys (tablet HFP volume does not apply).
 
 ## Build from source
 
 ```bash
 ./scripts/bootstrap-sdk.sh
-./scripts/build.sh
-./scripts/package-flash.sh   # TOTA=1 by default for phone logs
+./scripts/build.sh          # includes SPEECH_SIDETONE=1 for BiCROS
+./scripts/package-flash.sh  # TOTA=1 by default for phone logs
 ```
 
 See [scripts](scripts/) and [docs](docs/).

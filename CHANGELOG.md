@@ -22,6 +22,11 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
    hear own voice on LEFT (local mix). RIGHT should stay quiet.
 4. Paste LEFT log + whether local left mic is audible in the mix.
 
+### Result (2026-09-26 ear — LEFT master) — **BiCROS PASS**
+`BiCROS GOOD/RX — SCO+local mic mix, no TX; hfp_vol 4→13 sidetone ON`.
+**Mixing confirmed.** Usable BiCROS with ~140 ms SCO latency. Product-path
+milestone: stability + latency + CROS shape + local mix.
+
 ## [0.3.42] — 2026-09-26
 
 ### Firmware — mSBC **16 kHz** on peer SCO CROS (was CVSD 8 kHz)
