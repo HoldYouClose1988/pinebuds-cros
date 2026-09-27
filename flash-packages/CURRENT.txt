@@ -1,4 +1,8 @@
-version=0.3.61
-zip=pinebuds-cros-v0.3.61.zip
-note=SCO BiCROS baseline (ear PASS cues). v0.3.62 optional hold-escape only.
-download=flash-packages/pinebuds-cros-v0.3.61.zip
+version=0.3.63
+zip=pinebuds-cros-v0.3.63.zip
+alias=pinebuds-cros-v0.3.63-20260927-52ee78d.zip
+stage=stage-b
+git_sha=52ee78d
+built_utc=2026-09-27T15:16:37Z
+bin_sha256=c41d226197a3d64109fb5a9a1d7870e16bbd24bfb91d73b11d5d1a367a09dfe7
+download=flash-packages/pinebuds-cros-v0.3.63.zip
