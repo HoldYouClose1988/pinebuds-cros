@@ -24,8 +24,8 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 2. Select poor = that same side → Apply → warning names that side (not always Left).
 3. Help FAQ matches rewritten copy; pending call FAQ absent.
 
-Flash zip for 0.3.65 ships when rebuilt; app 0.4.2 works on **0.3.64** with the
-Left default until `phone=` is present.
+Flash zip for 0.3.65: [`flash-packages/pinebuds-cros-v0.3.65.zip`](flash-packages/pinebuds-cros-v0.3.65.zip).
+App 0.4.2 also works on **0.3.64** (assumes Left phone-side until `phone=` is present).
 
 ## [0.3.64] — 2026-09-27
 
