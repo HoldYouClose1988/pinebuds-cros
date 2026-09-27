@@ -78,10 +78,11 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.53.zip`](flash-packages/pinebuds
 
 ## Looking for review / next work
 
-**Product path is in.** Eyes wanted on wear testing, mix balance (sidetone −20 dB),
-and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
-EQ / smoothing, tablet UX, FF mic vs talk mic. Link noise filter stays optional
-if every re-open is as clean as ear 233307’s second session.
+**Product path is in.** Fresh lead: the “clean link” may have been **ANC (hold)**
+or **LEFT volume-down (triple)**, not SCO teardown — see
+[anc-vs-bicros-noise.md](docs/anc-vs-bicros-noise.md). Also wanted: wear testing,
+mix balance (sidetone −20 dB), and the backlog in
+[latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 Flash **[v0.3.53](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.53)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.

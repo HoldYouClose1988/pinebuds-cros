@@ -15,21 +15,28 @@
 
 **Current flash:** [v0.3.53](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.53).
 
+### Open lead — “clean link” may be ANC (or volume), not teardown
+
+Ear (2026-09-27): clean BiCROS coincided with a LEFT touch the user read as
+“triple-tap → ANC.” In our key map **hold = ANC**, **LEFT triple = volume
+down**. See [anc-vs-bicros-noise.md](anc-vs-bicros-noise.md). Teardown
+(v0.3.52–53) still matters for re-arm; it is probably **not** what cleaned
+in-session noise.
+
 ### Suggested next (priority order)
 
-1. **Wear-test clean re-open** — on/off/on without case; phone should show
-   `DISABLE (CLOSED)` (not `hard-timeout`) then a clean second `OPENED`.
-2. **Wear-test the knobs** — find comfortable mix/EQ presets; optionally save NV.
-3. **Mic choice** — confirm talk mic vs FF for poor TX and good sidetone;
-   FF may be better for “environment” CROS.
-4. **Volume UX** — companion `vol=` is in; refine presets / bud-key behavior.
-5. **Noise filter** — keep at 0 if clean SCO links hold; only revisit if
-   link hash still appears after true-CLOSED teardowns.
-6. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases;
-   poor-side UX that steers away from master×TX.
-7. **Industrial damp** — still design-only; separate from BiCROS audio path.
-8. **Defer** — thinning extra L2CAP jitter floor; BLE VOB media; running SCO+extra
-   together (known bad).
+1. **A/B ANC vs volume** — with BiCROS up: hold LEFT (ANC) vs triple LEFT
+   (vol down) vs app Volume slider; see which restores “clean.” Details in
+   [anc-vs-bicros-noise.md](anc-vs-bicros-noise.md).
+2. **Wear-test clean re-open** — on/off/on without case; prefer
+   `DISABLE (CLOSED)` (not `hard-timeout`).
+3. **Wear-test the knobs** — mix/EQ presets; optionally save NV.
+4. **Mic choice** — talk mic vs FF for poor TX and good sidetone.
+5. **If ANC wins** — stop killing ANC on the good ear at CROS enable; consider
+   auto-ANC on BiCROS; re-check poor-side mute after ANC sync.
+6. **If volume wins** — lower default HFP vol; document LEFT triple = vol down.
+7. **Noise filter** — leave at 0 until ANC/vol A/B is done.
+8. **v1.0 / industrial damp / defer** — unchanged backlog.
 
 ---
 
