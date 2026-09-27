@@ -2,17 +2,17 @@
 
 > **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product.
 
-**Current version: v0.3.61 (SCO BiCROS baseline)**
+**Current version: v0.3.63** (knob NV on 0.3.61 audio baseline)
 
-Download **[pinebuds-cros-v0.3.61.zip](./pinebuds-cros-v0.3.61.zip)** (baseline).
-v0.3.62 is optional hold-escape only.
+Download **[pinebuds-cros-v0.3.63.zip](./pinebuds-cros-v0.3.63.zip)**.
 
 Each zip includes `bestool.exe`, `BESTOOL.md`, `CHANGELOG.md`, `RELEASE_NOTES.txt`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps.
 
 | Package | Version |
 |---------|---------|
-| [pinebuds-cros-v0.3.61.zip](./pinebuds-cros-v0.3.61.zip) | **v0.3.61 baseline** |
-| [pinebuds-cros-v0.3.62.zip](./pinebuds-cros-v0.3.62.zip) | v0.3.62 (optional) |
+| [pinebuds-cros-v0.3.63.zip](./pinebuds-cros-v0.3.63.zip) | **v0.3.63** (NV persist) |
+| [pinebuds-cros-v0.3.61.zip](./pinebuds-cros-v0.3.61.zip) | v0.3.61 audio baseline |
+| [pinebuds-cros-v0.3.62.zip](./pinebuds-cros-v0.3.62.zip) | v0.3.62 (optional hold-escape) |
 | [pinebuds-cros-v0.3.60.zip](./pinebuds-cros-v0.3.60.zip) | v0.3.60 |
 | [pinebuds-cros-v0.3.59.zip](./pinebuds-cros-v0.3.59.zip) | v0.3.59 |
 | [pinebuds-cros-v0.3.58.zip](./pinebuds-cros-v0.3.58.zip) | v0.3.58 |

@@ -479,6 +479,9 @@ class MainActivity : AppCompatActivity() {
         val treble = Regex("""treble=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
         val vol = Regex("""(?:sco|vol)=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
         val noise = Regex("""noise=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val a2dp = Regex("""a2dp=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        if (poor == null && mix == null && vol == null && noise == null) return
+
         if (poor == "LEFT") {
             binding.poorLeft.isChecked = true
         } else if (poor == "RIGHT") {
@@ -502,6 +505,27 @@ class MainActivity : AppCompatActivity() {
             binding.noiseSeek.progress = noise.coerceIn(0, binding.noiseSeek.max)
         }
         refreshKnobLabels()
+
+        /* Confirm knobs came from the bud (boot NV / get / save). */
+        val fromBuds = when {
+            src.contains("NV load") -> "NV load (boot)"
+            src.contains("NV save") -> "NV save"
+            src.contains("[cros_cfg] get") -> "get"
+            src.contains("init defaults") -> "init defaults"
+            src.contains("[cros_cfg] set") -> "set applied"
+            else -> null
+        }
+        if (fromBuds != null) {
+            val poorS = poor ?: if (binding.poorLeft.isChecked) "LEFT" else "RIGHT"
+            val mixS = mix?.toString() ?: mixDb().toString()
+            val scoS = vol?.toString() ?: scoLevel().toString()
+            val noiseS = noise?.toString() ?: noiseLevel().toString()
+            appendUi(
+                "[phone] knobs from buds ($fromBuds): poor=$poorS mix=${mixS}dB " +
+                    "sco=$scoS noise=$noiseS" +
+                    (a2dp?.let { " a2dp=$it" } ?: "")
+            )
+        }
     }
 
     private fun shareLog() {

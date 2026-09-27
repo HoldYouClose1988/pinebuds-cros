@@ -52,6 +52,7 @@ ccflags-y += \
 	-Iservices/multimedia/audio/codec/sbc/inc \
 	-Iservices/multimedia/audio/codec/sbc/src/inc \
 	-Iservices/tota \
+	-Iservices/nv_section/userdata_section \
 	-Iplatform/hal \
 	-Iplatform/drivers/bt \
 	-Iutils/cqueue

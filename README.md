@@ -23,7 +23,7 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.61 baseline](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)** |
+| **Flash** | **[v0.3.63](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.63)** (NV persist; audio baseline still 0.3.61) |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
@@ -33,12 +33,11 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 | **SCO mSBC BiCROS (v0.3.61 baseline)** | ≈ **140 ms** | **Product baseline** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.61 baseline)
+## Current status (v0.3.63 — NV persist on 0.3.61 audio baseline)
 
-**SCO BiCROS baseline = [v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61).**
-Ear-validated: BiCROS ~140 ms, status cues, phone A2DP before enable and after
-disable. Flaky teardown / SPP under SCO is accepted on this closed-stack hack.
-v0.3.62 (hold-escape) is optional insurance only — not required for baseline.
+**Audio / cue baseline = [v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61).**
+**[v0.3.63](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.63)** adds bud NV for knobs (poor / mix / EQ / sco / noise / a2dp)
+so case/reboot keeps your Apply. App v0.3.9 confirms load in the log.
 
 | Mode | Status |
 |------|--------|
@@ -80,6 +79,7 @@ v0.3.62 (hold-escape) is optional insurance only — not required for baseline.
 25. **v0.3.60** — Status cues via SCO-PCM mix (no media_PlayAudio while SCO up)
 26. **v0.3.61** — DISABLED/NOT_YET audible (media when voice down; cue-hold)
 27. **v0.3.62** — Cue PASS confirmed; 75 s hold-escape vs stuck NOT_YET
+28. **v0.3.63** — Knobs (incl. poor side) persist in bud NV + app confirm
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -88,23 +88,18 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip (baseline): [`flash-packages/pinebuds-cros-v0.3.61.zip`](flash-packages/pinebuds-cros-v0.3.61.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.63.zip`](flash-packages/pinebuds-cros-v0.3.63.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
-**SCO BiCROS baseline is v0.3.61** — good enough: BiCROS works, phone audio
-works around it, cues work, ~140 ms on ~$70 buds around closed firmware.
-Residual flake is accepted; we are not chasing 100% on peer-SCO.
+**SCO BiCROS audio baseline is v0.3.61**; **v0.3.63** adds config NV (poor ear
+included). Residual SCO/SPP flake accepted.
 
-**Next:** polish the Android app · finish Absolute Volume (DAC vs perceived
-loudness) · then installer.
+**Next:** further app polish · AbsVol left as-is · installer.
 
-Ear-tuned BiCROS level is **SCO DAC 8** + noise 3. While BiCROS is on, the
-phone volume rocker drives SCO DAC. Disable/re-enable can take ~15–40 s.
-
-Flash **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)**.
-Optional: [v0.3.62](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.62) hold-escape only.
-Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
+Flash **[v0.3.63](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.63)**.
+Audio-only fallback: **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)**.
+Extra L2CAP: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)**.
 
 ## How it works (short)
 

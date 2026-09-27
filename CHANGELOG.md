@@ -6,6 +6,29 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.63] — 2026-09-27
+
+### Firmware + app — BiCROS knobs persist on the buds (incl. poor side)
+- **Before:** mix / EQ / sco / noise / poor lived in RAM only — case/reboot
+  reset to defaults; app had to Apply again.
+- **Now:** knobs (including **poor ear**) saved in BES NV
+  (`system_info.flag_value[8]`). Both buds write on phone **Apply** and on
+  peer sync RX. Boot restores and logs:
+  - `[cros_cfg] NV load poor=… mix=… sco=…` when flash had a saved blob
+  - `[cros_cfg] init defaults …` on first boot / empty NV
+  - `[cros_cfg] NV save (set|peer|…) …` after Apply / peer / AbsVol
+- App **v0.3.9:** on those lines, UI syncs sliders and prints
+  `[phone] knobs from buds (…): poor=… mix=… sco=…`.
+
+Audio baseline remains v0.3.61 behavior; this is config persistence on top.
+
+### Test
+1. Flash both — expect `NV load` or `init defaults`, then `init v0.3.63`.
+2. Connect app → Get — knobs match bud; phone line confirms.
+3. Change poor + mix, Apply — see `NV save (set)` on both (peer save too).
+4. Case both buds, power up, reconnect — expect `NV load` with your poor/mix;
+   BiCROS uses that poor side without re-Apply.
+
 ## [0.3.62] — 2026-09-27
 
 ### Optional — 75 s hold-escape (not baseline)

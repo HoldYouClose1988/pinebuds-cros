@@ -11,6 +11,9 @@
  *   vol= / sco= 0..15 (HFP/SCO DAC gain on good ear — NOT music)
  *   a2dp= / music= 0..15 (A2DP music volume)
  *   noise=0..5 (soft gate + HF rolloff on good-ear SCO link hiss)
+ *
+ * Persisted in bud NV (v0.3.63+): poor/mix/bass/treble/sco/a2dp/noise survive
+ * case/reboot. Boot logs "NV load" or "init defaults"; Apply logs "NV save".
  ***************************************************************************/
 #ifndef CROS_CFG_H
 #define CROS_CFG_H

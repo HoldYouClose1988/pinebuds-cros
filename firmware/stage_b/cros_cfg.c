@@ -10,6 +10,10 @@
  *   Ear: 13 too hot; 11 better; 8 + noise=3 preferred.
  * a2dp=0..15 → A2DP music volume (separate NV / DAC when music plays).
  * noise=0..5 → soft gate + mild HF rolloff on good-ear SCO (link hiss).
+ *
+ * v0.3.63: persist knobs (incl. poor side) in BES NV extension
+ * system_info.flag_value[8] — survives case/reboot; both buds save on Apply
+ * and on peer sync RX. Boot logs "[cros_cfg] NV load …" or defaults.
  ***************************************************************************/
 #include "cros_cfg.h"
 
@@ -19,6 +23,10 @@
 
 #include "app_ibrt_customif_cmd.h"
 #include "cmsis_os.h"
+
+#if defined(NEW_NV_RECORD_ENABLED)
+#include "nvrecord_extension.h"
+#endif
 
 #include <string.h>
 
@@ -48,6 +56,8 @@ enum {
   CROS_CFG_PKT_LEN_V2 = 6, /* vol+noise, no a2dp */
   CROS_CFG_PKT_LEN_LEGACY = 4,
   CROS_CFG_CMD_MAX = 128,
+  /* Packed into unused system_info.flag_value[8] (BES NV extension). */
+  CROS_NV_MAGIC = 0xC7,
 };
 
 extern void cros_sco_sidetone_set_gain_db(int db);
@@ -65,6 +75,7 @@ static int8_t g_treble_db = 0;
 static uint8_t g_vol = CROS_VOL_DEFAULT;
 static uint8_t g_a2dp = CROS_A2DP_DEFAULT;
 static uint8_t g_noise = CROS_NOISE_DEFAULT;
+static uint8_t g_nv_loaded; /* 1 if boot restored from flash */
 
 static const int16_t k_db_to_q14[13] = {
     8192,  9192,  10313, 11572, 12983, 14568, 16384,
@@ -100,6 +111,17 @@ static uint8_t clamp_u8(int v, int lo, int hi) {
     return (uint8_t)hi;
   }
   return (uint8_t)v;
+}
+
+static int8_t snap_mix_db(int v) {
+  int8_t m = clamp_i8(v, CROS_MIX_DB_MIN, CROS_MIX_DB_MAX);
+  if (m & 1) {
+    m = (int8_t)(m - 1);
+  }
+  if (m > CROS_MIX_DB_MAX) {
+    m = (int8_t)CROS_MIX_DB_MAX;
+  }
+  return m;
 }
 
 static int parse_int(const char *s, int *ok) {
@@ -156,6 +178,82 @@ static void log_status(const char *why) {
                (unsigned)g_a2dp, (unsigned)g_noise,
                cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
 }
+
+#if defined(NEW_NV_RECORD_ENABLED)
+/*
+ * flag_value[8] layout (magic CROS_NV_MAGIC):
+ *  [0] magic
+ *  [1] poor_is_right
+ *  [2] mix_db (int8)
+ *  [3] bass_db (int8)
+ *  [4] treble_db (int8)
+ *  [5] sco/vol
+ *  [6] a2dp
+ *  [7] noise
+ */
+static int cros_cfg_nv_load(void) {
+  NV_EXTENSION_RECORD_T *ext;
+  uint8_t *f;
+  int8_t mix, bass, treble;
+
+  ext = nv_record_get_extension_entry_ptr();
+  if (!ext) {
+    return 0;
+  }
+  f = ext->system_info.flag_value;
+  if (f[0] != (uint8_t)CROS_NV_MAGIC) {
+    return 0;
+  }
+  g_poor_is_right = f[1] ? 1 : 0;
+  mix = (int8_t)f[2];
+  bass = (int8_t)f[3];
+  treble = (int8_t)f[4];
+  g_mix_db = snap_mix_db((int)mix);
+  g_bass_db = clamp_i8((int)bass, CROS_EQ_DB_MIN, CROS_EQ_DB_MAX);
+  g_treble_db = clamp_i8((int)treble, CROS_EQ_DB_MIN, CROS_EQ_DB_MAX);
+  g_vol = clamp_u8((int)f[5], CROS_VOL_MIN, CROS_VOL_MAX);
+  g_a2dp = clamp_u8((int)f[6], CROS_VOL_MIN, CROS_VOL_MAX);
+  g_noise = clamp_u8((int)f[7], CROS_NOISE_MIN, CROS_NOISE_MAX);
+  return 1;
+}
+
+static void cros_cfg_nv_save(const char *why) {
+  NV_EXTENSION_RECORD_T *ext;
+  uint8_t *f;
+  uint32_t lock;
+
+  ext = nv_record_get_extension_entry_ptr();
+  if (!ext) {
+    CROS_LOG(0, "[cros_cfg] NV save skip — no extension (%s)", why ? why : "?");
+    return;
+  }
+  lock = nv_record_pre_write_operation();
+  f = ext->system_info.flag_value;
+  f[0] = (uint8_t)CROS_NV_MAGIC;
+  f[1] = g_poor_is_right ? 1 : 0;
+  f[2] = (uint8_t)(int8_t)g_mix_db;
+  f[3] = (uint8_t)(int8_t)g_bass_db;
+  f[4] = (uint8_t)(int8_t)g_treble_db;
+  f[5] = g_vol;
+  f[6] = g_a2dp;
+  f[7] = g_noise;
+  nv_record_extension_update();
+  nv_record_post_write_operation(lock);
+  nv_record_flash_flush();
+  CROS_LOG_ACK(0,
+               "[cros_cfg] NV save (%s) poor=%s mix=%ddB bass=%d treble=%d "
+               "sco=%u a2dp=%u noise=%u",
+               why ? why : "?", g_poor_is_right ? "RIGHT" : "LEFT",
+               (int)g_mix_db, (int)g_bass_db, (int)g_treble_db, (unsigned)g_vol,
+               (unsigned)g_a2dp, (unsigned)g_noise);
+}
+#else
+static int cros_cfg_nv_load(void) { return 0; }
+static void cros_cfg_nv_save(const char *why) {
+  (void)why;
+  CROS_LOG(0, "[cros_cfg] NV save unavailable (NEW_NV_RECORD off)");
+}
+#endif
 
 static void sync_to_peer_bt(void *a, void *b) {
   uint8_t pkt[CROS_CFG_PKT_LEN];
@@ -219,17 +317,6 @@ static int parse_poor(const char *v) {
   return -1;
 }
 
-static int8_t snap_mix_db(int v) {
-  int8_t m = clamp_i8(v, CROS_MIX_DB_MIN, CROS_MIX_DB_MAX);
-  if (m & 1) {
-    m = (int8_t)(m - 1);
-  }
-  if (m > CROS_MIX_DB_MAX) {
-    m = (int8_t)CROS_MIX_DB_MAX;
-  }
-  return m;
-}
-
 static void apply_set(int poor, int mix, int bass, int treble, int vol,
                       int noise, int a2dp, int have_poor, int have_mix,
                       int have_bass, int have_treble, int have_vol,
@@ -290,7 +377,11 @@ static void apply_set(int poor, int mix, int bass, int treble, int vol,
     }
   }
   if (!poor_changed && !mix_changed && !eq_changed && !vol_changed &&
-      !noise_changed && !a2dp_changed && !do_sync) {
+      !noise_changed && !a2dp_changed) {
+    /* Phone Apply with same knobs still re-commits NV (confirm save path). */
+    if (do_sync) {
+      cros_cfg_nv_save("unchanged");
+    }
     log_status("unchanged");
     return;
   }
@@ -299,6 +390,8 @@ static void apply_set(int poor, int mix, int bass, int treble, int vol,
     apply_audio_local(poor_changed, mix_changed, eq_changed, vol_changed,
                       a2dp_changed);
   }
+  /* Persist on phone Apply and on peer RX so both buds keep poor/mix/…. */
+  cros_cfg_nv_save(do_sync ? "set" : "peer");
   if (do_sync) {
     schedule_peer_sync();
   }
@@ -439,6 +532,10 @@ void cros_cfg_init(void) {
   } else {
     g_a2dp = CROS_A2DP_DEFAULT;
   }
+  g_nv_loaded = 0;
+  if (cros_cfg_nv_load()) {
+    g_nv_loaded = 1;
+  }
   g_lp_state = 0;
   g_nf_env = 0;
   g_nf_lp = 0;
@@ -449,7 +546,11 @@ void cros_cfg_init(void) {
   if (!g_cmd_timer) {
     g_cmd_timer = osTimerCreate(osTimer(CROS_CFG_CMD), osTimerOnce, NULL);
   }
-  log_status("init");
+  if (g_nv_loaded) {
+    log_status("NV load");
+  } else {
+    log_status("init defaults");
+  }
 }
 
 int cros_cfg_poor_is_right(void) { return g_poor_is_right ? 1 : 0; }
@@ -493,6 +594,7 @@ void cros_cfg_on_abs_volume(int tgt_level) {
     CROS_LOG_ACK(0, "[cros_cfg] absvol apply sco=%d dac=%d hfp_vol=%d",
                  (int)g_vol, applied, now);
   }
+  cros_cfg_nv_save("absvol");
   log_status("absvol");
 }
 
