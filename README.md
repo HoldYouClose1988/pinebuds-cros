@@ -1,4 +1,4 @@
-# PineBuds Pro — CROS firmware (experimental)
+# PineBuds Pro — BiCROS firmware (experimental)
 
 > ## ⚠️ DIY / own-risk — not a hearing aid
 >
@@ -6,21 +6,58 @@
 > It is **not** a medical device, prescribed CROS/BiCROS, or certified hearing protection.
 > Flash only if you can restore stock firmware. Keep a backup.
 
-Poor-side mic → good-side speaker over a bud↔bud link, plus local good-ear mic
-mix (BiCROS). Stock TWS / media / calls remain when CROS is off.
+## What this is
 
-## Supported phone: **Android**
+**BiCROS** for single-sided hearing loss on ~$70 PineBuds Pro: the **poor-side**
+earbud’s mic is relayed to the **good-side** earbud’s speaker so you hear what’s
+happening on the “deaf” side, while the good ear’s own mic is mixed in locally
+so that side still sounds natural.
 
-This project is **Android-first**. Pair the buds to an **Android** phone for
-day-to-day BiCROS. **iPhone is not a supported daily driver** — see
-[Why not iPhone?](#why-not-iphone) below.
+| | Default mapping |
+|--|--|
+| **Poor ear (mic / TX)** | **Right** |
+| **Good ear (speaker / RX + local mix)** | **Left** (also the bud paired to the phone) |
 
-## Current (v0.3.65 + app 0.4.4)
+Day to day: wear both buds, **quad-tap** to turn BiCROS on or off. After you
+**Apply** knobs once in the Android app, settings live on the buds — no phone
+app required for normal use. Stock TWS music / calls work when BiCROS is **off**
+(disable BiCROS before taking a call).
+
+## How it’s implemented
+
+Custom firmware on top of [OpenPineBuds](https://github.com/pine64/OpenPineBuds)
+(BES2300). Product path:
+
+1. **Bud↔bud peer eSCO** carries 16 kHz **mSBC** from poor mic → good speaker
+   (clap latency ≈ **140 ms**).
+2. Good ear uses the stock **HFP voice player** for that SCO, with **HW sidetone**
+   mixing the local mic into the same speaker (BiCROS, not CROS-only).
+3. **Quad-tap** toggles mode over TWS; poor-as-phone-master is **refused** (known crash).
+4. Optional **CROS Control** Android app (SPP/TOTA) sets mix / EQ / SCO level /
+   noise / poor side; knobs persist in bud NV across case/reboot.
+5. Audible **status cues** (ENABLED / DISABLED / NOT YET / READY / OPEN FAIL).
+
+```
+RIGHT (poor)                              LEFT (good)
+────────────                              ───────────
+mic ──► mSBC / SCO ─────────────────────► mSBC ──┐
+   (mic ON, spk OFF,                      (spk ON) ├──► speaker
+    sidetone OFF)                         local mic ──┘  (HW sidetone)
+                                          (SCO TX muted)
+```
+
+**Supported phone: Android.** iPhone is not a daily driver (peer SCO fights iOS
+HFP) — [Why not iPhone?](#why-not-iphone).
+
+More architecture: [docs/architecture-cros.md](docs/architecture-cros.md).
+
+## Current (v0.3.65 + app 0.4.5)
 
 | | |
 |--|--|
 | **Flash** | **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** |
 | **App** | [CROS Control](android/cros-log/) **0.4.5** — knobs, status, Help FAQ (APK on Releases when published) |
+| **Phone** | **Android** (iPhone not supported for daily wear) |
 | **Audio baseline** | v0.3.61 — SCO mSBC BiCROS ≈ **140 ms** |
 | **Day to day** | Quad-tap toggles BiCROS (no app needed after Apply) |
 | **Default ears** | RIGHT = poor (mic), LEFT = good (phone / master) |
@@ -76,19 +113,6 @@ Android + **v0.3.65**. Details: [docs/iphone.md](docs/iphone.md) ·
 5. Optional: install CROS Control for knobs and Help.
 
 Full flash notes: [docs/windows-flash.md](docs/windows-flash.md).
-
-## How it works (short)
-
-```
-RIGHT (poor)                              LEFT (good)
-────────────                              ───────────
-mic ──► mSBC / SCO ─────────────────────► mSBC ──┐
-   (mic ON, spk OFF,                      (spk ON) ├──► speaker
-    sidetone OFF)                         local mic ──┘  (HW sidetone)
-                                          (SCO TX muted)
-```
-
-Architecture + hard constraints: [docs/architecture-cros.md](docs/architecture-cros.md).
 
 ## Build from source
 
