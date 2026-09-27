@@ -39,7 +39,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds when CROS is off |
 | **SCO BiCROS** | **Ear PASS** — mSBC 16 kHz, ~140 ms, CROS + sidetone mix |
-| **App knobs** | Mix / EQ / SCO DAC / A2DP / noise / poor via [android/cros-log](android/cros-log/) (v0.3.6) |
+| **App knobs** | Mix / EQ / SCO DAC / noise / poor via [android/cros-log](android/cros-log/) (v0.3.7) |
 | **Extra L2CAP CROS** | v0.3.27 freeze (~330 ms) — keep as fallback |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
 | **Phone / tablet volume** | App **Volume** slider (`vol=0..15`) or **bud volume keys** |
@@ -81,8 +81,9 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.55.zip`](flash-packages/pinebuds
 ## Looking for review / next work
 
 **Product path is in.** Ear-tuned BiCROS level is **SCO DAC 8** + noise 3
-(call DAC gain, not music) — Music (A2DP) is a separate slider. Restart works;
-slow on/off is the SCO method. See [anc-vs-bicros-noise.md](docs/anc-vs-bicros-noise.md).
+(call DAC gain). **Music loudness = phone volume rocker** (AVRCP Absolute
+Volume) — no app A2DP slider. Restart works; slow on/off is the SCO method.
+See [anc-vs-bicros-noise.md](docs/anc-vs-bicros-noise.md).
 
 Flash **[v0.3.55](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.55)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.

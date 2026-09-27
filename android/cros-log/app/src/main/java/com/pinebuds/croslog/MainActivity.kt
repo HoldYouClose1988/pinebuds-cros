@@ -143,7 +143,6 @@ class MainActivity : AppCompatActivity() {
         binding.bassSeek.setOnSeekBarChangeListener(labelUpdater)
         binding.trebleSeek.setOnSeekBarChangeListener(labelUpdater)
         binding.volSeek.setOnSeekBarChangeListener(labelUpdater)
-        binding.a2dpSeek.setOnSeekBarChangeListener(labelUpdater)
         binding.noiseSeek.setOnSeekBarChangeListener(labelUpdater)
         refreshKnobLabels()
     }
@@ -153,7 +152,6 @@ class MainActivity : AppCompatActivity() {
     private fun bassDb(): Int = binding.bassSeek.progress + EQ_DB_MIN
     private fun trebleDb(): Int = binding.trebleSeek.progress + EQ_DB_MIN
     private fun scoLevel(): Int = binding.volSeek.progress
-    private fun a2dpLevel(): Int = binding.a2dpSeek.progress
     private fun noiseLevel(): Int = binding.noiseSeek.progress
     private fun poorSide(): String =
         if (binding.poorLeft.isChecked) "left" else "right"
@@ -163,7 +161,6 @@ class MainActivity : AppCompatActivity() {
         binding.bassLabel.text = "Bass ${bassDb()} dB"
         binding.trebleLabel.text = "Treble ${trebleDb()} dB"
         binding.volLabel.text = "SCO DAC gain ${scoLevel()} / 15"
-        binding.a2dpLabel.text = "Music (A2DP) ${a2dpLevel()} / 15"
         binding.noiseLabel.text = if (noiseLevel() == 0) {
             "Link noise filter 0 (off)"
         } else {
@@ -173,8 +170,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun sendCfgSet() {
         val cmd = "cros set poor=${poorSide()} mix=${mixDb()} bass=${bassDb()} " +
-            "treble=${trebleDb()} vol=${scoLevel()} a2dp=${a2dpLevel()} " +
-            "noise=${noiseLevel()}"
+            "treble=${trebleDb()} vol=${scoLevel()} noise=${noiseLevel()}"
         sendTotaString(cmd)
     }
 
@@ -482,7 +478,6 @@ class MainActivity : AppCompatActivity() {
         val bass = Regex("""bass=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
         val treble = Regex("""treble=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
         val vol = Regex("""(?:sco|vol)=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val a2dp = Regex("""a2dp=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
         val noise = Regex("""noise=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
         if (poor == "LEFT") {
             binding.poorLeft.isChecked = true
@@ -502,9 +497,6 @@ class MainActivity : AppCompatActivity() {
         }
         if (vol != null) {
             binding.volSeek.progress = vol.coerceIn(0, binding.volSeek.max)
-        }
-        if (a2dp != null) {
-            binding.a2dpSeek.progress = a2dp.coerceIn(0, binding.a2dpSeek.max)
         }
         if (noise != null) {
             binding.noiseSeek.progress = noise.coerceIn(0, binding.noiseSeek.max)

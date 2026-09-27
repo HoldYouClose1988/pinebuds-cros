@@ -185,21 +185,6 @@
                     android:progress="8" />
 
                 <TextView
-                    android:id="@+id/a2dpLabel"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/a2dp_label"
-                    android:textStyle="bold" />
-
-                <SeekBar
-                    android:id="@+id/a2dpSeek"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:max="15"
-                    android:progress="12" />
-
-                <TextView
                     android:id="@+id/noiseLabel"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
