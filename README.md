@@ -33,11 +33,11 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 | **SCO mSBC BiCROS (v0.3.61 baseline)** | ≈ **140 ms** | **Product baseline** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.65 source + app 0.4.2; flash still v0.3.64)
+## Current status (v0.3.65 + app 0.4.2)
 
 **Audio baseline = v0.3.61.** **v0.3.63** NV knobs. **v0.3.64** `cros status`.
-**App 0.4.2** warmer Help/FAQ + poor-ear warn uses phone-connected side.
-**v0.3.65** (source) adds `phone=` to status — flash when next package is built.
+**v0.3.65** adds `phone=` on status. **App 0.4.2** warmer Help/FAQ + poor-ear
+warn uses the phone-connected side.
 
 | Mode | Status |
 |------|--------|
@@ -90,13 +90,13 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.64.zip`](flash-packages/pinebuds-cros-v0.3.64.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.65.zip`](flash-packages/pinebuds-cros-v0.3.65.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
 **Next:** installer. AbsVol left as-is.
 
-Flash **[v0.3.64](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.64)** + build app **0.4.2** from `android/cros-log`.
+Flash **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** + build app **0.4.2** from `android/cros-log`.
 Audio-only fallback: **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)**.
 
 ## How it works (short)
