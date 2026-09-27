@@ -15,11 +15,14 @@ Keep patches minimal and feature-scoped.
 | `0005-tota-force-test-over-the-air.patch` | Make `TOTA=1` actually build on open_source: force `TEST_OVER_THE_AIR=1`, stub ANC tool when `APP_ANC_TEST=0`, fix missing stdint includes |
 | `0006-cros-sniff-lock.patch` | While `cros_tws_is_enabled()`, `app_ibrt_if_tws_sniff_allowed()` returns false (G) |
 | `0007-cros-sco-btevent-log.patch` | Tee `BTEVENT_SCO_*` from `app_bt_global_handle` (IBRT skips sniff_manager) |
-| `0008-cros-sco-hfp-tee.patch` | Tee `HF_EVENT_AUDIO_*` + IBRT mock SCO connect for phone SCO reference |
+| `0009-cros-tota-string-rx.patch` | Route unencrypted `OP_TOTA_STRING` RX → `cros_cfg` (phone knobs) |
+| `0010-cros-sidetone-gain.patch` | Runtime `hal_codec_sidetone_set_gain_db` for BiCROS mix |
+| `0011-cros-sco-eq-hook.patch` | SCO playback post-handler → soft bass/treble EQ |
+| `0012-cros-ibrt-cfg-cmd.patch` | Peer sync `APP_IBRT_CUSTOM_CMD_CROS_CFG` |
 
 Sources:
 - Stage A: `firmware/stage_a/` → `apps/cros_loopback/`
-- Stage B: `firmware/stage_b/` → `apps/cros_tws/` (`cros_tws` + `cros_besaud_extra` + `cros_bt_log`)
+- Stage B: `firmware/stage_b/` → `apps/cros_tws/` (`cros_tws` + `cros_besaud_extra` + `cros_bt_log` + `cros_cfg`)
 
-Phone log sink (no new patch — build flag): `TOTA=1 ./scripts/build.sh` registers stock
+Phone log sink + knobs (no new patch beyond 0009): `TOTA=1 ./scripts/build.sh` registers stock
 TOTA SPP (RFCOMM 12). See [docs/bt-log-sink.md](../docs/bt-log-sink.md).

@@ -1,10 +1,10 @@
 # Feature: CROS / BiCROS for SSHL
 
-**Status: ear-validated BiCROS on peer SCO (v0.3.43).** DIY / experimental — not a medical device.
+**Status: ear-validated BiCROS on peer SCO (v0.3.44).** DIY / experimental — not a medical device.
 
 See [architecture](../../docs/architecture-cros.md), [latency + next](../../docs/latency-and-next.md), and [transport notes](../../docs/cros-transport.md).
 
-## Current path (v0.3.43)
+## Current path (v0.3.44)
 
 | | |
 |--|--|
@@ -14,7 +14,7 @@ See [architecture](../../docs/architecture-cros.md), [latency + next](../../docs
 | BiCROS | LEFT mic mixed locally via **HW sidetone** (−20 dB) |
 | Guard | POOR/TX must **not** be IBRT master |
 
-Flash: [v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43).
+Flash: [v0.3.44](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.44).
 
 Legacy extra-L2CAP path (≈330 ms): freeze at **v0.3.27**.
 
@@ -28,9 +28,9 @@ Legacy extra-L2CAP path (≈330 ms): freeze at **v0.3.27**.
 | Peer SCO + media | OPENED + HFP voice on peer SCO | **v0.3.39** ~140 ms |
 | CROS mute shape | Asymmetric mic/spk | **v0.3.40** |
 | mSBC 16 kHz | Usable call-like quality | **v0.3.42** |
-| BiCROS mix | Good-ear local mic + SCO | **v0.3.43 PASS** |
+| BiCROS mix | Good-ear local mic + SCO | **v0.3.44 PASS** |
 
-## Usage (v0.3.43)
+## Usage (v0.3.44)
 
 1. Flash **both** buds with the same package.
 2. Leave in case ~30–60 s so TWS re-pairs.

@@ -14,6 +14,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.ArrayAdapter
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -44,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private var suppressSwitchCallback = false
     private var scoWanted = false
     private lateinit var audioManager: AudioManager
+    private val writeLock = Any()
 
     private val scoReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -85,6 +87,8 @@ class MainActivity : AppCompatActivity() {
         }
         binding.shareButton.setOnClickListener { shareLog() }
         binding.scoButton.setOnClickListener { togglePhoneSco() }
+        binding.applyCfgButton.setOnClickListener { sendCfgSet() }
+        binding.getCfgButton.setOnClickListener { sendCfgGet() }
         binding.loggingSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressSwitchCallback) return@setOnCheckedChangeListener
             if (checked) {
@@ -94,8 +98,79 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        wireKnobLabels()
         ensurePermissions()
         refreshDevices()
+    }
+
+    private fun wireKnobLabels() {
+        val labelUpdater = object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                refreshKnobLabels()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        }
+        binding.mixSeek.setOnSeekBarChangeListener(labelUpdater)
+        binding.bassSeek.setOnSeekBarChangeListener(labelUpdater)
+        binding.trebleSeek.setOnSeekBarChangeListener(labelUpdater)
+        refreshKnobLabels()
+    }
+
+    private fun mixDb(): Int = MIX_DB_MIN + binding.mixSeek.progress * 2
+    private fun bassDb(): Int = binding.bassSeek.progress + EQ_DB_MIN
+    private fun trebleDb(): Int = binding.trebleSeek.progress + EQ_DB_MIN
+    private fun poorSide(): String =
+        if (binding.poorLeft.isChecked) "left" else "right"
+
+    private fun refreshKnobLabels() {
+        binding.mixLabel.text = "Mix (local mic) ${mixDb()} dB"
+        binding.bassLabel.text = "Bass ${bassDb()} dB"
+        binding.trebleLabel.text = "Treble ${trebleDb()} dB"
+    }
+
+    private fun sendCfgSet() {
+        val cmd = "cros set poor=${poorSide()} mix=${mixDb()} bass=${bassDb()} treble=${trebleDb()}"
+        sendTotaString(cmd)
+    }
+
+    private fun sendCfgGet() {
+        sendTotaString("cros get")
+    }
+
+    private fun sendTotaString(text: String) {
+        val sock = socket
+        if (sock == null || !sock.isConnected) {
+            toast("Turn Capture on first")
+            return
+        }
+        val payload = text.toByteArray(Charsets.UTF_8)
+        if (payload.size > 640) {
+            toast("Command too long")
+            return
+        }
+        val frame = ByteArray(4 + payload.size)
+        frame[0] = (OP_TOTA_STRING and 0xff).toByte()
+        frame[1] = ((OP_TOTA_STRING shr 8) and 0xff).toByte()
+        frame[2] = (payload.size and 0xff).toByte()
+        frame[3] = ((payload.size shr 8) and 0xff).toByte()
+        System.arraycopy(payload, 0, frame, 4, payload.size)
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                synchronized(writeLock) {
+                    sock.outputStream.write(frame)
+                    sock.outputStream.flush()
+                }
+                withContext(Dispatchers.Main) {
+                    appendUi("[phone] → $text")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    appendUi("[phone] send failed: ${e.message}")
+                    toast("Send failed")
+                }
+            }
+        }
     }
 
     override fun onStart() {
@@ -234,7 +309,6 @@ class MainActivity : AppCompatActivity() {
             setSwitchChecked(false)
             return
         }
-        // Drop any half-open session before opening again (keep switch ON).
         closeSession()
 
         val device = bonded[idx]
@@ -245,8 +319,9 @@ class MainActivity : AppCompatActivity() {
                 val sock = openSpp(device)
                 socket = sock
                 withContext(Dispatchers.Main) {
-                    appendUi("SPP connected — waiting for OP_TOTA_STRING (0x1000)")
+                    appendUi("SPP connected — knobs + OP_TOTA_STRING (0x1000)")
                     binding.statusText.text = getString(R.string.status_connected)
+                    sendTotaString("cros get")
                 }
                 readLoop(BufferedInputStream(sock.inputStream))
             } catch (e: Exception) {
@@ -344,8 +419,37 @@ class MainActivity : AppCompatActivity() {
             val textBytes = ByteArray(len) { i -> acc[4 + i] }
             repeat(4 + len) { acc.removeAt(0) }
             val text = textBytes.toString(Charsets.UTF_8)
-            withContext(Dispatchers.Main) { appendUi(text) }
+            withContext(Dispatchers.Main) {
+                appendUi(text)
+                maybeSyncKnobsFromLog(text)
+            }
         }
+    }
+
+    private fun maybeSyncKnobsFromLog(line: String) {
+        // [cros_cfg] … poor=RIGHT mix=-20dB bass=0 treble=2 …
+        if (!line.contains("[cros_cfg]")) return
+        val poor = Regex("""poor=(RIGHT|LEFT)""").find(line)?.groupValues?.getOrNull(1)
+        val mix = Regex("""mix=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val bass = Regex("""bass=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val treble = Regex("""treble=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        if (poor == "LEFT") {
+            binding.poorLeft.isChecked = true
+        } else if (poor == "RIGHT") {
+            binding.poorRight.isChecked = true
+        }
+        if (mix != null) {
+            val snapped = (mix / 2) * 2
+            val prog = ((snapped - MIX_DB_MIN) / 2).coerceIn(0, binding.mixSeek.max)
+            binding.mixSeek.progress = prog
+        }
+        if (bass != null) {
+            binding.bassSeek.progress = (bass - EQ_DB_MIN).coerceIn(0, binding.bassSeek.max)
+        }
+        if (treble != null) {
+            binding.trebleSeek.progress = (treble - EQ_DB_MIN).coerceIn(0, binding.trebleSeek.max)
+        }
+        refreshKnobLabels()
     }
 
     private fun shareLog() {
@@ -374,7 +478,6 @@ class MainActivity : AppCompatActivity() {
             }
             startActivity(Intent.createChooser(send, getString(R.string.share)))
         } catch (e: Exception) {
-            // Fallback: text-only share (no file attachment).
             val send = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_title))
@@ -424,6 +527,8 @@ class MainActivity : AppCompatActivity() {
         private const val MAX_LINES = 400
         private const val OP_TOTA_STRING = 0x1000
         private const val TOTA_RFCOMM_CHANNEL = 12
+        private const val MIX_DB_MIN = -30
+        private const val EQ_DB_MIN = -6
         private val SPP_UUID: UUID =
             UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 

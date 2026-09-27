@@ -58,6 +58,8 @@ extern int cros_sco_forcemute(int mic_mute, int spk_mute);
 extern int cros_sco_set_hfp_volume(int level);
 extern int cros_sco_get_hfp_volume(void);
 extern void cros_sco_sidetone_set(int on);
+extern void cros_sco_sidetone_set_gain_db(int db);
+#include "cros_cfg.h"
 #endif
 
 /* Safety net only — must be >> extra defer (2s) + PONG + settle. */
@@ -113,22 +115,32 @@ static void cros_sco_apply_cros_mute(void) {
   int poor = cros_tws_is_poor_side() ? 1 : 0;
   int vol_before;
   int vol_after;
+  int mix = (int)cros_cfg_mix_db();
   if (poor) {
     cros_sco_forcemute(0, 1);
     cros_sco_sidetone_set(0);
     CROS_LOG(0, "[cros_sco] CROS shape POOR/TX — mic ON, spk OFF, sidetone OFF");
   } else {
-    /* Mute digital mic TX so left mic is not sent over SCO; HW sidetone still
-     * taps ADC → DAC for local mix (BiCROS). */
+    /* Mute digital mic TX so local mic is not sent over SCO; HW sidetone still
+     * taps ADC → DAC for local mix (BiCROS). Mix gain from cros_cfg. */
     cros_sco_forcemute(1, 0);
+    cros_sco_sidetone_set_gain_db(mix);
     cros_sco_sidetone_set(1);
     vol_before = cros_sco_get_hfp_volume();
     vol_after = cros_sco_set_hfp_volume(CROS_SCO_HFP_VOL);
     CROS_LOG(0,
              "[cros_sco] BiCROS GOOD/RX — SCO+local mic mix, no TX; "
-             "hfp_vol %d→%d sidetone ON",
-             vol_before, vol_after);
+             "hfp_vol %d→%d sidetone ON mix=%ddB bass=%d treble=%d",
+             vol_before, vol_after, mix, (int)cros_cfg_bass_db(),
+             (int)cros_cfg_treble_db());
   }
+}
+
+void cros_sco_reapply_shape(void) {
+  if (!sco_up || !voice_started) {
+    return;
+  }
+  cros_sco_apply_cros_mute();
 }
 
 static void cros_mute_timer_cb(void const *arg) {
@@ -217,6 +229,10 @@ static void voice_timer_cb(void const *arg) {
   cros_sco_voice_start();
 }
 osTimerDef(CROS_SCO_VOICE, voice_timer_cb);
+#endif /* CROS_SCO_MEDIA */
+
+#if !CROS_SCO_MEDIA
+void cros_sco_reapply_shape(void) {}
 #endif
 
 static void *cros_sco_peer_bdaddr(void) {
@@ -555,5 +571,6 @@ void cros_sco_probe_init(void) {}
 void cros_sco_probe_on_cros_enable(void) {}
 void cros_sco_probe_on_cros_disable(void) {}
 void cros_sco_probe_on_peer_ready(void) {}
+void cros_sco_reapply_shape(void) {}
 
 #endif /* CROS_SCO_PROBE */

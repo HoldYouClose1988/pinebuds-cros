@@ -14,6 +14,7 @@
 #include "cmsis_os.h"
 #include "cros_besaud_extra.h"
 #include "cros_bt_log.h"
+#include "cros_cfg.h"
 #include "cros_lat.h"
 #include "cros_sco_probe.h"
 #include "hal_trace.h"
@@ -352,11 +353,11 @@ static int16_t process_sample(int16_t s) {
 }
 
 bool cros_tws_is_poor_side(void) {
-#if CROS_POOR_IS_RIGHT
-  return app_tws_is_right_side();
-#else
+  /* Runtime poor side (phone TOTA / peer sync); compile default seeds init. */
+  if (cros_cfg_poor_is_right()) {
+    return app_tws_is_right_side();
+  }
   return app_tws_is_left_side();
-#endif
 }
 
 bool cros_tws_is_enabled(void) { return enabled; }
@@ -714,7 +715,7 @@ static void log_side_probe(const char *where) {
   int right = app_tws_is_right_side() ? 1 : 0;
   CROS_LOG(0,
         "[cros_tws] side@%s left=%d right=%d poor_cfg=%s role=%s", where, left,
-        right, CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT",
+        right, cros_cfg_poor_is_right() ? "RIGHT" : "LEFT",
         cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
 }
 
@@ -723,6 +724,7 @@ void cros_tws_init(void) {
     return;
   }
   cros_bt_log_init();
+  cros_cfg_init();
   cros_besaud_extra_init();
   cros_sco_probe_init();
   app_audio_pcmbuff_init(pcm_ring, sizeof(pcm_ring));
@@ -734,15 +736,15 @@ void cros_tws_init(void) {
   cros_lat_reset();
 #if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
 #if defined(CROS_SCO_MEDIA) && CROS_SCO_MEDIA
-  CROS_LOG(1, "[cros_tws] init v0.3.43 SCO-BiCROS-sidetone+guard (poor_cfg=%s)",
-        CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+  CROS_LOG(1, "[cros_tws] init v0.3.44 SCO-BiCROS-knobs+guard (poor_cfg=%s)",
+        cros_cfg_poor_is_right() ? "RIGHT" : "LEFT");
 #else
   CROS_LOG(1, "[cros_tws] init v0.3.38 SCO-alone-silence+guard (poor_cfg=%s)",
-        CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+        cros_cfg_poor_is_right() ? "RIGHT" : "LEFT");
 #endif
 #else
   CROS_LOG(1, "[cros_tws] init v0.3.36 SCO-proof-close+guard floor4 (poor_cfg=%s)",
-        CROS_POOR_IS_RIGHT ? "RIGHT" : "LEFT");
+        cros_cfg_poor_is_right() ? "RIGHT" : "LEFT");
 #endif
   log_side_probe("init");
 }

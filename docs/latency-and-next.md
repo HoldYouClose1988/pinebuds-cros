@@ -1,6 +1,6 @@
 # Latency, stability, and next ideas (review welcome)
 
-## Where we are — suggested next (2026-09-26)
+## Where we are — suggested next (2026-09-27)
 
 ### Shipped (ear-validated)
 
@@ -10,36 +10,34 @@
 | Latency | Clap ≈ **140 ms** on SCO (vs ≈330 ms extra L2CAP) |
 | CROS shape | Poor TX / good RX mute |
 | Quality (usable) | **mSBC 16 kHz** — call-like, very usable |
-| BiCROS | LEFT mic HW sidetone mix into good ear — **PASS (v0.3.43)** |
+| BiCROS | Good-ear HW sidetone mix — **PASS (v0.3.43)** |
+| App knobs | Mix / bass / treble / poor side over TOTA — **v0.3.44** |
 
-**Current flash:** [v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43).
+**Current flash:** [v0.3.44](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.44).
 
 ### Suggested next (priority order)
 
-1. **Wear / mix balance** — sidetone is fixed −20 dB in `tgt_hardware.h`; make
-   BiCROS mix gain tunable (or a few presets) if local mic is too loud/quiet.
-2. **EQ / smoothing** — user deferred; mild high-shelf / noise gate / AGC on
-   SCO or sidetone path without adding much delay.
-3. **Volume UX** — tablet/phone HFP vol does not reach peer SCO; document clearly;
-   optional long-press or companion control of `hfp_vol`.
-4. **Mic choice** — confirm talk mic vs FF mic for poor TX and good sidetone;
+1. **Wear-test the knobs** — find comfortable mix/EQ presets; optionally save NV.
+2. **Mic choice** — confirm talk mic vs FF for poor TX and good sidetone;
    FF may be better for “environment” CROS.
-5. **v1.0 productization** — configurable poor side (keep master×TX refuse),
-   stock restore docs, longer wear tests, case/TWS edge cases.
+3. **Volume UX** — optional companion `hfp_vol` control (bud keys still work).
+4. **Noise gate / AGC** — light dynamics without adding much delay.
+5. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases;
+   poor-side UX that steers away from master×TX.
 6. **Industrial damp** — still design-only; separate from BiCROS audio path.
 7. **Defer** — thinning extra L2CAP jitter floor; BLE VOB media; running SCO+extra
    together (known bad).
 
 ---
 
-## Breakthrough — SCO media ≈ **140 ms** → BiCROS (v0.3.39–43)
+## Breakthrough — SCO media ≈ **140 ms** → BiCROS (v0.3.39–44)
 
-Bud↔bud **SCO/eSCO** + **mSBC 16 kHz** + asymmetric CROS + good-ear sidetone.
-Clap ≈ **140 ms**. Extra L2CAP remains ≈ **330 ms** (v0.3.27 fallback).
+Bud↔bud **SCO/eSCO** + **mSBC 16 kHz** + asymmetric CROS + good-ear sidetone +
+phone knobs. Clap ≈ **140 ms**. Extra L2CAP remains ≈ **330 ms** (v0.3.27 fallback).
 
 | Path | Clap | Status |
 |------|------|--------|
-| **SCO mSBC BiCROS (0.3.43)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (0.3.44)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
 **Extra-pipe baseline:** **v0.3.27** — floor 4 × 50 ms ADPCM; keep if SCO path

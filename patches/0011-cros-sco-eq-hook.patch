@@ -1,0 +1,19 @@
+diff --git a/services/bt_app/app_bt_stream.cpp b/services/bt_app/app_bt_stream.cpp
+index 27aa4c8..c2c363b 100644
+--- a/services/bt_app/app_bt_stream.cpp
++++ b/services/bt_app/app_bt_stream.cpp
+@@ -5597,6 +5597,14 @@ static void bt_sco_codec_playback_data_post_handler(uint8_t *buf, uint32_t len,
+   POSSIBLY_UNUSED struct AF_STREAM_CONFIG_T *config =
+       (struct AF_STREAM_CONFIG_T *)cfg;
+ 
++#ifdef CROS_STAGE_B
++  /* Soft bass/treble shelves on good-ear SCO playback (phone knobs). */
++  {
++    extern "C" void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len);
++    cros_cfg_process_sco_pcm(buf, len);
++  }
++#endif
++
+ #ifdef MIX_AUDIO_PROMPT_WITH_A2DP_MEDIA_ENABLED
+ #ifdef TWS_PROMPT_SYNC
+   tws_playback_ticks_check_for_mix_prompt();

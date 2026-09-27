@@ -1,8 +1,8 @@
-version=0.3.43
-zip=pinebuds-cros-v0.3.43.zip
-alias=pinebuds-cros-v0.3.43-20260926-6b51d6c.zip
+version=0.3.44
+zip=pinebuds-cros-v0.3.44.zip
+alias=pinebuds-cros-v0.3.44-20260927-930741d.zip
 stage=stage-b
-git_sha=6b51d6c
-built_utc=2026-09-26T21:43:18Z
-bin_sha256=03b91fadca36c1993b67038b3cb3cf69494c124681bfc556a8bdf703564036d3
-download=flash-packages/pinebuds-cros-v0.3.43.zip
+git_sha=930741d
+built_utc=2026-09-27T02:09:48Z
+bin_sha256=02b483f51f2f3c48a57dee75b6c4b0fa4df6975f4984c5ec33e0102f91c3ee36
+download=flash-packages/pinebuds-cros-v0.3.44.zip

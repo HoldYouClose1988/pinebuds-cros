@@ -1,0 +1,33 @@
+diff --git a/services/tota/app_tota_data_handler.cpp b/services/tota/app_tota_data_handler.cpp
+index de49436..e0ed5c1 100644
+--- a/services/tota/app_tota_data_handler.cpp
++++ b/services/tota/app_tota_data_handler.cpp
+@@ -28,6 +28,10 @@
+ #include "app_tota_conn.h"
+ #include "crc32.h"
+ #include "tota_buffer_manager.h"
++
++#ifdef CROS_STAGE_B
++extern "C" void cros_cfg_on_tota_string(uint8_t *param, uint32_t param_len);
++#endif
+ #include "tota_stream_data_transfer.h"
+ /**
+  * @brief tota data handling environment
+@@ -131,7 +135,17 @@ void app_tota_handle_received_data(uint8_t *buffer, uint16_t maxBytes) {
+     app_tota_data_received(_buf, _bufLen);
+   } else {
+     if (OP_TOTA_STRING == *(uint16_t *)buffer) {
++      /* CROS: unencrypted phone→bud text knobs (cros get / cros set …).
++       * Stock ignored STRING RX; we route param bytes to cros_cfg. */
+       TOTA_LOG_DBG(0, "APP TOTA STRING RECEIVED");
++#ifdef CROS_STAGE_B
++      {
++        uint16_t plen = ((uint16_t *)buffer)[1];
++        if (plen > 0 && (uint32_t)(plen + 4) <= maxBytes) {
++          cros_cfg_on_tota_string(buffer + 4, plen);
++        }
++      }
++#endif
+     } else {
+ #if defined(TOTA_ENCODE) && TOTA_ENCODE
+       if (is_tota_connected()) {

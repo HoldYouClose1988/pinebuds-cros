@@ -6,6 +6,25 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.44] — 2026-09-27
+
+### Firmware + app — BiCROS knobs (mix / EQ / poor side)
+- Phone **TOTA string** cmds (unencrypted `OP_TOTA_STRING` RX fix):
+  - `cros get`
+  - `cros set poor=right|left mix=-20 bass=0 treble=0`
+- **Mix:** runtime HW sidetone gain (−30…0 dB, 2 dB steps); default −20.
+- **EQ:** soft bass/treble shelves on good-ear SCO PCM (−6…+6 dB).
+- **Poor side:** runtime select (keeps IBRT-master×TX refuse); syncs to peer via
+  `APP_IBRT_CUSTOM_CMD_CROS_CFG`.
+- Android **CROS Control** app: SeekBars + poor-side radios + Apply/Get.
+
+### Test
+1. Flash both — `init v0.3.44` / `SCO-BiCROS-knobs`.
+2. App: Capture on → expect `[cros_cfg] …` from auto `cros get`.
+3. Change mix/bass/treble/poor → **Apply** → hear change; log `[cros_cfg] set`.
+4. Quad-tap CROS; confirm BiCROS still mixes. If poor=LEFT and LEFT is master,
+   enable must **REFUSE** (guard).
+
 ## [0.3.43] — 2026-09-26
 
 ### Firmware — BiCROS: mix LEFT (good) mic into local playback

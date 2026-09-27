@@ -1,8 +1,8 @@
 /***************************************************************************
  * Stage B: cross-bud CROS — poor-side FF mic → good-side speaker over TWS.
  *
- * Default poor side = RIGHT (common for this bring-up; override with
- * CROS_POOR_IS_RIGHT=0 at build time).
+ * Default poor side = RIGHT (CROS_POOR_IS_RIGHT=1). Runtime override via
+ * phone TOTA "cros set poor=…" (cros_cfg); keep IBRT-master×TX refuse.
  *
  * Transport: raw 16 kHz mono PCM over IBRT custom cmd (no phone in path).
  * Quad-tap toggles CROS on/off and syncs the mode byte to the peer.

@@ -8,6 +8,8 @@ enum {
   CROS_VOL_CTRL_SET = 0,
   CROS_TGT_VOL_MUTE = 0,
   CROS_TGT_VOL_15 = 15,
+  CROS_SIDETONE_DB_MIN = -30,
+  CROS_SIDETONE_DB_MAX = 0,
 };
 
 /* C++-mangled in app_bt_stream.cpp */
@@ -19,6 +21,12 @@ extern "C" int app_bt_stream_volumeset(int8_t vol);
 extern "C" uint8_t app_bt_stream_hfpvolume_get(void);
 extern "C" void hal_codec_sidetone_enable(void);
 extern "C" void hal_codec_sidetone_disable(void);
+/* Patched HAL (0010); weak so older trees still link. */
+extern "C" void hal_codec_sidetone_set_gain_db(int gain_db)
+    __attribute__((weak));
+
+static int g_sidetone_on;
+static int g_sidetone_db = -20;
 
 extern "C" int cros_sco_forcemute(int mic_mute, int spk_mute) {
   return bt_sco_player_forcemute(mic_mute != 0, spk_mute != 0);
@@ -40,11 +48,41 @@ extern "C" int cros_sco_get_hfp_volume(void) {
   return (int)app_bt_stream_hfpvolume_get();
 }
 
+extern "C" void cros_sco_sidetone_set_gain_db(int db) {
+  if (db < CROS_SIDETONE_DB_MIN) {
+    db = CROS_SIDETONE_DB_MIN;
+  }
+  if (db > CROS_SIDETONE_DB_MAX) {
+    db = CROS_SIDETONE_DB_MAX;
+  }
+  /* HW step is 2 dB. */
+  if (db & 1) {
+    db -= 1;
+  }
+  g_sidetone_db = db;
+  if (hal_codec_sidetone_set_gain_db) {
+    hal_codec_sidetone_set_gain_db(db);
+  }
+  /* Re-apply enable so REG picks up new gain if already on. */
+  if (g_sidetone_on) {
+    hal_codec_sidetone_disable();
+    if (hal_codec_sidetone_set_gain_db) {
+      hal_codec_sidetone_set_gain_db(db);
+    }
+    hal_codec_sidetone_enable();
+  }
+}
+
 /* HW codec sidetone: local mic → local speaker (independent of SCO TX mute). */
 extern "C" void cros_sco_sidetone_set(int on) {
   if (on) {
+    if (hal_codec_sidetone_set_gain_db) {
+      hal_codec_sidetone_set_gain_db(g_sidetone_db);
+    }
     hal_codec_sidetone_enable();
+    g_sidetone_on = 1;
   } else {
     hal_codec_sidetone_disable();
+    g_sidetone_on = 0;
   }
 }

@@ -1,0 +1,164 @@
+diff --git a/services/app_ibrt/inc/app_ibrt_customif_cmd.h b/services/app_ibrt/inc/app_ibrt_customif_cmd.h
+index 14f89a6..fb218a5 100644
+--- a/services/app_ibrt/inc/app_ibrt_customif_cmd.h
++++ b/services/app_ibrt/inc/app_ibrt_customif_cmd.h
+@@ -33,6 +33,11 @@ typedef enum
+ #endif
+ #ifdef __DUAL_MIC_RECORDING__
+     APP_IBRT_CUSTOM_CMD_DMA_AUDIO     = APP_IBRT_CMD_BASE | APP_IBRT_CUSTOM_CMD_PREFIX | 0x05,
++#endif
++#ifdef CROS_STAGE_B
++    APP_IBRT_CUSTOM_CMD_CROS_MODE     = APP_IBRT_CMD_BASE | APP_IBRT_CUSTOM_CMD_PREFIX | 0x06,
++    APP_IBRT_CUSTOM_CMD_CROS_AUDIO    = APP_IBRT_CMD_BASE | APP_IBRT_CUSTOM_CMD_PREFIX | 0x07,
++    APP_IBRT_CUSTOM_CMD_CROS_CFG      = APP_IBRT_CMD_BASE | APP_IBRT_CUSTOM_CMD_PREFIX | 0x08,
+ #endif
+     //new customer cmd add here
+ } app_ibrt_custom_cmd_code_e;
+@@ -46,5 +51,15 @@ typedef struct
+ void app_ibrt_customif_cmd_test(ibrt_custom_cmd_test_t *cmd_test);
+ void app_ibrt_customif_test3_cmd_send(uint8_t *p_buff, uint16_t length);
+ void app_ibrt_customif_test4_cmd_send(uint8_t *p_buff, uint16_t length);
++#ifdef CROS_STAGE_B
++/* Direct BESAUD send — skips tws_ctrl mailbox backlog. */
++#ifdef __cplusplus
++extern "C" {
++#endif
++int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length);
++#ifdef __cplusplus
++}
++#endif
++#endif
+ 
+ #endif
+diff --git a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
+index efdd57c..60086a0 100644
+--- a/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
++++ b/services/app_ibrt/src/app_ibrt_customif_cmd.cpp
+@@ -27,6 +27,10 @@
+ #include "ai_control.h"
+ #include "app_recording_handle.h"
+ #endif
++#ifdef CROS_STAGE_B
++#include "cros_tws.h"
++#include "cros_cfg.h"
++#endif
+ #include "apps.h"
+ #if defined(IBRT)
+ /*
+@@ -52,6 +56,23 @@ static void app_ibrt_customif_audio_send_handler(uint16_t rsp_seq,
+                                                  uint8_t *p_buff,
+                                                  uint16_t length);
+ #endif
++#ifdef CROS_STAGE_B
++static void app_ibrt_customif_cros_mode_send(uint8_t *p_buff, uint16_t length);
++static void app_ibrt_customif_cros_mode_handler(uint16_t rsp_seq,
++                                                uint8_t *p_buff,
++                                                uint16_t length);
++static void app_ibrt_customif_cros_audio_send(uint8_t *p_buff, uint16_t length);
++static void app_ibrt_customif_cros_audio_handler(uint16_t rsp_seq,
++                                                 uint8_t *p_buff,
++                                                 uint16_t length);
++static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
++                                                 uint16_t rsp_seq,
++                                                 uint8_t *ptrParam,
++                                                 uint16_t paramLen);
++static void app_ibrt_customif_cros_cfg_send(uint8_t *p_buff, uint16_t length);
++static void app_ibrt_customif_cros_cfg_handler(uint16_t rsp_seq, uint8_t *p_buff,
++                                               uint16_t length);
++#endif
+ void app_ibrt_customif_test1_cmd_send(uint8_t *p_buff, uint16_t length);
+ static void app_ibrt_customif_test1_cmd_send_handler(uint16_t rsp_seq,
+                                                      uint8_t *p_buff,
+@@ -98,6 +119,38 @@ static const app_tws_cmd_instance_t g_ibrt_custom_cmd_handler_table[] = {
+         app_ibrt_custom_cmd_rsp_handler_null,
+         app_ibrt_customif_audio_send_done,
+     },
++#endif
++#ifdef CROS_STAGE_B
++    {
++        APP_IBRT_CUSTOM_CMD_CROS_MODE,
++        "TWS_CMD_CROS_MODE",
++        app_ibrt_customif_cros_mode_send,
++        app_ibrt_customif_cros_mode_handler,
++        0,
++        app_ibrt_custom_cmd_rsp_timeout_handler_null,
++        app_ibrt_custom_cmd_rsp_handler_null,
++        0,
++    },
++    {
++        APP_IBRT_CUSTOM_CMD_CROS_AUDIO,
++        "TWS_CMD_CROS_AUDIO",
++        app_ibrt_customif_cros_audio_send,
++        app_ibrt_customif_cros_audio_handler,
++        0,
++        app_ibrt_custom_cmd_rsp_timeout_handler_null,
++        app_ibrt_custom_cmd_rsp_handler_null,
++        app_ibrt_customif_cros_audio_tx_done,
++    },
++    {
++        APP_IBRT_CUSTOM_CMD_CROS_CFG,
++        "TWS_CMD_CROS_CFG",
++        app_ibrt_customif_cros_cfg_send,
++        app_ibrt_customif_cros_cfg_handler,
++        0,
++        app_ibrt_custom_cmd_rsp_timeout_handler_null,
++        app_ibrt_custom_cmd_rsp_handler_null,
++        0,
++    },
+ #endif
+     {APP_IBRT_CUSTOM_CMD_TEST1, "TWS_CMD_TEST1",
+      app_ibrt_customif_test1_cmd_send, app_ibrt_customif_test1_cmd_send_handler,
+@@ -154,6 +207,53 @@ static void app_ibrt_customif_audio_send_done(uint16_t cmdcode,
+   app_recording_audio_send_done();
+ }
+ #endif
++#ifdef CROS_STAGE_B
++static void app_ibrt_customif_cros_mode_send(uint8_t *p_buff, uint16_t length) {
++  app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_MODE, p_buff, length);
++}
++
++static void app_ibrt_customif_cros_mode_handler(uint16_t rsp_seq,
++                                                uint8_t *p_buff,
++                                                uint16_t length) {
++  if (p_buff && length >= 1) {
++    cros_tws_on_peer_mode(p_buff[0]);
++  }
++}
++
++static void app_ibrt_customif_cros_audio_send(uint8_t *p_buff, uint16_t length) {
++  app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, p_buff, length);
++}
++
++static void app_ibrt_customif_cros_audio_handler(uint16_t rsp_seq,
++                                                 uint8_t *p_buff,
++                                                 uint16_t length) {
++  cros_tws_on_peer_audio(p_buff, length);
++}
++
++static void app_ibrt_customif_cros_audio_tx_done(uint16_t cmdcode,
++                                                 uint16_t rsp_seq,
++                                                 uint8_t *ptrParam,
++                                                 uint16_t paramLen) {
++  cros_tws_on_audio_tx_done();
++}
++
++int app_ibrt_cros_audio_send_now(uint8_t *p_buff, uint16_t length) {
++  return app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_AUDIO, p_buff,
++                                       length)
++             ? 0
++             : -1;
++}
++
++static void app_ibrt_customif_cros_cfg_send(uint8_t *p_buff, uint16_t length) {
++  app_ibrt_send_cmd_without_rsp(APP_IBRT_CUSTOM_CMD_CROS_CFG, p_buff, length);
++}
++
++static void app_ibrt_customif_cros_cfg_handler(uint16_t rsp_seq, uint8_t *p_buff,
++                                               uint16_t length) {
++  (void)rsp_seq;
++  cros_cfg_on_peer(p_buff, length);
++}
++#endif
+ void app_ibrt_customif_cmd_test(ibrt_custom_cmd_test_t *cmd_test) {
+   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_TEST1, (uint8_t *)cmd_test,
+                     sizeof(ibrt_custom_cmd_test_t));

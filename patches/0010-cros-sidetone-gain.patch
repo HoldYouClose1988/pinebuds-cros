@@ -1,0 +1,77 @@
+diff --git a/platform/hal/best2300p/hal_codec_best2300p.c b/platform/hal/best2300p/hal_codec_best2300p.c
+index f191612..14e36c2 100644
+--- a/platform/hal/best2300p/hal_codec_best2300p.c
++++ b/platform/hal/best2300p/hal_codec_best2300p.c
+@@ -3412,6 +3412,34 @@ hal_codec_get_adc_chan(enum AUD_CHANNEL_MAP_T mic_map) {
+   return adc_ch;
+ }
+ 
++#ifdef SIDETONE_ENABLE
++static int8_t sidetone_gain_dbval = CFG_HW_AUD_SIDETONE_GAIN_DBVAL;
++static uint8_t sidetone_gain_active;
++#endif
++
++void hal_codec_sidetone_set_gain_db(int gain_db) {
++#ifdef SIDETONE_ENABLE
++  if (gain_db > MAX_SIDETONE_DBVAL) {
++    gain_db = MAX_SIDETONE_DBVAL;
++  } else if (gain_db < MIN_SIDETONE_DBVAL) {
++    gain_db = MIN_SIDETONE_DBVAL;
++  }
++  /* Register step is 2 dB. */
++  if (gain_db & 1) {
++    gain_db -= 1;
++  }
++  sidetone_gain_dbval = (int8_t)gain_db;
++  if (sidetone_gain_active) {
++    uint32_t val = MIN_SIDETONE_REGVAL +
++                   (gain_db - MIN_SIDETONE_DBVAL) / SIDETONE_DBVAL_STEP;
++    codec->REG_080 =
++        SET_BITFIELD(codec->REG_080, CODEC_CODEC_SIDE_TONE_GAIN, val);
++  }
++#else
++  (void)gain_db;
++#endif
++}
++
+ void hal_codec_sidetone_enable(void) {
+ #ifdef SIDETONE_ENABLE
+ #if (CFG_HW_AUD_SIDETONE_MIC_DEV & (CFG_HW_AUD_SIDETONE_MIC_DEV - 1))
+@@ -3421,7 +3449,7 @@ void hal_codec_sidetone_enable(void) {
+     (CFG_HW_AUD_SIDETONE_MIC_DEV & ~NORMAL_MIC_MAP)
+ #error "Invalid CFG_HW_AUD_SIDETONE_MIC_DEV: bad mic channel"
+ #endif
+-  int gain = CFG_HW_AUD_SIDETONE_GAIN_DBVAL;
++  int gain = sidetone_gain_dbval;
+   uint32_t val;
+ 
+ #ifdef SIDETONE_DEDICATED_ADC_CHAN
+@@ -3443,6 +3471,7 @@ void hal_codec_sidetone_enable(void) {
+ 
+   codec->REG_080 =
+       SET_BITFIELD(codec->REG_080, CODEC_CODEC_SIDE_TONE_GAIN, val);
++  sidetone_gain_active = 1;
+ 
+ #ifdef SIDETONE_DEDICATED_ADC_CHAN
+   uint8_t adc_ch;
+@@ -3481,6 +3510,7 @@ void hal_codec_sidetone_enable(void) {
+ 
+ void hal_codec_sidetone_disable(void) {
+ #ifdef SIDETONE_ENABLE
++  sidetone_gain_active = 0;
+   codec->REG_080 = SET_BITFIELD(codec->REG_080, CODEC_CODEC_SIDE_TONE_GAIN,
+                                 MUTE_SIDETONE_REGVAL);
+ #ifdef SIDETONE_DEDICATED_ADC_CHAN
+diff --git a/platform/hal/hal_codec.h b/platform/hal/hal_codec.h
+index a853f83..75121e2 100644
+--- a/platform/hal/hal_codec.h
++++ b/platform/hal/hal_codec.h
+@@ -145,6 +145,8 @@ void hal_codec_set_dac_dc_gain_attn(float attn);
+ void hal_codec_set_dac_dc_offset(int16_t dc_l, int16_t dc_r);
+ void hal_codec_sidetone_enable(void);
+ void hal_codec_sidetone_disable(void);
++/* Runtime sidetone gain in dB (step 2; clamped to HW min/max). CROS BiCROS mix. */
++void hal_codec_sidetone_set_gain_db(int gain_db);
+ int hal_codec_sidetone_gain_ramp_up(float step);
+ int hal_codec_sidetone_gain_ramp_down(float step);
+ void hal_codec_select_adc_iir_mic(uint32_t index, enum AUD_CHANNEL_MAP_T mic_map);

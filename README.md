@@ -20,24 +20,26 @@ Ear-validated on hardware:
 |--|--|
 | **Transport** | Bud↔bud **SCO/eSCO** + stock HFP **mSBC 16 kHz** voice path |
 | **Latency** | Clap ≈ **140 ms** (vs ≈ **330 ms** on extra L2CAP v0.3.27) |
-| **Shape** | RIGHT (poor) mic → LEFT (good) speaker; LEFT mic mixed locally (BiCROS) |
+| **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
+| **Knobs (v0.3.44)** | App: mix / bass / treble / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43)** |
+| **Flash** | **[v0.3.44](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.44)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.43)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.44)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.43)
+## Current status (v0.3.44)
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds when CROS is off |
-| **SCO BiCROS** | **Ear PASS** — mSBC 16 kHz, ~140 ms, CROS + LEFT sidetone mix |
+| **SCO BiCROS** | **Ear PASS** — mSBC 16 kHz, ~140 ms, CROS + sidetone mix |
+| **App knobs** | Mix / EQ / poor side via [android/cros-log](android/cros-log/) (v0.3.44) |
 | **Extra L2CAP CROS** | v0.3.27 freeze (~330 ms) — keep as fallback |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
 | **Phone / tablet volume** | Does **not** drive peer-SCO HFP vol; **bud volume keys** do (+ boot bump to 13/15) |
@@ -54,6 +56,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 6. **v0.3.41** — good-side HFP volume bump  
 7. **v0.3.42** — **mSBC 16 kHz** usable call quality  
 8. **v0.3.43** — **BiCROS** LEFT mic HW sidetone mix — **ear PASS**
+9. **v0.3.44** — App knobs: mix / EQ / selectable poor side
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -62,7 +65,7 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.43.zip`](flash-packages/pinebuds-cros-v0.3.43.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.44.zip`](flash-packages/pinebuds-cros-v0.3.44.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
@@ -70,12 +73,12 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.43.zip`](flash-packages/pinebuds
 and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
 EQ / smoothing, mix gain, tablet volume UX, FF mic vs talk mic, configurable poor side.
 
-Flash **[v0.3.43](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.43)**.
+Flash **[v0.3.44](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.44)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)
 
-**Current path (v0.3.43) — peer SCO mSBC + BiCROS:**
+**Current path (v0.3.44) — peer SCO mSBC + BiCROS:**
 
 ```
 RIGHT (poor)                              LEFT (good)
@@ -100,7 +103,7 @@ Bring-up history: [docs/cros-transport.md](docs/cros-transport.md).
 
 See [Windows flashing](docs/windows-flash.md) and [bestool](docs/bestool-windows.md).
 
-1. Download **[pinebuds-cros-v0.3.43.zip](flash-packages/pinebuds-cros-v0.3.43.zip)** (includes `bestool.exe`).
+1. Download **[pinebuds-cros-v0.3.44.zip](flash-packages/pinebuds-cros-v0.3.44.zip)** (includes `bestool.exe`).
 2. Backup once, then flash **both** buds:
 
 ```powershell
