@@ -15,6 +15,14 @@ Bring-up journals live under [`docs/archive/`](docs/archive/).
 that bin + CROS Control APK + guided installer). iPhone is not supported for
 daily wear — [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
 
+## [0.4.6] — app — header / status banner layout fix
+
+### CROS Control **0.4.6**
+- Dropped ActionBar (was stacking a second “CROS Control” on top of the in-layout
+  title and crowding the status card).
+- More space under the title; status banner padding/line-spacing so the first
+  line (“Buds: …”) is no longer clipped.
+
 ## [0.3.66] — 2026-09-27
 
 ### Release package — guided flasher + CROS Control APK

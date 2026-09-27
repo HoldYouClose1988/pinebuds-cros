@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.CrosLog" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <!-- NoActionBar: layout owns the "CROS Control" title (avoids double header / overlap). -->
+    <style name="Theme.CrosLog" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">#1B5E4B</item>
         <item name="colorPrimaryVariant">#0F3D31</item>
         <item name="colorOnPrimary">#FFFFFF</item>
         <item name="colorSecondary">#C4A35A</item>
         <item name="android:statusBarColor">#0F3D31</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

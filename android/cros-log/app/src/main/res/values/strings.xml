@@ -7,7 +7,7 @@
     <string name="status_idle">Disconnected</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_connected">Connected — knobs ready</string>
-    <string name="status_banner_idle">Buds: not connected\nBiCROS: —\nKnobs: —</string>
+    <string name="status_banner_idle">Buds: not connected\nBiCROS: —\nKnobs: —\nLast: —</string>
     <string name="refresh">Refresh devices</string>
     <string name="connect_toggle">Connect</string>
     <string name="refresh_status">Refresh status</string>
