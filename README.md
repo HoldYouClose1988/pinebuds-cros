@@ -23,17 +23,17 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.52](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.52)** |
+| **Flash** | **[v0.3.53](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.53)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.52)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.53)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.52)
+## Current status (v0.3.53)
 
 | Mode | Status |
 |------|--------|
@@ -65,6 +65,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 15. **v0.3.50** — Ack-only under SCO + skip double open_link (taps/dropouts)
 16. **v0.3.51** — Curated milestone ack queue (ENABLE/OPENED/shape on phone)
 17. **v0.3.52** — Clean SCO teardown so BiCROS re-enables without case reset
+18. **v0.3.53** — Wait for real SCO CLOSED (soft 4s×3); defer ENABLE while closing
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -73,15 +74,16 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.52.zip`](flash-packages/pinebuds-cros-v0.3.52.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.53.zip`](flash-packages/pinebuds-cros-v0.3.53.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
 **Product path is in.** Eyes wanted on wear testing, mix balance (sidetone −20 dB),
-noise filter strength, and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
-EQ / smoothing, tablet UX, FF mic vs talk mic.
+and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
+EQ / smoothing, tablet UX, FF mic vs talk mic. Link noise filter stays optional
+if every re-open is as clean as ear 233307’s second session.
 
-Flash **[v0.3.52](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.52)**.
+Flash **[v0.3.53](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.53)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)

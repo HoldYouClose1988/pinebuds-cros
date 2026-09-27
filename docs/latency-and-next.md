@@ -13,19 +13,22 @@
 | BiCROS | Good-ear HW sidetone mix — **PASS (v0.3.43)** |
 | App knobs | Mix / bass / treble / poor side over TOTA — **v0.3.45** |
 
-**Current flash:** [v0.3.45](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.45).
+**Current flash:** [v0.3.53](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.53).
 
 ### Suggested next (priority order)
 
-1. **Wear-test the knobs** — find comfortable mix/EQ presets; optionally save NV.
-2. **Mic choice** — confirm talk mic vs FF for poor TX and good sidetone;
+1. **Wear-test clean re-open** — on/off/on without case; phone should show
+   `DISABLE (CLOSED)` (not `hard-timeout`) then a clean second `OPENED`.
+2. **Wear-test the knobs** — find comfortable mix/EQ presets; optionally save NV.
+3. **Mic choice** — confirm talk mic vs FF for poor TX and good sidetone;
    FF may be better for “environment” CROS.
-3. **Volume UX** — optional companion `hfp_vol` control (bud keys still work).
-4. **Noise gate / AGC** — light dynamics without adding much delay.
-5. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases;
+4. **Volume UX** — companion `vol=` is in; refine presets / bud-key behavior.
+5. **Noise filter** — keep at 0 if clean SCO links hold; only revisit if
+   link hash still appears after true-CLOSED teardowns.
+6. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases;
    poor-side UX that steers away from master×TX.
-6. **Industrial damp** — still design-only; separate from BiCROS audio path.
-7. **Defer** — thinning extra L2CAP jitter floor; BLE VOB media; running SCO+extra
+7. **Industrial damp** — still design-only; separate from BiCROS audio path.
+8. **Defer** — thinning extra L2CAP jitter floor; BLE VOB media; running SCO+extra
    together (known bad).
 
 ---

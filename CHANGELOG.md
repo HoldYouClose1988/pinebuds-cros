@@ -6,6 +6,31 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.53] — 2026-09-27
+
+### Firmware — wait for real SCO CLOSED so every re-open is clean
+- **Ear (log 233307):** re-arm worked, but the **first** teardown hit the
+  800 ms force-timeout before `CLOSED` arrived; the **second** link (after a
+  true `CLOSED`) was clean. Goal: make every enable that clean.
+- **Fix:**
+  - Voice drain **300 ms** before `close_link` (helps HFP drop)
+  - Soft wait for `CLOSED` **4 s × 3** (re-issue `close_link` each try)
+  - Hard unregister only after ~12 s if `CLOSED` never arrives
+  - **Defer ENABLE** while closing — do not open on a half-dead SCO; run
+    deferred enable after teardown completes
+  - Settle timer re-checks if still closing
+- Link noise filter stays in the app but should be unused if every link is
+  this clean.
+
+### Test
+1. Flash both — `init v0.3.53`.
+2. Quad-tap on → BiCROS. Quad-tap off → expect `voice drained` /
+   `close_link … wait CLOSED` / `CLOSED` / `DISABLE (CLOSED)` (prefer
+   `CLOSED`, not `hard-timeout`).
+3. Quad-tap on again **without** the case — clean `OPENED` / voice / BiCROS.
+4. Optional: tap on again *while* still closing → `ENABLE deferred`; after
+   `CLOSED`, deferred enable runs. Repeat on/off several times.
+
 ## [0.3.52] — 2026-09-27
 
 ### Firmware — re-enable BiCROS after DISABLE without case reset

@@ -1,5 +1,5 @@
 /***************************************************************************
- * SCO/eSCO bud↔bud probe — OPEN/CLOSED (v0.3.46).
+ * SCO/eSCO bud↔bud probe — OPEN/CLOSED (v0.3.53).
  *
  * No SCO work on enable (0.3.31 early register crashed RIGHT-master+TX).
  * Default (with extra): on peer READY → settle → register+open → auto-close
@@ -11,6 +11,10 @@
  * v0.3.46: never register_link + open_link in the same BT-thread call —
  * open_link needs the HCI event loop between them (ear log 221736: silence
  * after register_link; taps/Apply dead until case). Gap timer splits them.
+ *
+ * v0.3.53: wait for real SCO CLOSED before unregister (voice drain →
+ * close_link → soft 4s×3 → hard ~12s). Defer ENABLE while closing so every
+ * re-open follows a clean CLOSED (ear 233307 second link).
  ***************************************************************************/
 #include "cros_sco_probe.h"
 
@@ -70,14 +74,18 @@ extern void cros_sco_sidetone_set_gain_db(int db);
 #define CROS_SCO_LATE_FALLBACK_MS 12000
 #define CROS_SCO_SETTLE_MS 500
 #define CROS_SCO_SETTLE_POOR_MS 1500
-/* Alone mode: short settle from enable (no extra READY gate). */
+/* Alone mode: settle from enable (no extra READY gate). */
 #define CROS_SCO_ALONE_SETTLE_MS 1500
-/* After a prior session, give the controller time to drop eSCO cleanly. */
-#define CROS_SCO_REARM_SETTLE_MS 2500
+/* After a clean CLOSED teardown — brief cool-down then open. */
+#define CROS_SCO_REARM_SETTLE_MS 2000
 /* Gap so BT thread can process HCI between register_link and open_link. */
 #define CROS_SCO_OPEN_GAP_MS 100
-/* Wait for SCO_CLOSED after close_link before unregister (else re-open hangs). */
-#define CROS_SCO_CLOSE_WAIT_MS 800
+/* Let HFP voice path drop before close_link (helps CLOSED arrive). */
+#define CROS_SCO_VOICE_DRAIN_MS 300
+/* Soft wait for SCO_CLOSED after close_link — do NOT unregister yet. */
+#define CROS_SCO_CLOSE_WAIT_MS 4000
+/* Soft re-close attempts before hard unregister (3×4s ≈ 12s). */
+#define CROS_SCO_CLOSE_MAX_SOFT 3
 /* If open_link never yields OPENED, retry once. */
 #define CROS_SCO_OPEN_RETRY_MS 2000
 /* With extra: tear SCO down quickly after OPENED (0.3.35 hang). Alone: hold. */
@@ -88,6 +96,7 @@ static osTimerId late_timer;
 static osTimerId settle_timer;
 static osTimerId open_timer;
 static osTimerId close_timer;
+static osTimerId voice_drain_timer;
 static osTimerId open_retry_timer;
 static osTimerId proof_timer;
 static uint8_t sco_inited;
@@ -97,6 +106,8 @@ static uint8_t open_issued;
 static uint8_t sco_up;
 static uint8_t voice_started;
 static uint8_t closing;
+static uint8_t close_attempts;
+static uint8_t pending_enable; /* quad-tap on while still waiting CLOSED */
 static uint8_t rearm; /* set after a completed session — longer settle */
 static uint8_t open_retries;
 static struct bdaddr_t peer_ba;
@@ -106,6 +117,8 @@ static void cros_sco_close_bt(void *a, void *b);
 static void cros_sco_schedule_open(void);
 static void cros_sco_finish_teardown(const char *why);
 static void cros_sco_finish_teardown_bt(void *a, void *b);
+static void cros_sco_issue_close_link_bt(void *a, void *b);
+static void cros_sco_arm_after_teardown(void);
 
 int cros_sco_cfg_hold(void) {
   /* Skip IBRT cfg sync while peer SCO is up. */
@@ -337,7 +350,7 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
     cros_sco_voice_stop();
 #endif
     CROS_LOG_ACK(0, "[cros_sco] CLOSED");
-    /* close_link was issued — finish unregister only after CLOSED (232259). */
+    /* Unregister only after CLOSED — ear 233307: clean OPENED followed true CLOSED. */
     if (closing) {
       cros_sco_finish_teardown("CLOSED");
     }
@@ -354,7 +367,7 @@ static void cros_sco_open_bt(void *a, void *b) {
   int do_open = (a != NULL);
   (void)b;
 
-  if (!probe_armed) {
+  if (!probe_armed || closing) {
     return;
   }
   if (!app_tws_ibrt_tws_link_connected()) {
@@ -456,10 +469,47 @@ static void cros_sco_open_bt(void *a, void *b) {
   }
 }
 
+static void cros_sco_arm_after_teardown(void) {
+  uint32_t settle_ms;
+
+  probe_armed = 1;
+  open_issued = 0;
+  open_retries = 0;
+  if (!settle_timer || !open_timer) {
+    cros_sco_probe_init();
+  }
+  if (settle_timer) {
+    osTimerStop(settle_timer);
+  }
+  if (open_timer) {
+    osTimerStop(open_timer);
+  }
+  if (open_retry_timer) {
+    osTimerStop(open_retry_timer);
+  }
+#if CROS_SCO_ALONE
+  settle_ms = rearm ? CROS_SCO_REARM_SETTLE_MS : CROS_SCO_ALONE_SETTLE_MS;
+  CROS_LOG_ACK(0, "[cros_tws] ENABLE (settle %ums%s)", (unsigned)settle_ms,
+               rearm ? ", rearm" : "");
+  osTimerStart(settle_timer, settle_ms);
+#else
+  CROS_LOG_ACK(0, "[cros_tws] ENABLE (wait READY)");
+  if (late_timer) {
+    osTimerStop(late_timer);
+    osTimerStart(late_timer, CROS_SCO_LATE_FALLBACK_MS);
+  }
+#endif
+}
+
 static void cros_sco_finish_teardown(const char *why) {
   int8 rc;
+  uint8_t want_enable;
+
   if (close_timer) {
     osTimerStop(close_timer);
+  }
+  if (voice_drain_timer) {
+    osTimerStop(voice_drain_timer);
   }
   if (open_retry_timer) {
     osTimerStop(open_retry_timer);
@@ -477,15 +527,21 @@ static void cros_sco_finish_teardown(const char *why) {
   probe_armed = 0;
   have_peer = 0;
   closing = 0;
+  close_attempts = 0;
   open_retries = 0;
-  /* Next enable must sco_init+register fresh — stale init blocked re-OPEN. */
   sco_inited = 0;
   rearm = 1;
+  want_enable = pending_enable;
+  pending_enable = 0;
   CROS_LOG_ACK(0, "[cros_tws] DISABLE (%s)", why ? why : "done");
+  if (want_enable) {
+    CROS_LOG_ACK(0, "[cros_sco] CLOSED done — run deferred ENABLE");
+    cros_sco_arm_after_teardown();
+  }
 }
 
 static void cros_sco_finish_teardown_bt(void *a, void *b) {
-  const char *why = "timeout";
+  const char *why = "hard-timeout";
   (void)b;
   if (a) {
     why = (const char *)a;
@@ -493,8 +549,29 @@ static void cros_sco_finish_teardown_bt(void *a, void *b) {
   cros_sco_finish_teardown(why);
 }
 
-static void cros_sco_close_bt(void *a, void *b) {
+static void cros_sco_issue_close_link_bt(void *a, void *b) {
   int8 rc;
+  (void)a;
+  (void)b;
+  if (!closing) {
+    return;
+  }
+  if (!have_peer) {
+    cros_sco_finish_teardown("idle");
+    return;
+  }
+  rc = sco_close_link(&peer_ba, CROS_SCO_HCI_REMOTE_USER_TERM);
+  CROS_LOG_ACK(0, "[cros_sco] close_link rc=%d — wait CLOSED (try %u)", (int)rc,
+               (unsigned)(close_attempts + 1));
+  if (close_timer) {
+    osTimerStop(close_timer);
+    osTimerStart(close_timer, CROS_SCO_CLOSE_WAIT_MS);
+  } else {
+    cros_sco_finish_teardown("no-close-timer");
+  }
+}
+
+static void cros_sco_close_bt(void *a, void *b) {
   (void)a;
   (void)b;
   probe_armed = 0;
@@ -506,25 +583,25 @@ static void cros_sco_close_bt(void *a, void *b) {
     osTimerStop(open_retry_timer);
   }
   if (closing) {
-    /* Already waiting on CLOSED / timeout. */
     return;
   }
   closing = 1;
+  close_attempts = 0;
 #if CROS_SCO_MEDIA
   cros_sco_voice_stop();
 #endif
   if (have_peer && (sco_up || registered)) {
-    rc = sco_close_link(&peer_ba, CROS_SCO_HCI_REMOTE_USER_TERM);
-    CROS_LOG_ACK(0, "[cros_sco] close_link rc=%d — wait CLOSED", (int)rc);
     /*
-     * Do NOT unregister here. Ear 232259: unregister before CLOSED left the
-     * controller unable to OPENED on the next ENABLE (needed case reset).
+     * Drain voice first, then close_link, then wait for real CLOSED before
+     * unregister (ear 233307: clean link only after true CLOSED).
      */
-    if (close_timer) {
-      osTimerStop(close_timer);
-      osTimerStart(close_timer, CROS_SCO_CLOSE_WAIT_MS);
+    if (voice_drain_timer) {
+      osTimerStop(voice_drain_timer);
+      osTimerStart(voice_drain_timer, CROS_SCO_VOICE_DRAIN_MS);
+      CROS_LOG_ACK(0, "[cros_sco] voice drained — close in %ums",
+                   (unsigned)CROS_SCO_VOICE_DRAIN_MS);
     } else {
-      cros_sco_finish_teardown("no-close-timer");
+      cros_sco_issue_close_link_bt(NULL, NULL);
     }
     return;
   }
@@ -571,7 +648,6 @@ static void open_retry_bt(void *a, void *b) {
   }
   sco_inited = 0;
   CROS_LOG_ACK(0, "[cros_sco] OPENED missing — retry register+open");
-  /* Register only; gap timer will open. */
   cros_sco_open_bt(NULL, NULL);
 }
 
@@ -583,13 +659,31 @@ static void open_retry_timer_cb(void const *arg) {
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)open_retry_bt);
 }
 
+static void voice_drain_timer_cb(void const *arg) {
+  (void)arg;
+  if (!closing) {
+    return;
+  }
+  app_bt_start_custom_function_in_bt_thread(0, 0,
+                                            (uint32_t)cros_sco_issue_close_link_bt);
+}
+
 static void close_timer_cb(void const *arg) {
   (void)arg;
   if (!closing) {
     return;
   }
-  CROS_LOG_ACK(0, "[cros_sco] close wait timeout — force teardown");
-  app_bt_start_custom_function_in_bt_thread((uint32_t)"timeout", 0,
+  close_attempts++;
+  if (close_attempts < CROS_SCO_CLOSE_MAX_SOFT) {
+    CROS_LOG_ACK(0, "[cros_sco] CLOSED pending — re-close (try %u/%u)",
+                 (unsigned)(close_attempts + 1),
+                 (unsigned)CROS_SCO_CLOSE_MAX_SOFT);
+    app_bt_start_custom_function_in_bt_thread(
+        0, 0, (uint32_t)cros_sco_issue_close_link_bt);
+    return;
+  }
+  CROS_LOG_ACK(0, "[cros_sco] CLOSED hard-timeout — force teardown");
+  app_bt_start_custom_function_in_bt_thread((uint32_t)"hard-timeout", 0,
                                             (uint32_t)cros_sco_finish_teardown_bt);
 }
 
@@ -605,7 +699,14 @@ static void late_timer_cb(void const *arg) {
 
 static void settle_timer_cb(void const *arg) {
   (void)arg;
-  if (!probe_armed || open_issued || closing) {
+  if (closing) {
+    /* Still tearing down — check again shortly. */
+    if (settle_timer) {
+      osTimerStart(settle_timer, 500);
+    }
+    return;
+  }
+  if (!probe_armed || open_issued) {
     return;
   }
   CROS_LOG(0, "[cros_sco] settle done — register (open after %ums gap)",
@@ -623,6 +724,7 @@ osTimerDef(CROS_SCO_LATE, late_timer_cb);
 osTimerDef(CROS_SCO_SETTLE, settle_timer_cb);
 osTimerDef(CROS_SCO_OPEN, open_timer_cb);
 osTimerDef(CROS_SCO_CLOSE, close_timer_cb);
+osTimerDef(CROS_SCO_VOICE_DRAIN, voice_drain_timer_cb);
 osTimerDef(CROS_SCO_OPEN_RETRY, open_retry_timer_cb);
 osTimerDef(CROS_SCO_PROOF, proof_timer_cb);
 
@@ -638,6 +740,10 @@ void cros_sco_probe_init(void) {
   }
   if (!close_timer) {
     close_timer = osTimerCreate(osTimer(CROS_SCO_CLOSE), osTimerOnce, NULL);
+  }
+  if (!voice_drain_timer) {
+    voice_drain_timer =
+        osTimerCreate(osTimer(CROS_SCO_VOICE_DRAIN), osTimerOnce, NULL);
   }
   if (!open_retry_timer) {
     open_retry_timer =
@@ -682,56 +788,15 @@ void cros_sco_probe_init(void) {
 }
 
 void cros_sco_probe_on_cros_enable(void) {
-  uint32_t settle_ms;
-
-  /* Prior DISABLE may still be waiting on CLOSED — finish on BT thread first. */
+  /* Still waiting for CLOSED — do not open on top of a half-dead SCO. */
   if (closing) {
-    CROS_LOG_ACK(0, "[cros_sco] enable while closing — force teardown");
-    app_bt_start_custom_function_in_bt_thread((uint32_t)"rearm", 0,
-                                              (uint32_t)cros_sco_finish_teardown_bt);
+    pending_enable = 1;
     rearm = 1;
+    CROS_LOG_ACK(0, "[cros_tws] ENABLE deferred — waiting CLOSED");
+    return;
   }
-
-  probe_armed = 1;
-  open_issued = 0;
-  open_retries = 0;
-  if (!late_timer || !settle_timer || !open_timer || !proof_timer ||
-      !close_timer || !open_retry_timer) {
-    cros_sco_probe_init();
-  }
-  if (settle_timer) {
-    osTimerStop(settle_timer);
-  }
-  if (open_timer) {
-    osTimerStop(open_timer);
-  }
-  if (open_retry_timer) {
-    osTimerStop(open_retry_timer);
-  }
-  if (close_timer) {
-    osTimerStop(close_timer);
-  }
-  if (proof_timer) {
-    osTimerStop(proof_timer);
-  }
-  if (late_timer) {
-    osTimerStop(late_timer);
-  }
-#if CROS_SCO_ALONE
-  settle_ms = rearm ? CROS_SCO_REARM_SETTLE_MS : CROS_SCO_ALONE_SETTLE_MS;
-  CROS_LOG(0,
-           "[cros_sco] armed ALONE — settle %ums then register/open (rearm=%u)",
-           (unsigned)settle_ms, (unsigned)rearm);
-  CROS_LOG_ACK(0, "[cros_tws] ENABLE (settle %ums%s)", (unsigned)settle_ms,
-               rearm ? ", rearm" : "");
-  osTimerStart(settle_timer, settle_ms);
-#else
-  CROS_LOG(0,
-           "[cros_sco] armed — WAIT peer READY (no early sco; late %ums)",
-           (unsigned)CROS_SCO_LATE_FALLBACK_MS);
-  CROS_LOG_ACK(0, "[cros_tws] ENABLE (wait READY)");
-  osTimerStart(late_timer, CROS_SCO_LATE_FALLBACK_MS);
-#endif
+  pending_enable = 0;
+  cros_sco_arm_after_teardown();
 }
 
 void cros_sco_probe_on_peer_ready(void) {
@@ -761,6 +826,7 @@ void cros_sco_probe_on_peer_ready(void) {
 }
 
 void cros_sco_probe_on_cros_disable(void) {
+  pending_enable = 0;
   if (late_timer) {
     osTimerStop(late_timer);
   }
@@ -776,6 +842,7 @@ void cros_sco_probe_on_cros_disable(void) {
   if (proof_timer) {
     osTimerStop(proof_timer);
   }
+  /* Do NOT stop close_timer / voice_drain — mid-teardown must finish. */
   probe_armed = 0;
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_close_bt);
 }
