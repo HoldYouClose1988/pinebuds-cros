@@ -93,10 +93,34 @@ STAGE_DIR="$(mktemp -d)"
 PKG="$STAGE_DIR/$ITER_NAME"
 mkdir -p "$PKG" "$OUT_DIR"
 
+# Windows PowerShell 5.1 defaults to the ANSI code page. UTF-8 em-dashes etc.
+# break string parsing ("Missing closing }" / "Unexpected token ')'"). Ship
+# every .ps1 as ASCII-only with a UTF-8 BOM so -File always parses cleanly.
+copy_ps1_win() {
+  local src="$1" dst="$2"
+  python3 - "$src" "$dst" <<'PY'
+import sys
+from pathlib import Path
+src, dst = Path(sys.argv[1]), Path(sys.argv[2])
+text = src.read_text(encoding="utf-8-sig")
+repl = {
+    "\u2014": "-", "\u2013": "-", "\u2018": "'", "\u2019": "'",
+    "\u201c": '"', "\u201d": '"', "\u2026": "...", "\u00a0": " ",
+    "\u2022": "*", "\u00b7": "*", "\u2192": "->", "\u2190": "<-",
+}
+for a, b in repl.items():
+    text = text.replace(a, b)
+bad = sorted({c for c in text if ord(c) > 127})
+if bad:
+    raise SystemExit(f"{src.name}: non-ASCII left after sanitize: {[hex(ord(c)) for c in bad]}")
+dst.write_bytes(b"\xef\xbb\xbf" + text.encode("ascii"))
+PY
+}
+
 cp -f "$BIN_SRC" "$PKG/open_source.bin"
-cp -f "$ROOT/scripts/flash.ps1" "$PKG/flash.ps1"
-cp -f "$ROOT/scripts/backup.ps1" "$PKG/backup.ps1"
-cp -f "$INSTALL_PS1" "$PKG/Install.ps1"
+copy_ps1_win "$ROOT/scripts/flash.ps1" "$PKG/flash.ps1"
+copy_ps1_win "$ROOT/scripts/backup.ps1" "$PKG/backup.ps1"
+copy_ps1_win "$INSTALL_PS1" "$PKG/Install.ps1"
 cp -f "$VERSION_FILE" "$PKG/VERSION"
 cp -f "$CHANGELOG_FILE" "$PKG/CHANGELOG.md"
 cp -f "$BESTOOL_DOC" "$PKG/BESTOOL.md"

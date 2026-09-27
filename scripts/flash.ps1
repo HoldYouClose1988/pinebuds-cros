@@ -1,4 +1,4 @@
-# Flash PineBuds Pro from Windows (bestool)
+﻿# Flash PineBuds Pro from Windows (bestool)
 #
 # Friendly path: run Install.ps1 instead (menu + instructions).
 #
@@ -38,7 +38,7 @@ function Get-CandidateComPorts {
 function Resolve-Ports([string]$A, [string]$B) {
   if ($A -and $B) { return @($A, $B) }
   $found = Get-CandidateComPorts
-  Write-Host "Detected COM ports: $(if ($found.Count) { $found -join ', ' } else { '(none — check CH342 driver)' })"
+  Write-Host "Detected COM ports: $(if ($found.Count) { $found -join ', ' } else { '(none - check CH342 driver)' })"
   if (-not $A -and -not $B -and $found.Count -eq 2) {
     Write-Host "Auto-selecting $($found[0]) (LEFT) and $($found[1]) (RIGHT)."
     return @($found[0], $found[1])
@@ -80,10 +80,10 @@ function Invoke-BestoolWithReseat {
   Write-Host "=== $BudLabel ($Port) ===" -ForegroundColor Cyan
   Write-Host "Sync order (required or bestool hangs):"
   Write-Host "  1. Remove the $BudLabel bud from the case; wait until its LED shows it is awake."
-  Write-Host "  2. Press Enter here — bestool will open $Port and start Sync."
+  Write-Host "  2. Press Enter here - bestool will open $Port and start Sync."
   Write-Host "  3. IMMEDIATELY reseat that bud (case contact = reset). Sync must catch the boot."
   Write-Host "     If it sits on 'Sent message type Sync' with no progress: Ctrl+C, then retry."
-  [void](Read-Host "Ready for $BudLabel / $Port — Enter to start Sync")
+  [void](Read-Host "Ready for $BudLabel / $Port - Enter to start Sync")
 
   & $BestoolPath @BestoolArgs
   if ($LASTEXITCODE -ne 0) {

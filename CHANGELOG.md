@@ -35,6 +35,8 @@ daily wear — [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 b
   sideload on Android (not on Play Store). App source remains under
   `android/cros-log/`.
 - `FLASH.md` rewritten around Install.ps1 + APK steps.
+- **Windows fix:** all shipped `.ps1` files are ASCII-only + UTF-8 BOM so
+  Windows PowerShell 5.1 no longer dies on em-dashes (`Missing closing '}'`).
 
 ### Test
 1. Unzip `pinebuds-cros-v0.3.66.zip` on Windows → run `Install.ps1`.

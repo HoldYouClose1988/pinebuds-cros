@@ -1,4 +1,4 @@
-# PineBuds Pro — BiCROS friendly installer (Windows)
+﻿# PineBuds Pro - BiCROS friendly installer (Windows)
 #
 # Double-click or run:  powershell -ExecutionPolicy Bypass -File .\Install.ps1
 # Walks you through backup + flash with on-screen instructions.
@@ -19,8 +19,8 @@ Set-Location $Here
 function Write-Banner {
   Write-Host ""
   Write-Host "============================================================" -ForegroundColor Cyan
-  Write-Host "  PineBuds Pro — BiCROS flasher" -ForegroundColor Cyan
-  Write-Host "  DIY / own-risk — NOT a hearing aid or medical device" -ForegroundColor Yellow
+  Write-Host "  PineBuds Pro - BiCROS flasher" -ForegroundColor Cyan
+  Write-Host "  DIY / own-risk - NOT a hearing aid or medical device" -ForegroundColor Yellow
   Write-Host "============================================================" -ForegroundColor Cyan
   Write-Host ""
 }
@@ -38,10 +38,10 @@ function Write-FlashInstructions {
   Write-Host "3. Plug the charging case into USB. Note the two COM ports"
   Write-Host "   (e.g. COM5 and COM6) under Device Manager -> Ports."
   Write-Host ""
-  Write-Host "4. CRITICAL Sync order — do this for EACH bud, one at a time:"
-  Write-Host "     a) Take that bud OUT of the case (LED awake)."
-  Write-Host "     b) Press Enter in this window (bestool starts Sync)."
-  Write-Host "     c) IMMEDIATELY reseat the bud (case reset catches Sync)."
+  Write-Host "4. CRITICAL Sync order - do this for EACH bud, one at a time:"
+  Write-Host "     a. Take that bud OUT of the case (LED awake)."
+  Write-Host "     b. Press Enter in this window (bestool starts Sync)."
+  Write-Host "     c. IMMEDIATELY reseat the bud (case reset catches Sync)."
   Write-Host "   If it hangs on 'Sent message type Sync': Ctrl+C and retry."
   Write-Host ""
   Write-Host "5. After flash: leave BOTH buds in the case 30-60 seconds"
@@ -126,7 +126,7 @@ function Select-ComPorts {
 function Show-ApkHelp {
   $apk = Join-Path $Here "CROScontrol.apk"
   Write-Host ""
-  Write-Host "Android app (CROS Control) — sideload" -ForegroundColor Green
+  Write-Host "Android app (CROS Control) - sideload" -ForegroundColor Green
   Write-Host "-------------------------------------"
   if (Test-Path $apk) {
     Write-Host "APK in this folder: CROScontrol.apk"
@@ -137,7 +137,7 @@ function Show-ApkHelp {
   Write-Host ""
   Write-Host "1. Copy CROScontrol.apk to your Android phone."
   Write-Host "2. On the phone: Settings -> allow Install unknown apps for Files/Chrome."
-  Write-Host "3. Open the APK and install (not on Play Store — sideload only)."
+  Write-Host "3. Open the APK and install (not on Play Store - sideload only)."
   Write-Host "4. Pair PineBuds Pro in Bluetooth settings first."
   Write-Host "5. Open CROS Control -> Connect -> Apply knobs once."
   Write-Host "   After Apply, knobs live on the buds (quad-tap works without the app)."
