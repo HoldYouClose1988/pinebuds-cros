@@ -1,4 +1,4 @@
-# CROS Control (Android) v0.4.4
+# CROS Control (Android) v0.4.5
 
 Classic-Bluetooth **SPP** client for PineBuds Pro BiCROS (firmware **v0.3.65**,
 `TOTA=1`). **Pair the buds to an Android phone** — iPhone is not supported for

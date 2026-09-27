@@ -20,7 +20,7 @@ day-to-day BiCROS. **iPhone is not a supported daily driver** — see
 | | |
 |--|--|
 | **Flash** | **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** |
-| **App** | [CROS Control](android/cros-log/) — knobs, status, Help FAQ (APK on Releases when published) |
+| **App** | [CROS Control](android/cros-log/) **0.4.5** — knobs, status, Help FAQ (APK on Releases when published) |
 | **Audio baseline** | v0.3.61 — SCO mSBC BiCROS ≈ **140 ms** |
 | **Day to day** | Quad-tap toggles BiCROS (no app needed after Apply) |
 | **Default ears** | RIGHT = poor (mic), LEFT = good (phone / master) |

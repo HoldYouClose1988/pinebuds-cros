@@ -14,6 +14,12 @@ Bring-up journals live under [`docs/archive/`](docs/archive/).
 **Product = Android + v0.3.65.** iPhone is not supported for daily wear —
 [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
 
+## [0.4.5] — app — disclaimer + call FAQ
+
+### CROS Control **0.4.5**
+- Disclaimer: good ear must connect to the phone before taking the poor ear out of the case.
+- Help FAQ: must disable BiCROS before phone calls; poor-ear FAQ wording is side-agnostic (still static text — only the Apply warning uses live `phone=` side).
+
 ## [0.4.4] — app — Android-only messaging
 
 ### CROS Control **0.4.4**
