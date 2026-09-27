@@ -23,17 +23,17 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.58](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.58)** |
+| **Flash** | **[v0.3.59](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.59)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.58)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.59)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.58)
+## Current status (v0.3.59)
 
 | Mode | Status |
 |------|--------|
@@ -71,6 +71,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 21. **v0.3.56** — Phone volume rocker → BiCROS SCO DAC while CROS on
 22. **v0.3.57** — Persist hfp_vol so AbsVol rocker actually moves DAC
 23. **v0.3.58** — Re-arm via BTEVENT disconnect + force cool-down
+24. **v0.3.59** — Audible BiCROS status cues (stock tones)
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -79,7 +80,7 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.58.zip`](flash-packages/pinebuds-cros-v0.3.58.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.59.zip`](flash-packages/pinebuds-cros-v0.3.59.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
@@ -90,8 +91,10 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.58.zip`](flash-packages/pinebuds
 force cool-down). **Disable/re-enable can take ~15–40 s — intentional:** peer
 SCO close is unreliable on this closed-source stack; reliability beats a fast
 toggle. Note that in any installer / flasher UX for others.
+**v0.3.59** adds stock-tone status cues (enabled / disabled / ready / not-yet /
+open-fail).
 
-Flash **[v0.3.58](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.58)**.
+Flash **[v0.3.59](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.59)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)

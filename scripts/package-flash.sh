@@ -220,6 +220,9 @@ After both buds re-pair (~30s):
 - **Turning CROS off/on can take ~15–40 s.** That wait is intentional (hacked
   peer-SCO teardown on a closed-source stack). Prefer reliability over a fast
   toggle — do not case-reset mid-wait unless it truly wedges.
+- **Status tones (v0.3.59+):** connect-like = BiCROS up; disconnect-like = off
+  requested; pairing-success-like = safe to re-enable; warning = not yet;
+  pairing-fail-like = open failed. ENABLED fires only after OPENED (not at tap).
 - Avoid phone music while testing (A2DP fights the CROS stream).
 
 **Phone logs (TOTA=1):** open \`android/cros-log\` → Connect → **Capture logs** on.

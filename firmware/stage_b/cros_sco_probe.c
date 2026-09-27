@@ -27,6 +27,7 @@
 #include "app_tws_ibrt.h"
 #include "cmsis_os.h"
 #include "cros_bt_log.h"
+#include "cros_cue.h"
 #include "cros_tws.h"
 #include "string.h"
 
@@ -82,6 +83,8 @@ extern void cros_sco_sidetone_set_gain_db(int db);
 #define CROS_SCO_SETTLE_POOR_MS 1500
 /* Alone mode: settle from enable (no extra READY gate). */
 #define CROS_SCO_ALONE_SETTLE_MS 1500
+/* After BiCROS shape — settle before ENABLED cue (avoid AF race, v0.3.2). */
+#define CROS_SCO_ENABLED_CUE_MS 500
 /* After a clean CLOSED / BTEVENT teardown — settle then open. */
 #define CROS_SCO_REARM_SETTLE_MS 3000
 /* Gap so BT thread can process HCI between register_link and open_link. */
@@ -110,6 +113,7 @@ static osTimerId voice_drain_timer;
 static osTimerId open_retry_timer;
 static osTimerId proof_timer;
 static osTimerId cooldown_timer;
+static osTimerId enabled_cue_timer;
 static uint8_t sco_inited;
 static uint8_t probe_armed;
 static uint8_t registered;
@@ -123,6 +127,8 @@ static uint8_t pending_enable; /* quad-tap on while still waiting CLOSED */
 static uint8_t rearm; /* set after a completed session — longer settle */
 static uint8_t open_retries;
 static uint8_t cooldown_want_enable;
+static uint8_t force_cooldown_pending; /* play READY after force cool-down */
+static uint8_t enabled_cued; /* one ENABLED cue per OPENED session */
 static struct bdaddr_t peer_ba;
 static uint8_t have_peer;
 
@@ -142,7 +148,7 @@ int cros_sco_cfg_hold(void) {
 int cros_sco_log_hold(void) {
   /* Pause SPP ring tee while CROS SCO is armed, opening, up, or closing. */
   return (probe_armed || sco_up || open_issued || closing || await_hci ||
-          cooldown_want_enable)
+          cooldown_want_enable || force_cooldown_pending)
              ? 1
              : 0;
 }
@@ -195,6 +201,15 @@ static void cros_sco_apply_cros_mute(void) {
              "a2dp=%d",
              vol_before, vol_after, mix, (int)cros_cfg_bass_db(),
              (int)cros_cfg_treble_db(), cros_cfg_noise(), cros_cfg_a2dp());
+    /*
+     * ENABLED cue after shape — SCO AF is already running. Short settle
+     * avoids the v0.3.1 race (prompt vs stream bring-up). Once per session.
+     */
+    if (!enabled_cued && enabled_cue_timer) {
+      enabled_cued = 1;
+      osTimerStop(enabled_cue_timer);
+      osTimerStart(enabled_cue_timer, CROS_SCO_ENABLED_CUE_MS);
+    }
   }
 }
 
@@ -538,6 +553,9 @@ static void cros_sco_finish_teardown(const char *why, int force_cooldown) {
   if (open_retry_timer) {
     osTimerStop(open_retry_timer);
   }
+  if (enabled_cue_timer) {
+    osTimerStop(enabled_cue_timer);
+  }
 #if CROS_SCO_MEDIA
   cros_sco_voice_stop();
 #endif
@@ -555,20 +573,19 @@ static void cros_sco_finish_teardown(const char *why, int force_cooldown) {
   close_attempts = 0;
   open_retries = 0;
   sco_inited = 0;
+  enabled_cued = 0;
   rearm = 1;
   want_enable = pending_enable;
   pending_enable = 0;
   CROS_LOG_ACK(0, "[cros_tws] DISABLE (%s)", why ? why : "done");
-  if (!want_enable) {
-    return;
-  }
   if (force_cooldown) {
     /*
      * Controller often still holds SCO after forced unregister (ear:
      * BTEVENT arrives ~20s later). Immediate deferred ENABLE → open_link
-     * rc=0 but never OPENED.
+     * rc=0 but never OPENED. Always cool, then READY cue (safe to re-arm).
      */
-    cooldown_want_enable = 1;
+    force_cooldown_pending = 1;
+    cooldown_want_enable = want_enable ? 1 : 0;
     if (!cooldown_timer) {
       cros_sco_probe_init();
     }
@@ -576,15 +593,23 @@ static void cros_sco_finish_teardown(const char *why, int force_cooldown) {
       osTimerStop(cooldown_timer);
       osTimerStart(cooldown_timer, CROS_SCO_FORCE_COOLDOWN_MS);
       CROS_LOG_ACK(0,
-                   "[cros_sco] force teardown — cool %ums then deferred ENABLE",
-                   (unsigned)CROS_SCO_FORCE_COOLDOWN_MS);
+                   "[cros_sco] force teardown — cool %ums then READY%s",
+                   (unsigned)CROS_SCO_FORCE_COOLDOWN_MS,
+                   want_enable ? "+ENABLE" : "");
     } else {
-      cros_sco_arm_after_teardown();
+      cros_cue_ready();
+      if (want_enable) {
+        cros_sco_arm_after_teardown();
+      }
     }
     return;
   }
-  CROS_LOG_ACK(0, "[cros_sco] CLOSED done — run deferred ENABLE");
-  cros_sco_arm_after_teardown();
+  /* Clean CLOSED / BTEVENT — controller free now. */
+  cros_cue_ready();
+  if (want_enable) {
+    CROS_LOG_ACK(0, "[cros_sco] CLOSED done — run deferred ENABLE");
+    cros_sco_arm_after_teardown();
+  }
 }
 
 static void cros_sco_finish_teardown_bt(void *a, void *b) {
@@ -689,6 +714,9 @@ static void open_retry_bt(void *a, void *b) {
   }
   if (open_retries >= 1) {
     CROS_LOG_ACK(0, "[cros_sco] OPENED missing after retry — give up");
+    probe_armed = 0;
+    open_issued = 0;
+    cros_cue_open_fail();
     return;
   }
   open_retries++;
@@ -760,14 +788,28 @@ static void close_timer_cb(void const *arg) {
 
 static void cooldown_timer_cb(void const *arg) {
   (void)arg;
-  if (!cooldown_want_enable && !pending_enable) {
+  if (!force_cooldown_pending && !cooldown_want_enable && !pending_enable) {
+    return;
+  }
+  force_cooldown_pending = 0;
+  cooldown_want_enable = cooldown_want_enable || pending_enable;
+  pending_enable = 0;
+  cros_cue_ready();
+  if (!cooldown_want_enable) {
     return;
   }
   cooldown_want_enable = 0;
-  pending_enable = 0;
   CROS_LOG_ACK(0, "[cros_sco] cool-down done — deferred ENABLE");
   app_bt_start_custom_function_in_bt_thread(
       0, 0, (uint32_t)cros_sco_arm_after_teardown_bt);
+}
+
+static void enabled_cue_timer_cb(void const *arg) {
+  (void)arg;
+  if (!sco_up || !voice_started) {
+    return;
+  }
+  cros_cue_enabled();
 }
 
 /*
@@ -851,6 +893,7 @@ osTimerDef(CROS_SCO_VOICE_DRAIN, voice_drain_timer_cb);
 osTimerDef(CROS_SCO_OPEN_RETRY, open_retry_timer_cb);
 osTimerDef(CROS_SCO_PROOF, proof_timer_cb);
 osTimerDef(CROS_SCO_COOLDOWN, cooldown_timer_cb);
+osTimerDef(CROS_SCO_ENABLED_CUE, enabled_cue_timer_cb);
 
 void cros_sco_probe_init(void) {
   if (!late_timer) {
@@ -879,6 +922,10 @@ void cros_sco_probe_init(void) {
   if (!cooldown_timer) {
     cooldown_timer =
         osTimerCreate(osTimer(CROS_SCO_COOLDOWN), osTimerOnce, NULL);
+  }
+  if (!enabled_cue_timer) {
+    enabled_cue_timer =
+        osTimerCreate(osTimer(CROS_SCO_ENABLED_CUE), osTimerOnce, NULL);
   }
 #if CROS_SCO_MEDIA
   if (!voice_timer) {
@@ -917,9 +964,10 @@ void cros_sco_probe_init(void) {
 
 void cros_sco_probe_on_cros_enable(void) {
   /* Still waiting for CLOSED / HCI drop / force cool-down — do not open yet. */
-  if (closing || await_hci || cooldown_want_enable) {
+  if (closing || await_hci || force_cooldown_pending || cooldown_want_enable) {
     pending_enable = 1;
     rearm = 1;
+    cros_cue_not_yet();
     CROS_LOG_ACK(0,
                  "[cros_tws] ENABLE deferred — waiting %s",
                  closing ? (await_hci ? "BTEVENT" : "CLOSED")
@@ -959,6 +1007,8 @@ void cros_sco_probe_on_peer_ready(void) {
 void cros_sco_probe_on_cros_disable(void) {
   pending_enable = 0;
   cooldown_want_enable = 0;
+  /* DISABLED cue at request time — teardown may still take tens of seconds. */
+  cros_cue_disabled();
   if (late_timer) {
     osTimerStop(late_timer);
   }
@@ -976,6 +1026,10 @@ void cros_sco_probe_on_cros_disable(void) {
   }
   if (cooldown_timer) {
     osTimerStop(cooldown_timer);
+  }
+  force_cooldown_pending = 0;
+  if (enabled_cue_timer) {
+    osTimerStop(enabled_cue_timer);
   }
   /* Do NOT stop close_timer / voice_drain — mid-teardown must finish. */
   probe_armed = 0;

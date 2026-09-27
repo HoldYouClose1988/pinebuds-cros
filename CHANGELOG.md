@@ -6,6 +6,35 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.59] — 2026-09-27
+
+### Firmware — audible BiCROS status cues (stock tones)
+Distinct stock `AUD_ID` prompts (no new PCM). **Reliability / AF-race note:**
+v0.3.1 WARNING-on-tap killed CROS audio; ENABLED fires only after confirmed
+OPENED + voice/shape + **500 ms** settle — never on the tap itself.
+
+| Cue | When | Stock id |
+|-----|------|----------|
+| **ENABLED** | OPENED + BiCROS shape (good ear) | `AUD_ID_BT_CONNECTED` |
+| **DISABLED** | Quad-tap / peer off received | `AUD_ID_BT_DIS_CONNECT` |
+| **READY** | Teardown safe (BTEVENT, or force cool-down done) | `AUD_ID_BT_PAIRING_SUC` |
+| **NOT_YET** | Enable while mid-teardown / cool-down | `AUD_ID_BT_WARNING` |
+| **OPEN_FAIL** | `open_link` never OPENED after retry | `AUD_ID_BT_PAIRING_FAIL` |
+
+**OPEN_FAIL included** — silence-until-ready is ambiguous with “still waiting.”
+
+Long SCO teardown buffer from v0.3.58 unchanged (~15–40 s).
+
+### Test (cycle several times — not once)
+1. Flash both — `init v0.3.59`.
+2. Quad-tap on → wait → **CONNECTED**-like cue only after BiCROS is actually up
+   (not at the tap). Log: `[cros_cue] ENABLED` after shape.
+3. Quad-tap off → **DISCONNECT**-like cue immediately; later **PAIRING_SUC**-like
+   READY when teardown finishes (or after force cool-down).
+4. Tap on during teardown → **WARNING** NOT_YET; after READY, tap on → ENABLE.
+5. Optional stress: if OPENED missing path appears → **PAIRING_FAIL** cue.
+6. Repeat on/off **≥3 cycles**; confirm cues never kill BiCROS audio.
+
 ## [0.3.58] — 2026-09-27
 
 ### Firmware — reliable BiCROS re-enable (BTEVENT + cool-down)
