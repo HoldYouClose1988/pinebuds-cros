@@ -138,7 +138,7 @@ static void cros_sco_apply_cros_mute(void) {
   if (poor) {
     cros_sco_forcemute(0, 1);
     cros_sco_sidetone_set(0);
-    CROS_LOG(0, "[cros_sco] CROS shape POOR/TX — mic ON, spk OFF, sidetone OFF");
+    CROS_LOG_ACK(0, "[cros_sco] CROS shape POOR/TX — mic ON, spk OFF, sidetone OFF");
   } else {
     /* Mute digital mic TX so local mic is not sent over SCO; HW sidetone still
      * taps ADC → DAC for local mix (BiCROS). Mix gain from cros_cfg. */
@@ -147,7 +147,7 @@ static void cros_sco_apply_cros_mute(void) {
     cros_sco_sidetone_set(1);
     vol_before = cros_sco_get_hfp_volume();
     vol_after = cros_sco_set_hfp_volume(cros_cfg_vol());
-    CROS_LOG(0,
+    CROS_LOG_ACK(0,
              "[cros_sco] BiCROS GOOD/RX — SCO+local mic mix, no TX; "
              "hfp_vol %d→%d sidetone ON mix=%ddB bass=%d treble=%d noise=%d",
              vol_before, vol_after, mix, (int)cros_cfg_bass_db(),
@@ -207,15 +207,14 @@ static void cros_sco_voice_start(void) {
   rc = hfp_ibrt_sco_audio_connected(BTIF_HF_SCO_CODEC_CVSD, sco_hdl);
 #endif
   voice_started = 1;
-  CROS_LOG(0, "[cros_sco] voice START done rc=%d codec=%s — schedule CROS mute "
-              "%ums",
+  CROS_LOG_ACK(0, "[cros_sco] voice UP rc=%d codec=%s",
            rc,
 #if CROS_SCO_MSBC
-           "mSBC/16k",
+           "mSBC/16k"
 #else
-           "CVSD/8k",
+           "CVSD/8k"
 #endif
-           (unsigned)CROS_SCO_CROS_MUTE_MS);
+  );
   if (cros_mute_timer) {
     osTimerStop(cros_mute_timer);
     osTimerStart(cros_mute_timer, CROS_SCO_CROS_MUTE_MS);
@@ -301,13 +300,13 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
 #if CROS_SCO_ALONE
 #if CROS_SCO_MEDIA
     /* UART + deferred phone visibility after SCO down; no SPP during bring-up. */
-    CROS_LOG(0, "[cros_sco] OPENED (alone + media — voice + BiCROS)");
+    CROS_LOG_ACK(0, "[cros_sco] OPENED (alone + media — voice + BiCROS)");
     cros_sco_voice_start();
 #else
-    CROS_LOG(0, "[cros_sco] OPENED (alone hold — leave up until disable)");
+    CROS_LOG_ACK(0, "[cros_sco] OPENED (alone hold — leave up until disable)");
 #endif
 #else
-    CROS_LOG(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
+    CROS_LOG_ACK(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
     if (proof_timer) {
       osTimerStop(proof_timer);
       osTimerStart(proof_timer, CROS_SCO_PROOF_HOLD_MS);
@@ -322,7 +321,7 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
 #if CROS_SCO_MEDIA
     cros_sco_voice_stop();
 #endif
-    CROS_LOG(0, "[cros_sco] CLOSED");
+    CROS_LOG_ACK(0, "[cros_sco] CLOSED");
   } else {
     CROS_LOG(0, "[cros_sco] notify event=%d", (int)event);
   }
@@ -425,12 +424,12 @@ static void cros_sco_open_bt(void *a, void *b) {
      * open_link here causes bring-up dropouts (ear log 225910). */
     if (sco_up) {
       open_issued = 1;
-      CROS_LOG(0, "[cros_sco] already OPENED — skip open_link");
+      CROS_LOG_ACK(0, "[cros_sco] already OPENED — skip open_link");
       return;
     }
     rc = sco_open_link(&peer_ba, cros_sco_notify, NULL);
     open_issued = 1;
-    CROS_LOG(0, "[cros_sco] open_link rc=%d (await OPENED/CLOSED)", (int)rc);
+    CROS_LOG_ACK(0, "[cros_sco] open_link rc=%d (await OPENED/CLOSED)", (int)rc);
   }
 }
 
@@ -460,7 +459,7 @@ static void cros_sco_close_bt(void *a, void *b) {
   sco_up = 0;
   have_peer = 0;
   /* Flags clear — SPP tee resumes; phone sees disable here. */
-  CROS_LOG(0, "[cros_tws] DISABLE");
+  CROS_LOG_ACK(0, "[cros_tws] DISABLE");
 }
 
 static void cros_sco_schedule_open(void) {
@@ -478,7 +477,7 @@ static void open_timer_cb(void const *arg) {
   }
   if (sco_up) {
     open_issued = 1;
-    CROS_LOG(0, "[cros_sco] open gap — already OPENED, skip open_link");
+    CROS_LOG_ACK(0, "[cros_sco] open gap — already OPENED, skip open_link");
     return;
   }
   CROS_LOG(0, "[cros_sco] open gap done — open_link");
@@ -589,6 +588,8 @@ void cros_sco_probe_on_cros_enable(void) {
            "[cros_sco] armed ALONE — settle %ums then register/open (hold until "
            "disable)",
            (unsigned)CROS_SCO_ALONE_SETTLE_MS);
+  CROS_LOG_ACK(0, "[cros_tws] ENABLE (SCO-alone settle %ums)",
+               (unsigned)CROS_SCO_ALONE_SETTLE_MS);
   osTimerStart(settle_timer, CROS_SCO_ALONE_SETTLE_MS);
 #else
   /* v0.3.32: no sco_init/register on enable — that raced TX on RIGHT-master. */

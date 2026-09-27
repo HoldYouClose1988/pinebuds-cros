@@ -6,6 +6,25 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.51] — 2026-09-27
+
+### Firmware — curated diagnostics on phone (without SCO flush wedge)
+- **Ear (log 230956):** controls + dropouts fixed on 0.3.50; phone log was
+  bare (only `[cros_cfg] set` + final `DISABLE`) — milestones were UART-only.
+- **Design:** keep **no bulk ring flush** under SCO (taps stay alive). Expand
+  an **ack queue** (8 deep, 1 line/tick) for curated milestones:
+  - `ENABLE` / `OPENED` / `voice UP` / `BiCROS GOOD/RX` (or POOR shape)
+  - `already OPENED — skip open_link` / `open_link rc=`
+  - `CLOSED` / `DISABLE`
+  - existing Apply/Get `[cros_cfg] …`
+- Sniff/register chatter stays UART-only during SCO.
+
+### Test
+1. Flash both — `init v0.3.51`.
+2. Capture on → quad-tap — expect phone lines for ENABLE → OPENED → voice UP →
+   BiCROS shape (spaced ~80 ms apart, not a dump).
+3. Apply still acks. Quad-tap off → CLOSED / DISABLE. Taps stay responsive.
+
 ## [0.3.50] — 2026-09-27
 
 ### Firmware — fix tap-dead + bring-up dropouts (0.3.49 regression)

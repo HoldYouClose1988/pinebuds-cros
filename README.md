@@ -30,10 +30,10 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.49)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.50)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.49)
+## Current status (v0.3.50)
 
 | Mode | Status |
 |------|--------|
@@ -62,6 +62,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 12. **v0.3.47** — Phone ack for Apply/Get under SCO hold
 13. **v0.3.48** — App volume + link-noise filter; DISABLE ack
 14. **v0.3.49** — Tee resumes when SCO is down (no post-close mute)
+15. **v0.3.50** — Ack-only under SCO + skip double open_link (taps/dropouts)
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -70,7 +71,7 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.49.zip`](flash-packages/pinebuds-cros-v0.3.49.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.50.zip`](flash-packages/pinebuds-cros-v0.3.50.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
@@ -78,7 +79,7 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.49.zip`](flash-packages/pinebuds
 noise filter strength, and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
 EQ / smoothing, tablet UX, FF mic vs talk mic.
 
-Flash **[v0.3.49](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.49)**.
+Flash **[v0.3.50](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.50)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)

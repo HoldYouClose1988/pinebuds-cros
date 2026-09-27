@@ -14,8 +14,9 @@
  * tee to SPP — that traffic kills the extra link. CROS_LOG always tees
  * (state transitions); CROS_LOG_STAT tees only when not quiet.
  *
- * Ack (v0.3.47): CROS_LOG_ACK always tees one line even under SCO hold so
- * the phone sees `[cros_cfg] set` / `get` after Apply.
+ * Ack (v0.3.51): CROS_LOG_ACK queues curated milestones (ENABLE / OPENED /
+ * shape / cfg / DISABLE) — flushed 1/tick under SCO. Bulk CROS_LOG stays
+ * UART-only while SCO is armed (ring flush wedges taps).
  ***************************************************************************/
 #ifndef CROS_BT_LOG_H
 #define CROS_BT_LOG_H
@@ -34,7 +35,7 @@ int cros_bt_log_is_quiet(void);
 #ifdef TEST_OVER_THE_AIR_ENANBLED
 void cros_bt_logf(const char *fmt, ...);
 void cros_bt_logf_stat(const char *fmt, ...);
-/* One-line Apply/Get confirmation — tees even while SCO hold pauses the ring. */
+/* Curated milestone — tees under SCO via ack queue (1 line/tick). */
 void cros_bt_logf_ack(const char *fmt, ...);
 #define CROS_LOG(n, fmt, ...)                                                  \
   do {                                                                         \
