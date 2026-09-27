@@ -29,8 +29,7 @@ in the app. Details: [anc-vs-bicros-noise.md](anc-vs-bicros-noise.md).
 3. **Wear-test the knobs** — mix/EQ; optionally save NV.
 4. **Mic choice** — talk mic vs FF for poor TX and good sidetone.
 5. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases.
-6. **Industrial damp** — **out of scope**; use PPE (plugs/muffs). Not a project goal.
-7. **Defer** — extra L2CAP thinning; BLE VOB; SCO+extra together.
+6. **Defer** — extra L2CAP thinning; BLE VOB; SCO+extra together.
 
 ---
 

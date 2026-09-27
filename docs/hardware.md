@@ -56,10 +56,9 @@ CROS should prefer the **FF mic** for scene pickup on the impaired side (directi
 
 ## Transducer & enclosure
 
-- 6 mm dynamic driver, IPX4 (splash only — not construction-rated sealing)
+- 6 mm dynamic driver, IPX4 (splash only)
 - Capacitive touch on outer face (logo area)
-- Passive isolation is modest; **do not** treat these buds as industrial hearing
-  protection — use rated **PPE** for loud environments. BiCROS is routing only.
+- Passive isolation is modest (consumer tip seal)
 
 ## Programming / debug
 
@@ -76,4 +75,4 @@ Flash endurance is limited (>500 erase cycles quoted). Prefer OTA / careful iter
 - Hybrid ANC / ENC / talk-through hooks in the BES audio graph (calibration still weak in open firmware)
 - IBRT role switch when one bud docks
 
-Our work reuses that stack: do not reinvent BT profiles; add a **CROS stream user** on the TWS/IBRT path. (Industrial damping / SITE mode is out of scope — use PPE.)
+Our work reuses that stack: do not reinvent BT profiles; add a **CROS stream user** on the TWS/IBRT path.

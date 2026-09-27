@@ -1,6 +1,6 @@
 # Changelog
 
-All notable flash-package / firmware iterations for PineBuds Pro CROS + SITE.
+All notable flash-package / firmware iterations for PineBuds Pro BiCROS.
 Format: version, date (UTC), then user-facing changes.
 
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
@@ -14,11 +14,6 @@ Bring-up journals live under [`docs/archive/`](docs/archive/).
 **Product = Android + v0.3.65 firmware** (current flash zip **v0.3.66** bundles
 that bin + CROS Control APK + guided installer). iPhone is not supported for
 daily wear — [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
-
-## [docs] — industrial damping out of scope
-
-Industrial / SITE noise damping will **not** be implemented. Loud environments
-need rated **PPE** (plugs / muffs). README + architecture archive updated.
 
 ## [0.4.6] — app — header / status banner layout fix
 
@@ -1366,7 +1361,7 @@ SPP on the master shares the radio with TWS.
 ### Docs
 - Public-facing README with a prominent **work in progress / not functional** banner
 - Removed personal bring-up checklist and private progress log
-- Feature READMEs state CROS and SITE modes are not implemented
+- Feature READMEs state experimental modes are not implemented
 
 ### Package
 - Regenerated flash zip with updated `FLASH.md` (experimental loopback notes only; not CROS)
