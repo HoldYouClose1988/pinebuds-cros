@@ -6,6 +6,24 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.62] — 2026-09-27
+
+### Firmware — cue PASS + hold-escape floor
+- **Ear PASS (093040 / v0.3.61):** all status cues audible — ENABLED, DISABLED,
+  READY, NOT_YET, OPEN_FAIL. Cue-hold path confirmed
+  (`cue hold — voice stays up for DISABLED`). SCO recoverable. **Cues done.**
+- **Residual (accepted):** SPP/logging under SCO is hit-or-miss (`log_hold` +
+  peer SPP drop). After logging died, re-enable stayed on **NOT_YET** (teardown
+  hold never cleared) — no crash. This peer-SCO path will not hit 100%.
+- **Floor:** absolute **75 s hold-escape** — if still in closing / await-HCI /
+  cool-down, force-clear and READY (deferred ENABLE preserved). Not a claim of
+  reliability; stops infinite NOT_YET when timers stall.
+
+### Test
+1. Flash — `init v0.3.62`. Cues should match v0.3.61.
+2. Optional: if stuck on NOT_YET, wait ≤75 s for READY / auto-rearm rather than
+   case reset.
+
 ## [0.3.61] — 2026-09-27
 
 ### Firmware — DISABLED / NOT_YET cues audible again

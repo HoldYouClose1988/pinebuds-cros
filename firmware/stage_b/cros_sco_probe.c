@@ -102,6 +102,12 @@ extern void cros_sco_sidetone_set_gain_db(int db);
 #define CROS_SCO_HCI_WAIT_MS 20000
 /* After forced unregister, cool before any deferred ENABLE (ear fail 074942). */
 #define CROS_SCO_FORCE_COOLDOWN_MS 10000
+/*
+ * Absolute max time in closing / await-HCI / cool-down before we force-clear.
+ * Soft≈12s + HCI≈20s + cool≈10s ≈ 42s; 75s leaves margin. Ear 093040: after
+ * SPP drop, NOT_YET forever — timers can stall; this is the floor, not 100%.
+ */
+#define CROS_SCO_HOLD_ESCAPE_MS 75000
 /* If open_link never yields OPENED, retry once. */
 #define CROS_SCO_OPEN_RETRY_MS 2000
 /* With extra: tear SCO down quickly after OPENED (0.3.35 hang). Alone: hold. */
@@ -117,6 +123,7 @@ static osTimerId open_retry_timer;
 static osTimerId proof_timer;
 static osTimerId cooldown_timer;
 static osTimerId enabled_cue_timer;
+static osTimerId hold_escape_timer;
 static uint8_t sco_inited;
 static uint8_t probe_armed;
 static uint8_t registered;
@@ -142,8 +149,11 @@ static void cros_sco_finish_teardown(const char *why, int force_cooldown);
 static void cros_sco_finish_teardown_bt(void *a, void *b);
 static void cros_sco_issue_close_link_bt(void *a, void *b);
 static void cros_sco_voice_drain_bt(void *a, void *b);
+static void cros_sco_hold_escape_bt(void *a, void *b);
 static void cros_sco_arm_after_teardown(void);
 static void cros_sco_arm_after_teardown_bt(void *a, void *b);
+static void cros_sco_hold_escape_arm(void);
+static void cros_sco_hold_escape_disarm(void);
 
 int cros_sco_cfg_hold(void) {
   /* Skip IBRT cfg sync while peer SCO is up. */
@@ -595,6 +605,7 @@ static void cros_sco_finish_teardown(const char *why, int force_cooldown) {
      */
     force_cooldown_pending = 1;
     cooldown_want_enable = want_enable ? 1 : 0;
+    cros_sco_hold_escape_arm(); /* cover cool-down stall too */
     if (!cooldown_timer) {
       cros_sco_probe_init();
     }
@@ -606,6 +617,7 @@ static void cros_sco_finish_teardown(const char *why, int force_cooldown) {
                    (unsigned)CROS_SCO_FORCE_COOLDOWN_MS,
                    want_enable ? "+ENABLE" : "");
     } else {
+      cros_sco_hold_escape_disarm();
       cros_cue_ready();
       if (want_enable) {
         cros_sco_arm_after_teardown();
@@ -614,6 +626,7 @@ static void cros_sco_finish_teardown(const char *why, int force_cooldown) {
     return;
   }
   /* Clean CLOSED / BTEVENT — controller free now. */
+  cros_sco_hold_escape_disarm();
   cros_cue_ready();
   if (want_enable) {
     CROS_LOG_ACK(0, "[cros_sco] CLOSED done — run deferred ENABLE");
@@ -655,6 +668,59 @@ static void cros_sco_issue_close_link_bt(void *a, void *b) {
   }
 }
 
+static void cros_sco_hold_escape_arm(void) {
+  if (!hold_escape_timer) {
+    return;
+  }
+  osTimerStop(hold_escape_timer);
+  osTimerStart(hold_escape_timer, CROS_SCO_HOLD_ESCAPE_MS);
+}
+
+static void cros_sco_hold_escape_disarm(void) {
+  if (hold_escape_timer) {
+    osTimerStop(hold_escape_timer);
+  }
+}
+
+static void cros_sco_hold_escape_bt(void *a, void *b) {
+  uint8_t want;
+  (void)a;
+  (void)b;
+  if (!(closing || await_hci || force_cooldown_pending || cooldown_want_enable)) {
+    return;
+  }
+  want = (uint8_t)(pending_enable || cooldown_want_enable);
+  CROS_LOG_ACK(0, "[cros_sco] HOLD ESCAPE — clear deferred-enable wedge (want=%u)",
+               (unsigned)want);
+  if (cooldown_timer) {
+    osTimerStop(cooldown_timer);
+  }
+  force_cooldown_pending = 0;
+  cooldown_want_enable = 0;
+  pending_enable = want;
+  if (closing || await_hci || registered || sco_up
+#if CROS_SCO_MEDIA
+      || voice_started
+#endif
+  ) {
+    /* Force path plays READY after cool; preserves deferred ENABLE. */
+    cros_sco_finish_teardown("hold-escape", 1);
+    return;
+  }
+  cros_sco_hold_escape_disarm();
+  cros_cue_ready();
+  if (want) {
+    pending_enable = 0;
+    cros_sco_arm_after_teardown();
+  }
+}
+
+static void hold_escape_timer_cb(void const *arg) {
+  (void)arg;
+  app_bt_start_custom_function_in_bt_thread(0, 0,
+                                            (uint32_t)cros_sco_hold_escape_bt);
+}
+
 static void cros_sco_close_bt(void *a, void *b) {
   (void)a;
   (void)b;
@@ -673,6 +739,7 @@ static void cros_sco_close_bt(void *a, void *b) {
   await_hci = 0;
   close_attempts = 0;
   cue_hold_ticks = 0;
+  cros_sco_hold_escape_arm();
   if (have_peer && (sco_up || registered)) {
     /*
      * Drain voice first, then close_link, then wait for real CLOSED / HCI
@@ -847,6 +914,7 @@ static void cooldown_timer_cb(void const *arg) {
   force_cooldown_pending = 0;
   cooldown_want_enable = cooldown_want_enable || pending_enable;
   pending_enable = 0;
+  cros_sco_hold_escape_disarm();
   cros_cue_ready();
   if (!cooldown_want_enable) {
     return;
@@ -947,6 +1015,7 @@ osTimerDef(CROS_SCO_OPEN_RETRY, open_retry_timer_cb);
 osTimerDef(CROS_SCO_PROOF, proof_timer_cb);
 osTimerDef(CROS_SCO_COOLDOWN, cooldown_timer_cb);
 osTimerDef(CROS_SCO_ENABLED_CUE, enabled_cue_timer_cb);
+osTimerDef(CROS_SCO_HOLD_ESCAPE, hold_escape_timer_cb);
 
 void cros_sco_probe_init(void) {
   if (!late_timer) {
@@ -979,6 +1048,10 @@ void cros_sco_probe_init(void) {
   if (!enabled_cue_timer) {
     enabled_cue_timer =
         osTimerCreate(osTimer(CROS_SCO_ENABLED_CUE), osTimerOnce, NULL);
+  }
+  if (!hold_escape_timer) {
+    hold_escape_timer =
+        osTimerCreate(osTimer(CROS_SCO_HOLD_ESCAPE), osTimerOnce, NULL);
   }
 #if CROS_SCO_MEDIA
   if (!voice_timer) {
