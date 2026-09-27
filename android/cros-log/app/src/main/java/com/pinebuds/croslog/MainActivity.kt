@@ -145,7 +145,8 @@ class MainActivity : AppCompatActivity() {
         refreshKnobLabels()
     }
 
-    private fun mixDb(): Int = MIX_DB_MIN + binding.mixSeek.progress * 2
+    private fun mixDb(): Int =
+        (MIX_DB_MIN + binding.mixSeek.progress * 2).coerceAtMost(MIX_DB_MAX)
     private fun bassDb(): Int = binding.bassSeek.progress + EQ_DB_MIN
     private fun trebleDb(): Int = binding.trebleSeek.progress + EQ_DB_MIN
     private fun poorSide(): String =
@@ -471,7 +472,7 @@ class MainActivity : AppCompatActivity() {
             binding.poorRight.isChecked = true
         }
         if (mix != null) {
-            val snapped = (mix / 2) * 2
+            val snapped = ((mix / 2) * 2).coerceIn(MIX_DB_MIN, MIX_DB_MAX)
             val prog = ((snapped - MIX_DB_MIN) / 2).coerceIn(0, binding.mixSeek.max)
             binding.mixSeek.progress = prog
         }
@@ -581,6 +582,8 @@ class MainActivity : AppCompatActivity() {
         private const val OP_TOTA_STRING = 0x1000
         private const val TOTA_RFCOMM_CHANNEL = 12
         private const val MIX_DB_MIN = -30
+        /* Must match firmware CROS_MIX_DB_MAX — 0 dB howls. */
+        private const val MIX_DB_MAX = -12
         private const val EQ_DB_MIN = -6
         private val SPP_UUID: UUID =
             UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")

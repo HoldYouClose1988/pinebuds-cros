@@ -9,7 +9,8 @@ enum {
   CROS_TGT_VOL_MUTE = 0,
   CROS_TGT_VOL_15 = 15,
   CROS_SIDETONE_DB_MIN = -30,
-  CROS_SIDETONE_DB_MAX = 0,
+  /* Match cros_cfg ceiling — never drive HW sidetone to 0 dB. */
+  CROS_SIDETONE_DB_MAX = -12,
 };
 
 /* C++-mangled in app_bt_stream.cpp */
@@ -60,16 +61,12 @@ extern "C" void cros_sco_sidetone_set_gain_db(int db) {
     db -= 1;
   }
   g_sidetone_db = db;
+  /*
+   * Update gain register in place while sidetone stays enabled.
+   * Do NOT disable→enable: that momentarily opens a howling window.
+   */
   if (hal_codec_sidetone_set_gain_db) {
     hal_codec_sidetone_set_gain_db(db);
-  }
-  /* Re-apply enable so REG picks up new gain if already on. */
-  if (g_sidetone_on) {
-    hal_codec_sidetone_disable();
-    if (hal_codec_sidetone_set_gain_db) {
-      hal_codec_sidetone_set_gain_db(db);
-    }
-    hal_codec_sidetone_enable();
   }
 }
 

@@ -11,9 +11,9 @@
 | CROS shape | Poor TX / good RX mute |
 | Quality (usable) | **mSBC 16 kHz** — call-like, very usable |
 | BiCROS | Good-ear HW sidetone mix — **PASS (v0.3.43)** |
-| App knobs | Mix / bass / treble / poor side over TOTA — **v0.3.44** |
+| App knobs | Mix / bass / treble / poor side over TOTA — **v0.3.45** |
 
-**Current flash:** [v0.3.44](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.44).
+**Current flash:** [v0.3.45](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.45).
 
 ### Suggested next (priority order)
 

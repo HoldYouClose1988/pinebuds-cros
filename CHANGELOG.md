@@ -6,6 +6,27 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.45] — 2026-09-27
+
+### Firmware — fix BiCROS knob howling (CRITICAL)
+- **Ear report:** any `cros set` caused loud mic feedback / squelch on master.
+- **Cause:** phone sent `mix=-20` but firmware stored **`mix=0`** (and
+  `treble=-1`→`0`) — broken negative parsing via `atoi` — then 0 dB HW
+  sidetone howled in-ear. Apply also tore sidetone down/up on every tweak.
+- **Fix:**
+  - Hand-rolled signed int parser (no `atoi`)
+  - Mix hard ceiling **−12 dB** (never 0)
+  - Live mix/EQ update gain/coeffs only — no sidetone disable→enable
+  - Full reshape only when poor side changes
+- App: mix SeekBar capped at −12 dB (0.3.3)
+
+### Test
+1. Flash both — `init v0.3.45`.
+2. Quad-tap CROS; confirm normal BiCROS at mix=-20.
+3. Connect app → change bass/treble only → **Apply** — must stay quiet;
+   log `mix=-20` (not 0).
+4. Sweep mix −30…−12 — no howling. Expect refuse of 0 dB.
+
 ## [0.3.44] — 2026-09-27
 
 ### Firmware + app — BiCROS knobs (mix / EQ / poor side)

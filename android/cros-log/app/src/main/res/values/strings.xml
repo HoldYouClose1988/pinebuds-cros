@@ -20,7 +20,7 @@
     <string name="sco_hint">Reference only — starts phone HFP SCO. Prefer bud volume keys for BiCROS level.</string>
     <string name="advanced_title">Advanced</string>
     <string name="knobs_title">BiCROS</string>
-    <string name="knobs_hint">Connect required. Mix = local good-ear sidetone. Bass/treble = SCO shelves. Keep good ear as IBRT master.</string>
+    <string name="knobs_hint">Connect required. Mix = local good-ear sidetone (−30…−12 dB; never 0 — howls). Bass/treble = SCO shelves. Keep good ear as IBRT master.</string>
     <string name="poor_side_label">Poor side (mic / TX)</string>
     <string name="poor_right">RIGHT</string>
     <string name="poor_left">LEFT</string>

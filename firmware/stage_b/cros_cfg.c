@@ -1,5 +1,9 @@
 /***************************************************************************
  * Runtime BiCROS config (poor side / mix / EQ) over TOTA + IBRT.
+ *
+ * CRITICAL: never allow sidetone mix near 0 dB — acoustic howling in-ear.
+ * Max mix is -12 dB. Negative ints are parsed by hand (do not use atoi —
+ * some newlib builds mishandle leading '-'; ear log showed mix=-20 → 0).
  ***************************************************************************/
 #include "cros_cfg.h"
 
@@ -8,7 +12,6 @@
 
 #include "app_ibrt_customif_cmd.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length);
@@ -19,7 +22,8 @@ extern int tws_ctrl_send_cmd(uint32_t cmd_code, uint8_t *p_buff, uint16_t length
 
 enum {
   CROS_MIX_DB_MIN = -30,
-  CROS_MIX_DB_MAX = 0,
+  /* Hard ceiling: 0 dB HW sidetone howls (ear-validated 2026-09-26). */
+  CROS_MIX_DB_MAX = -12,
   CROS_EQ_DB_MIN = -6,
   CROS_EQ_DB_MAX = 6,
   CROS_CFG_PKT_LEN = 4,
@@ -53,6 +57,37 @@ static int8_t clamp_i8(int v, int lo, int hi) {
   return (int8_t)v;
 }
 
+/* Signed decimal — never use atoi for these knobs. */
+static int parse_int(const char *s, int *ok) {
+  int neg = 0;
+  int v = 0;
+  int digits = 0;
+  if (!s) {
+    if (ok) {
+      *ok = 0;
+    }
+    return 0;
+  }
+  while (*s == ' ' || *s == '\t') {
+    s++;
+  }
+  if (*s == '-') {
+    neg = 1;
+    s++;
+  } else if (*s == '+') {
+    s++;
+  }
+  while (*s >= '0' && *s <= '9') {
+    v = v * 10 + (*s - '0');
+    digits = 1;
+    s++;
+  }
+  if (ok) {
+    *ok = digits;
+  }
+  return neg ? -v : v;
+}
+
 static int16_t db_to_q14(int8_t db) {
   if (db < CROS_EQ_DB_MIN) {
     db = CROS_EQ_DB_MIN;
@@ -78,19 +113,30 @@ static void log_status(const char *why) {
 static void sync_to_peer(void) {
   uint8_t pkt[CROS_CFG_PKT_LEN];
   pkt[0] = g_poor_is_right;
-  pkt[1] = (uint8_t)g_mix_db;
-  pkt[2] = (uint8_t)g_bass_db;
-  pkt[3] = (uint8_t)g_treble_db;
+  pkt[1] = (uint8_t)(int8_t)g_mix_db;
+  pkt[2] = (uint8_t)(int8_t)g_bass_db;
+  pkt[3] = (uint8_t)(int8_t)g_treble_db;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_CFG, pkt, CROS_CFG_PKT_LEN);
 }
 
-static void apply_audio_local(void) {
-  refresh_eq_gain();
-  cros_sco_sidetone_set_gain_db(g_mix_db);
-  cros_sco_reapply_shape();
+static void apply_audio_local(int poor_changed, int mix_changed, int eq_changed) {
+  if (eq_changed) {
+    refresh_eq_gain();
+    g_lp_state = 0;
+  }
+  if (mix_changed) {
+    /* Gain register only — do NOT disable/enable (opens howling window). */
+    cros_sco_sidetone_set_gain_db(g_mix_db);
+  }
+  /* Full mute/sidetone reshape only when poor side flips (roles change). */
+  if (poor_changed) {
+    cros_sco_reapply_shape();
+  }
 }
 
-void cros_cfg_apply_audio(void) { apply_audio_local(); }
+void cros_cfg_apply_audio(void) {
+  apply_audio_local(1, 1, 1);
+}
 
 void cros_cfg_init(void) {
   g_poor_is_right = (CROS_POOR_IS_RIGHT != 0);
@@ -145,52 +191,65 @@ static int parse_poor(const char *v) {
   if (!v) {
     return -1;
   }
-  if (v[0] == 'R' || v[0] == 'r' || strcmp(v, "1") == 0) {
+  if (v[0] == 'R' || v[0] == 'r' || (v[0] == '1' && v[1] == '\0')) {
     return 1;
   }
-  if (v[0] == 'L' || v[0] == 'l' || strcmp(v, "0") == 0) {
+  if (v[0] == 'L' || v[0] == 'l' || (v[0] == '0' && v[1] == '\0')) {
     return 0;
   }
   return -1;
 }
 
+static int8_t snap_mix_db(int v) {
+  int8_t m = clamp_i8(v, CROS_MIX_DB_MIN, CROS_MIX_DB_MAX);
+  /* HW sidetone step is 2 dB. */
+  if (m & 1) {
+    m = (int8_t)(m - 1);
+  }
+  if (m > CROS_MIX_DB_MAX) {
+    m = (int8_t)CROS_MIX_DB_MAX;
+  }
+  return m;
+}
+
 static void apply_set(int poor, int mix, int bass, int treble, int have_poor,
                       int have_mix, int have_bass, int have_treble, int do_sync) {
-  int changed = 0;
+  int poor_changed = 0;
+  int mix_changed = 0;
+  int eq_changed = 0;
+
   if (have_poor && poor != (int)g_poor_is_right) {
     g_poor_is_right = poor ? 1 : 0;
-    changed = 1;
+    poor_changed = 1;
   }
   if (have_mix) {
-    int8_t m = clamp_i8(mix, CROS_MIX_DB_MIN, CROS_MIX_DB_MAX);
-    /* Snap to even dB — HW sidetone step is 2 dB. */
-    if (m & 1) {
-      m = (int8_t)(m - 1);
-    }
+    int8_t m = snap_mix_db(mix);
     if (m != g_mix_db) {
       g_mix_db = m;
-      changed = 1;
+      mix_changed = 1;
     }
   }
   if (have_bass) {
     int8_t b = clamp_i8(bass, CROS_EQ_DB_MIN, CROS_EQ_DB_MAX);
     if (b != g_bass_db) {
       g_bass_db = b;
-      changed = 1;
+      eq_changed = 1;
     }
   }
   if (have_treble) {
     int8_t t = clamp_i8(treble, CROS_EQ_DB_MIN, CROS_EQ_DB_MAX);
     if (t != g_treble_db) {
       g_treble_db = t;
-      changed = 1;
+      eq_changed = 1;
     }
   }
-  if (!changed && !do_sync) {
+  if (!poor_changed && !mix_changed && !eq_changed && !do_sync) {
     log_status("unchanged");
     return;
   }
-  apply_audio_local();
+  if (poor_changed || mix_changed || eq_changed) {
+    apply_audio_local(poor_changed, mix_changed, eq_changed);
+  }
   if (do_sync) {
     sync_to_peer();
   }
@@ -206,6 +265,8 @@ static void parse_set_args(char *args, int do_sync) {
     char *eq;
     char *key;
     char *val;
+    int ok = 0;
+    int iv;
     while (*p == ' ' || *p == '\t') {
       p++;
     }
@@ -233,14 +294,23 @@ static void parse_set_args(char *args, int do_sync) {
         have_poor = 1;
       }
     } else if (strcmp(key, "mix") == 0) {
-      mix = atoi(val);
-      have_mix = 1;
+      iv = parse_int(val, &ok);
+      if (ok) {
+        mix = iv;
+        have_mix = 1;
+      }
     } else if (strcmp(key, "bass") == 0) {
-      bass = atoi(val);
-      have_bass = 1;
+      iv = parse_int(val, &ok);
+      if (ok) {
+        bass = iv;
+        have_bass = 1;
+      }
     } else if (strcmp(key, "treble") == 0) {
-      treble = atoi(val);
-      have_treble = 1;
+      iv = parse_int(val, &ok);
+      if (ok) {
+        treble = iv;
+        have_treble = 1;
+      }
     }
   }
   apply_set(poor, mix, bass, treble, have_poor, have_mix, have_bass, have_treble,
@@ -273,7 +343,6 @@ void cros_cfg_on_tota_string(uint8_t *param, uint32_t param_len) {
   }
   memcpy(buf, param, n);
   buf[n] = '\0';
-  /* Trim trailing CR/LF/space. */
   while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r' || buf[n - 1] == ' ' ||
                    buf[n - 1] == '\t')) {
     buf[--n] = '\0';

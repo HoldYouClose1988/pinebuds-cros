@@ -140,6 +140,7 @@ void cros_sco_reapply_shape(void) {
   if (!sco_up || !voice_started) {
     return;
   }
+  /* Role reshape only — avoid volume churn / sidetone tear-down on knob tweaks. */
   cros_sco_apply_cros_mute();
 }
 
