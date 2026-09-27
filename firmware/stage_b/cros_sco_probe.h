@@ -8,6 +8,8 @@
 #ifndef CROS_SCO_PROBE_H
 #define CROS_SCO_PROBE_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
