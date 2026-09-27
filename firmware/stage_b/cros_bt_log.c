@@ -4,6 +4,9 @@
  * Timer only schedules work. Actual tota_printf runs on the BT thread,
  * capped per tick, and only when the TOTA SPP path is up. Never call
  * tota_printf (osSemaphoreWait forever) from a general-purpose OS timer.
+ *
+ * v0.3.46: while cros_sco_cfg_hold(), do not flush to SPP — tota_printf on
+ * the BT thread during peer SCO wedges taps/Apply (ear log 221736).
  ***************************************************************************/
 #include "cros_bt_log.h"
 
@@ -18,6 +21,8 @@
 extern int app_bt_start_custom_function_in_bt_thread(uint32_t param0,
                                                      uint32_t param1,
                                                      uint32_t funcPtr);
+/* Defined in cros_sco_probe.c — 0 when SCO probe is compiled out. */
+extern int cros_sco_cfg_hold(void);
 
 #define CROS_BT_LOG_LINE_MAX 120
 #define CROS_BT_LOG_DEPTH 24
@@ -44,6 +49,11 @@ static void cros_bt_log_flush_bt(void *a, void *b);
 osTimerDef(CROS_BT_LOG_FLUSH, cros_bt_log_timer);
 static osTimerId flush_id;
 
+static void cros_bt_log_drain_ring(void) {
+  tail = head;
+  dropped = 0;
+}
+
 static void cros_bt_log_flush_bt(void *a, void *b) {
   (void)a;
   (void)b;
@@ -54,6 +64,13 @@ static void cros_bt_log_flush_bt(void *a, void *b) {
    * OP_TOTA_STRING, which is explicitly unencrypted.
    */
   if (!app_is_in_tota_mode()) {
+    flush_pending = 0;
+    return;
+  }
+
+  /* Peer SCO owns the BT thread budget — never block on SPP TX here. */
+  if (cros_sco_cfg_hold()) {
+    cros_bt_log_drain_ring();
     flush_pending = 0;
     return;
   }
@@ -83,6 +100,14 @@ static void cros_bt_log_timer(void const *arg) {
   if (!inited) {
     return;
   }
+  if (cros_sco_cfg_hold()) {
+    /* Drop tee backlog while SCO hold — UART TRACE already has the lines. */
+    if (tail != head || dropped) {
+      cros_bt_log_drain_ring();
+    }
+    flush_pending = 0;
+    return;
+  }
   if (tail == head && dropped == 0) {
     return;
   }
@@ -105,7 +130,8 @@ void cros_bt_log_init(void) {
     osTimerStart(flush_id, CROS_BT_LOG_FLUSH_MS);
   }
   inited = 1;
-  TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, quiet-on-extra)",
+  TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, quiet-on-extra, "
+           "hold-pause)",
         (unsigned)CROS_BT_LOG_FLUSH_MAX);
 }
 
@@ -129,6 +155,10 @@ void cros_bt_logf(const char *fmt, ...) {
   if (!inited) {
     return;
   }
+  /* Under SCO hold, UART-only — do not fill the SPP ring. */
+  if (cros_sco_cfg_hold()) {
+    return;
+  }
   va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
@@ -148,6 +178,9 @@ void cros_bt_logf_stat(const char *fmt, ...) {
   char buf[CROS_BT_LOG_LINE_MAX];
   va_list ap;
   if (!inited || quiet) {
+    return;
+  }
+  if (cros_sco_cfg_hold()) {
     return;
   }
   va_start(ap, fmt);

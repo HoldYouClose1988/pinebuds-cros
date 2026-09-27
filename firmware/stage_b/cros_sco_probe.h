@@ -1,5 +1,5 @@
 /***************************************************************************
- * v0.3.44 — SCO BiCROS + runtime mix/EQ/poor-side knobs (phone TOTA).
+ * v0.3.46 — SCO BiCROS: split register/open + pause TOTA flush under hold.
  *
  * mSBC 16 kHz peer SCO CROS + HW codec sidetone on GOOD only (local mic →
  * speaker while SCO RX plays). Digital mic TX stays muted on good so local
@@ -19,6 +19,9 @@ void cros_sco_probe_on_peer_ready(void);
 
 /* Re-run asymmetric mute / sidetone after live cfg change (mix / poor). */
 void cros_sco_reapply_shape(void);
+
+/* True while CROS peer-SCO path owns BT — pause TOTA flush / skip IBRT cfg. */
+int cros_sco_cfg_hold(void);
 
 #ifdef __cplusplus
 }

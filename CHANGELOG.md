@@ -6,6 +6,31 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.46] — 2026-09-27
+
+### Firmware — fix Apply / quad-tap dead after CROS (BT wedge)
+- **Ear report (log 221736):** after quad-tap, BiCROS audio worked but
+  **Apply did nothing**, phone `cros set`/`get` got no firmware reply, and
+  **four taps could not disable** — had to pocket the case. Log stopped at
+  `register_link rc=0` (no `open_link` / `OPENED`).
+- **Cause:** `sco_register_link` + `sco_open_link` ran in one BT-thread call;
+  `open_link` needs the HCI event loop between them → BT thread stuck → SPP
+  RX / key path dead. Secondary: `tota_printf` flush on BT during peer SCO.
+- **Fix:**
+  - Split: settle → **register only** → 100 ms gap → **open_link**
+  - `cros_sco_cfg_hold()` — pause TOTA SPP log flush while CROS owns BT
+  - Defer TOTA `cros set`/`get` off SPP RX (10 ms timer); skip IBRT peer sync
+    while hold (local mix/EQ still apply)
+- Expect phone logs to go quiet while CROS is on (UART still traces); Apply
+  and taps must stay responsive.
+
+### Test
+1. Flash both — `init v0.3.46` / `hold+split-open`.
+2. Capture LEFT. Quad-tap. Expect `register_link` then `open gap done` then
+   `open_link` / `OPENED` (not silence after register).
+3. App: change mix → **Apply** — hear change; tap still works.
+4. Quad-tap off without using the case.
+
 ## [0.3.45] — 2026-09-27
 
 ### Firmware — fix BiCROS knob howling (CRITICAL)

@@ -1,5 +1,5 @@
 /***************************************************************************
- * SCO/eSCO bud↔bud probe — OPEN/CLOSED (v0.3.37).
+ * SCO/eSCO bud↔bud probe — OPEN/CLOSED (v0.3.46).
  *
  * No SCO work on enable (0.3.31 early register crashed RIGHT-master+TX).
  * Default (with extra): on peer READY → settle → register+open → auto-close
@@ -7,6 +7,10 @@
  *
  * CROS_SCO_ALONE=1 (0.3.37): skip extra; settle from enable; leave SCO up
  * until disable (prove SCO without extra L2CAP media).
+ *
+ * v0.3.46: never register_link + open_link in the same BT-thread call —
+ * open_link needs the HCI event loop between them (ear log 221736: silence
+ * after register_link; taps/Apply dead until case). Gap timer splits them.
  ***************************************************************************/
 #include "cros_sco_probe.h"
 
@@ -68,12 +72,15 @@ extern void cros_sco_sidetone_set_gain_db(int db);
 #define CROS_SCO_SETTLE_POOR_MS 1500
 /* Alone mode: short settle from enable (no extra READY gate). */
 #define CROS_SCO_ALONE_SETTLE_MS 1500
+/* Gap so BT thread can process HCI between register_link and open_link. */
+#define CROS_SCO_OPEN_GAP_MS 100
 /* With extra: tear SCO down quickly after OPENED (0.3.35 hang). Alone: hold. */
 #define CROS_SCO_PROOF_HOLD_MS 300
 #define CROS_SCO_HCI_REMOTE_USER_TERM 0x13
 
 static osTimerId late_timer;
 static osTimerId settle_timer;
+static osTimerId open_timer;
 static osTimerId proof_timer;
 static uint8_t sco_inited;
 static uint8_t probe_armed;
@@ -85,6 +92,12 @@ static struct bdaddr_t peer_ba;
 static uint8_t have_peer;
 
 static void cros_sco_close_bt(void *a, void *b);
+static void cros_sco_schedule_open(void);
+
+int cros_sco_cfg_hold(void) {
+  /* Pause TOTA SPP flush + skip IBRT cfg sync once open is in flight / up. */
+  return (sco_up || open_issued) ? 1 : 0;
+}
 
 #if CROS_SCO_MEDIA
 static osTimerId voice_timer;
@@ -367,11 +380,18 @@ static void cros_sco_open_bt(void *a, void *b) {
     CROS_LOG(0, "[cros_sco] register_link rc=%d", (int)rc);
     if (rc == 0 || rc == 2) {
       registered = 1;
+    } else {
+      CROS_LOG(0, "[cros_sco] register_link failed — abort open");
+      probe_armed = 0;
+      return;
     }
   }
 
   if (!do_open) {
-    CROS_LOG(0, "[cros_sco] registered only — wait open");
+    /* Return to BT event loop; open_link runs after CROS_SCO_OPEN_GAP_MS. */
+    CROS_LOG(0, "[cros_sco] registered — open in %ums",
+             (unsigned)CROS_SCO_OPEN_GAP_MS);
+    cros_sco_schedule_open();
     return;
   }
 
@@ -403,6 +423,9 @@ static void cros_sco_close_bt(void *a, void *b) {
   (void)b;
   probe_armed = 0;
   open_issued = 0;
+  if (open_timer) {
+    osTimerStop(open_timer);
+  }
 #if CROS_SCO_MEDIA
   cros_sco_voice_stop();
 #endif
@@ -421,14 +444,32 @@ static void cros_sco_close_bt(void *a, void *b) {
   have_peer = 0;
 }
 
+static void cros_sco_schedule_open(void) {
+  if (!open_timer) {
+    return;
+  }
+  osTimerStop(open_timer);
+  osTimerStart(open_timer, CROS_SCO_OPEN_GAP_MS);
+}
+
+static void open_timer_cb(void const *arg) {
+  (void)arg;
+  if (!probe_armed || open_issued) {
+    return;
+  }
+  CROS_LOG(0, "[cros_sco] open gap done — open_link");
+  app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
+}
+
 static void late_timer_cb(void const *arg) {
   (void)arg;
   if (!probe_armed || open_issued) {
     return;
   }
-  CROS_LOG(0, "[cros_sco] late fallback %ums — open (READY never came?)",
+  CROS_LOG(0, "[cros_sco] late fallback %ums — register then open",
            (unsigned)CROS_SCO_LATE_FALLBACK_MS);
-  app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
+  /* Register only; open_bt schedules open after gap. */
+  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
 }
 
 static void settle_timer_cb(void const *arg) {
@@ -436,8 +477,9 @@ static void settle_timer_cb(void const *arg) {
   if (!probe_armed || open_issued) {
     return;
   }
-  CROS_LOG(0, "[cros_sco] settle done — register+open");
-  app_bt_start_custom_function_in_bt_thread(1, 0, (uint32_t)cros_sco_open_bt);
+  CROS_LOG(0, "[cros_sco] settle done — register (open after %ums gap)",
+           (unsigned)CROS_SCO_OPEN_GAP_MS);
+  app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)cros_sco_open_bt);
 }
 
 static void proof_timer_cb(void const *arg) {
@@ -448,6 +490,7 @@ static void proof_timer_cb(void const *arg) {
 
 osTimerDef(CROS_SCO_LATE, late_timer_cb);
 osTimerDef(CROS_SCO_SETTLE, settle_timer_cb);
+osTimerDef(CROS_SCO_OPEN, open_timer_cb);
 osTimerDef(CROS_SCO_PROOF, proof_timer_cb);
 
 void cros_sco_probe_init(void) {
@@ -456,6 +499,9 @@ void cros_sco_probe_init(void) {
   }
   if (!settle_timer) {
     settle_timer = osTimerCreate(osTimer(CROS_SCO_SETTLE), osTimerOnce, NULL);
+  }
+  if (!open_timer) {
+    open_timer = osTimerCreate(osTimer(CROS_SCO_OPEN), osTimerOnce, NULL);
   }
   if (!proof_timer) {
     proof_timer = osTimerCreate(osTimer(CROS_SCO_PROOF), osTimerOnce, NULL);
@@ -498,11 +544,14 @@ void cros_sco_probe_init(void) {
 void cros_sco_probe_on_cros_enable(void) {
   probe_armed = 1;
   open_issued = 0;
-  if (!late_timer || !settle_timer || !proof_timer) {
+  if (!late_timer || !settle_timer || !open_timer || !proof_timer) {
     cros_sco_probe_init();
   }
   if (settle_timer) {
     osTimerStop(settle_timer);
+  }
+  if (open_timer) {
+    osTimerStop(open_timer);
   }
   if (proof_timer) {
     osTimerStop(proof_timer);
@@ -511,9 +560,9 @@ void cros_sco_probe_on_cros_enable(void) {
     osTimerStop(late_timer);
   }
 #if CROS_SCO_ALONE
-  /* No extra READY — settle from enable, then open and hold. */
+  /* No extra READY — settle from enable, then register; open after gap. */
   CROS_LOG(0,
-           "[cros_sco] armed ALONE — settle %ums then open (hold until "
+           "[cros_sco] armed ALONE — settle %ums then register/open (hold until "
            "disable)",
            (unsigned)CROS_SCO_ALONE_SETTLE_MS);
   osTimerStart(settle_timer, CROS_SCO_ALONE_SETTLE_MS);
@@ -559,6 +608,9 @@ void cros_sco_probe_on_cros_disable(void) {
   if (settle_timer) {
     osTimerStop(settle_timer);
   }
+  if (open_timer) {
+    osTimerStop(open_timer);
+  }
   if (proof_timer) {
     osTimerStop(proof_timer);
   }
@@ -573,5 +625,6 @@ void cros_sco_probe_on_cros_enable(void) {}
 void cros_sco_probe_on_cros_disable(void) {}
 void cros_sco_probe_on_peer_ready(void) {}
 void cros_sco_reapply_shape(void) {}
+int cros_sco_cfg_hold(void) { return 0; }
 
 #endif /* CROS_SCO_PROBE */
