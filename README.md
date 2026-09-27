@@ -15,8 +15,8 @@ so that side still sounds natural.
 
 | | Default mapping |
 |--|--|
-| **Poor ear (mic / TX)** | **Right** |
-| **Good ear (speaker / RX + local mix)** | **Left** (also the bud paired to the phone) |
+| **Poor ear (mic / TX)** | **Right or Left (Configurable)** |
+| **Good ear (speaker / RX + local mix)** | **Right or Left (Configurable)** (also the bud paired to the phone) |
 
 Day to day: wear both buds, **quad-tap** to turn BiCROS on or off. After you
 **Apply** knobs once in the Android app, settings live on the buds — no phone
@@ -75,17 +75,6 @@ More architecture: [docs/architecture-cros.md](docs/architecture-cros.md).
 
 BiCROS uses **bud↔bud eSCO** plus the stock **HFP voice player** (same class of
 link iOS uses for calls). That fights how iPhone expects Bluetooth audio to work.
-
-**What we measured (2026-09-27):**
-
-| Setup | Result |
-|-------|--------|
-| Android + Support log, quiet ~20 min | Held — intentional OFF |
-| Android + Support log, white noise ~20 min | Held — intentional OFF |
-| iPhone (store / desk) | Dropped ~**1–11 min**; buds needed case reset |
-| iPhone while BiCROS on | System sounds half-routed to **left pod + phone speaker**, hissy SCO quality |
-
-Mic load / “starvation” is **not** the cause (loud desk test passed on Android).
 
 **Why iOS is harder:** Apple’s accessory guidelines treat HFP eSCO as an
 *exclusive* call-like pipe (speaker + mic dedicated to that link). Music /
