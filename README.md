@@ -55,16 +55,16 @@ HFP) — [Why not iPhone?](#why-not-iphone).
 
 More architecture: [docs/architecture-cros.md](docs/architecture-cros.md).
 
-## Current (v0.3.65 + app 0.4.5)
+## Current (v0.3.66 flash zip = fw 0.3.65 + app 0.4.5)
 
 | | |
 |--|--|
-| **Flash** | **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** |
-| **App** | [CROS Control](android/cros-log/) **0.4.5** — knobs, status, Help FAQ (APK on Releases when published) |
+| **Flash** | **[v0.3.66](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.66)** (same BiCROS bin as v0.3.65) |
+| **App** | [CROS Control](android/cros-log/) **0.4.5** — `CROScontrol.apk` inside the flash zip (sideload) |
 | **Phone** | **Android** (iPhone not supported for daily wear) |
 | **Audio baseline** | v0.3.61 — SCO mSBC BiCROS ≈ **140 ms** |
 | **Day to day** | Quad-tap toggles BiCROS (no app needed after Apply) |
-| **Default ears** | RIGHT = poor (mic), LEFT = good (phone / master) |
+| **Default ears** | RIGHT = poor (mic), LEFT = good (phone / master) — configurable in app |
 
 | Mode | Status |
 |------|--------|
@@ -93,17 +93,19 @@ Android + **v0.3.65**. Details: [docs/iphone.md](docs/iphone.md) ·
 
 ## Quick start (Windows)
 
-1. Download **[pinebuds-cros-v0.3.65.zip](https://github.com/HoldYouClose1988/pinebuds-cros/releases/download/v0.3.65/pinebuds-cros-v0.3.65.zip)** (or from [`flash-packages/`](flash-packages/)).
-2. Backup once, then flash **both** buds:
+1. Download **[pinebuds-cros-v0.3.66.zip](https://github.com/HoldYouClose1988/pinebuds-cros/releases/download/v0.3.66/pinebuds-cros-v0.3.66.zip)** (or from [`flash-packages/`](flash-packages/)).
+2. Unzip, plug the case in USB (need two COM ports — [CH342 driver](http://www.wch-ic.com/downloads/CH343SER_EXE.html) if missing).
+3. Run the guided installer (prints flashing instructions + menu):
 
 ```powershell
-.\backup.ps1 -Port0 COM5 -Port1 COM6
-.\flash.ps1  -Port0 COM5 -Port1 COM6
+powershell -ExecutionPolicy Bypass -File .\Install.ps1
 ```
 
-3. Seat both in the case ~30–60 s so TWS re-pairs.
-4. Pair / use with an **Android** phone. Wear both; **quad-tap** to toggle BiCROS.
-5. Optional: install CROS Control for knobs and Help.
+   Choose **Backup THEN flash** the first time. (Advanced: `.\backup.ps1` / `.\flash.ps1` — COM ports optional when exactly two are detected.)
+
+4. Seat both buds in the case ~30–60 s so TWS re-pairs.
+5. Pair / use with an **Android** phone. Wear both; **quad-tap** to toggle BiCROS.
+6. Sideload **`CROScontrol.apk`** from the zip for knobs and Help (allow unknown apps).
 
 Full flash notes: [docs/windows-flash.md](docs/windows-flash.md).
 
@@ -121,14 +123,15 @@ See [docs/development.md](docs/development.md). Doc index: [docs/](docs/).
 
 | Path | Purpose |
 |------|---------|
-| `firmware/stage_b/` | BiCROS firmware sources (**v0.3.65** Android product) |
-| `android/cros-log/` | CROS Control app |
+| `firmware/stage_b/` | BiCROS firmware sources (**v0.3.65** Android product bin) |
+| `android/cros-log/` | CROS Control app source |
+| `android/CROScontrol.apk` | Sideload APK (also inside the flash zip) |
 | `flash-packages/` | Current + audio-baseline zips |
 | `docs/` | Docs; bring-up journals in `docs/archive/` |
 | `docs/iphone.md` | iPhone findings (unsupported) |
 | `patches/` | OpenPineBuds integration patches |
 | `CHANGELOG.md` | Version history |
-| GitHub Releases | Flash zips + app APK when published |
+| GitHub Releases | Flash zips (firmware + APK + Install.ps1) |
 
 ## License
 

@@ -40,9 +40,9 @@ For **community** firmware: program **APP only** (untick Factory mode). For **fa
 
 **Preferred:** download a flash package from
 [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases)
-(bin + PowerShell helpers + `FLASH.md`):
+(bin + guided `Install.ps1` + APK + `FLASH.md`):
 
-- [pinebuds-cros-v0.3.65.zip](../flash-packages/pinebuds-cros-v0.3.65.zip) — **current**
+- [pinebuds-cros-v0.3.66.zip](../flash-packages/pinebuds-cros-v0.3.66.zip) — **current** (fw 0.3.65 + app 0.4.5)
 - [pinebuds-cros-v0.3.61.zip](../flash-packages/pinebuds-cros-v0.3.61.zip) — audio baseline
 - Older builds: Releases only (not kept in-tree)
 
@@ -50,12 +50,26 @@ Or build on WSL2/Linux/Docker, then run `./scripts/package-flash.sh`.
 
 Do **not** expect the Cloud Agent to reach your COM ports.
 
+## Easiest path — `Install.ps1`
+
+Unzip the flash package and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Install.ps1
+```
+
+The script prints flashing instructions, detects COM ports, and offers
+**Backup**, **Flash**, or **Backup THEN flash**. Prefer option 3 the first time.
+
 ## Backup before first custom flash (strongly recommended)
 
 BES2300 bootloader Sync only works if the bud **resets after** bestool starts. Per bud: out (LED on) → start bestool → **immediately reseat**. Details: [bestool-windows.md](bestool-windows.md).
 
 ```powershell
-# From unzipped flash package (prompts Sync order for each port)
+# Guided (recommended)
+.\Install.ps1
+
+# Or direct — ports optional if exactly two COM devices are present
 .\backup.ps1 -Port0 COM5 -Port1 COM6
 ```
 
@@ -72,11 +86,12 @@ Keep those files somewhere safe. Factory images are also on the PINE64 wiki if a
 ## Flash community firmware (`bestool`)
 
 1. Case plugged into USB; note both COM ports.
-2. Flash **each** port with Sync order (out → start → reseat). Same image to both:
+2. Prefer **`Install.ps1`** (menu). Or flash each port with Sync order (out → start → reseat):
 
 ```powershell
 .\flash.ps1 -Port0 COM5 -Port1 COM6
 # (from an unzipped flash-packages zip; BinPath defaults to .\open_source.bin)
+# Omit -Port0/-Port1 to auto-detect when exactly two COM ports exist.
 ```
 
 Manual equivalent:
@@ -87,6 +102,7 @@ bestool.exe write-image open_source.bin --port COM6
 ```
 
 3. After success: leave buds in case ~30–60s for TWS re-pair (LEDs / behavior per upstream docs).
+4. Sideload **`CROScontrol.apk`** from the zip onto Android (unknown apps → Install).
 
 ## Lost TWS link after a flash (reset / re-pair)
 

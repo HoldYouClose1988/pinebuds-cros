@@ -6,6 +6,17 @@ Source: [github.com/Ralim/bestool](https://github.com/Ralim/bestool) (MIT tool +
 
 **Flash packages ship `bestool.exe` in the zip.** You do **not** need Rust unless you want to rebuild it yourself.
 
+## Easiest: `Install.ps1`
+
+From the unzipped flash package:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Install.ps1
+```
+
+Prints flashing instructions, detects COM ports, and menus Backup / Flash /
+Backup-then-flash / APK help. Prefer this over calling `flash.ps1` directly.
+
 ## Prerequisites
 
 1. **WCH CH342 driver** — plug the case in USB-C; Device Manager → **Ports (COM & LPT)** should show **two** COM ports (e.g. COM5 and COM6).  

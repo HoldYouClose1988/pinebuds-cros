@@ -22,6 +22,8 @@ CHANGELOG_FILE="$ROOT/CHANGELOG.md"
 BESTOOL_DOC="$ROOT/docs/bestool-windows.md"
 BESTOOL_EXE="${BESTOOL_EXE:-$ROOT/tools/windows/bestool.exe}"
 NOTICE_FILE="$ROOT/NOTICE"
+APK_SRC="${APK_SRC:-$ROOT/android/CROScontrol.apk}"
+INSTALL_PS1="$ROOT/scripts/Install.ps1"
 
 bump_semver() {
   local ver="$1" part="$2"
@@ -94,12 +96,25 @@ mkdir -p "$PKG" "$OUT_DIR"
 cp -f "$BIN_SRC" "$PKG/open_source.bin"
 cp -f "$ROOT/scripts/flash.ps1" "$PKG/flash.ps1"
 cp -f "$ROOT/scripts/backup.ps1" "$PKG/backup.ps1"
+cp -f "$INSTALL_PS1" "$PKG/Install.ps1"
 cp -f "$VERSION_FILE" "$PKG/VERSION"
 cp -f "$CHANGELOG_FILE" "$PKG/CHANGELOG.md"
 cp -f "$BESTOOL_DOC" "$PKG/BESTOOL.md"
 cp -f "$BESTOOL_EXE" "$PKG/bestool.exe"
 if [[ -f "$NOTICE_FILE" ]]; then
   cp -f "$NOTICE_FILE" "$PKG/NOTICE"
+fi
+
+APK_INCLUDED=0
+APK_SHA256=""
+APK_BYTES=0
+if [[ -f "$APK_SRC" ]]; then
+  cp -f "$APK_SRC" "$PKG/CROScontrol.apk"
+  APK_INCLUDED=1
+  APK_SHA256="$(sha256sum "$PKG/CROScontrol.apk" | awk '{print $1}')"
+  APK_BYTES="$(wc -c <"$PKG/CROScontrol.apk" | tr -d ' ')"
+else
+  echo "WARN: APK not found at $APK_SRC — packaging without CROScontrol.apk" >&2
 fi
 
 SIZE="$(wc -c <"$PKG/open_source.bin" | tr -d ' ')"
@@ -119,6 +134,11 @@ body = (m.group(1) + m.group(2)).strip() + "\n" if m else f"## [{ver}]\n(no chan
 open(out, "w", encoding="utf-8").write(body)
 PY
 
+MANIFEST_FILES="open_source.bin bestool.exe Install.ps1 flash.ps1 backup.ps1 FLASH.md BESTOOL.md CHANGELOG.md RELEASE_NOTES.txt VERSION MANIFEST.txt SHA256SUMS NOTICE"
+if [[ "$APK_INCLUDED" == "1" ]]; then
+  MANIFEST_FILES="$MANIFEST_FILES CROScontrol.apk"
+fi
+
 cat >"$PKG/MANIFEST.txt" <<EOF
 version:     $VERSION
 name:        $ITER_NAME
@@ -134,26 +154,67 @@ bin_sha256:  $SHA256
 bestool:     bestool.exe
 bestool_bytes: $BESTOOL_BYTES
 bestool_sha256: $BESTOOL_SHA256
+apk:         $([[ "$APK_INCLUDED" == "1" ]] && echo CROScontrol.apk || echo "(not packaged)")
+apk_bytes:   $APK_BYTES
+apk_sha256:  $APK_SHA256
 repo:        (clone of this project; no absolute owner URL embedded)
-files:       open_source.bin bestool.exe flash.ps1 backup.ps1 FLASH.md BESTOOL.md CHANGELOG.md RELEASE_NOTES.txt VERSION MANIFEST.txt SHA256SUMS NOTICE
+files:       $MANIFEST_FILES
 EOF
 
-cat >"$PKG/SHA256SUMS" <<EOF
-$SHA256  open_source.bin
-$BESTOOL_SHA256  bestool.exe
-EOF
+{
+  echo "$SHA256  open_source.bin"
+  echo "$BESTOOL_SHA256  bestool.exe"
+  if [[ "$APK_INCLUDED" == "1" ]]; then
+    echo "$APK_SHA256  CROScontrol.apk"
+  fi
+} >"$PKG/SHA256SUMS"
+
+APK_ROW=""
+APK_SECTION=""
+if [[ "$APK_INCLUDED" == "1" ]]; then
+  APK_ROW="| \`CROScontrol.apk\` | Android **CROS Control** app (sideload — not on Play Store) |"
+  APK_SECTION="$(cat <<'APKEOF'
+## Install the Android app (sideload)
+
+1. Copy `CROScontrol.apk` from this folder to your **Android** phone.
+2. On the phone, allow *Install unknown apps* for Files / Chrome / your file manager.
+3. Open the APK → Install.
+4. Pair **PineBuds Pro** in Bluetooth settings, then open **CROS Control** → Connect → **Apply** knobs once.
+5. After Apply, settings live on the buds — quad-tap works without the app open.
+
+App source (build yourself if you prefer): `android/cros-log/` on GitHub.
+
+**iPhone is not supported** for day-to-day BiCROS.
+APKEOF
+)"
+fi
 
 cat >"$PKG/FLASH.md" <<EOF
-# PineBuds Pro flash package **v$VERSION** ($STAGE)
+# PineBuds Pro BiCROS flash package **v$VERSION** ($STAGE)
 
-DIY / own-risk. **Experimental CROS — not a hearing aid or PPE.** Keep a stock backup.
+DIY / own-risk. **Experimental BiCROS — not a hearing aid or PPE.** Keep a stock backup.
 
-Start here → **\`BESTOOL.md\`** (flasher) and **\`RELEASE_NOTES.txt\`** (this version).
+## Start here (easiest)
+
+1. Unzip this **entire** folder.
+2. Plug the charging case into USB (need **two** COM ports — install the [WCH CH342 driver](http://www.wch-ic.com/downloads/CH343SER_EXE.html) if missing).
+3. Right-click \`Install.ps1\` → **Run with PowerShell**  
+   (or: \`powershell -ExecutionPolicy Bypass -File .\\Install.ps1\`).
+4. Follow the on-screen menu: **Backup THEN flash** the first time.
+5. Leave both buds in the case **30–60 s** for TWS re-pair.
+6. Pair an **Android** phone. **Quad-tap** toggles BiCROS.
+7. Sideload \`CROScontrol.apk\` for knobs / Help (optional but recommended).
+
+If Windows blocks the script: \`Set-ExecutionPolicy -Scope Process Bypass\` then re-run \`Install.ps1\`.  
+If Defender quarantines \`bestool.exe\`, restore/allow it (unsigned Rust binary).
+
+Also see **\`BESTOOL.md\`** (Sync detail) and **\`RELEASE_NOTES.txt\`** (this version).
 
 ## What’s in this zip
 
 | File | Purpose |
 |------|---------|
+| \`Install.ps1\` | **Guided installer** — instructions + backup/flash menu + COM detect |
 | \`VERSION\` | Package version (\`$VERSION\`) |
 | \`CHANGELOG.md\` | Full project changelog |
 | \`RELEASE_NOTES.txt\` | Notes for **this** version only |
@@ -161,44 +222,35 @@ Start here → **\`BESTOOL.md\`** (flasher) and **\`RELEASE_NOTES.txt\`** (this 
 | \`bestool.exe\` | Windows flasher ([Ralim/bestool](https://github.com/Ralim/bestool), MIT + BES programmer blob) |
 | \`NOTICE\` | Third-party / SDK notices |
 | \`open_source.bin\` | Firmware image (flash to **both** buds) |
-| \`flash.ps1\` | Write image via \`bestool\` |
+| \`flash.ps1\` | Write image via \`bestool\` (auto-detects COM if omitted) |
 | \`backup.ps1\` | Read stock images before first custom flash |
+$APK_ROW
 | \`MANIFEST.txt\` | Build id, git sha, checksum |
-| \`SHA256SUMS\` | SHA-256 of bin + bestool |
+| \`SHA256SUMS\` | SHA-256 of bin + bestool$([[ "$APK_INCLUDED" == "1" ]] && echo " + APK") |
 
-## One-time Windows setup
+## Critical: Sync order (every bud)
 
-1. Install WCH **CH342** driver → Device Manager shows **two** COM ports.
-2. Unzip this folder — \`bestool.exe\` is already included (no Rust build needed).
-3. Optional restore tool: PINE64 \`dld_main\` + [factory images](https://wiki.pine64.org/wiki/PineBuds_Pro#Firmware_images).
+BES2300 only enters the programmer if Sync is ACKed **during reset**:
 
-If Windows Defender quarantines \`bestool.exe\`, restore it or allow the folder (unsigned Rust binary).
+1. Bud **OUT** (LED awake).
+2. Press Enter in the script (Sync starts).
+3. **Immediately reseat** that bud.
 
-## Backup once (before any custom flash)
+Do **one** bud at a time. Hang on \`Sent message type Sync\` → Ctrl+C and retry.
+
+## Manual backup / flash (advanced)
 
 \`\`\`powershell
-# Replace COM5 / COM6 with your ports
+# Ports optional if exactly two COM devices are present
 .\\backup.ps1 -Port0 COM5 -Port1 COM6
+.\\flash.ps1  -Port0 COM5 -Port1 COM6
 \`\`\`
 
-(\`flash.ps1\` / \`backup.ps1\` auto-find \`.\\bestool.exe\`.)
+(\`BinPath\` defaults to \`.\\open_source.bin\`. Scripts auto-find \`.\\bestool.exe\`.)
 
 Keep \`backups\\*.bin\` somewhere safe.
 
-## Flash this version (v$VERSION)
-
-1. Unzip this folder.
-2. Seat both buds; plug the case in USB.
-3. Wake: remove buds ~3s and reseat, **or** long-hold rear button in-case (~5s).
-4. Run:
-
-\`\`\`powershell
-.\\flash.ps1 -Port0 COM5 -Port1 COM6
-\`\`\`
-
-(\`BinPath\` defaults to \`.\\open_source.bin\`.)
-
-5. Leave buds in case ~30–60s for TWS re-pair.
+$APK_SECTION
 
 ## Lost TWS link / no quad-tap
 
@@ -207,38 +259,26 @@ Quad-tap needs the **bud↔bud** link. If one LED stays in pairing flash:
 1. Forget PineBuds Pro on the phone.
 2. Both in case + USB: hold **case RESET ~5s**, wait 30–60s (purple LED not required).
 3. If still unpaired: power each off (hold ~5s to red), both red+blue → tap 5×, seat 30s+.
-4. Last resort: factory restore via \`dld_main\`, confirm stock TWS, re-flash this zip.
+4. Last resort: factory restore via PINE64 \`dld_main\`, confirm stock TWS, re-flash this zip.
 
-## Experimental CROS test (this build)
+## Experimental BiCROS test (this build)
 
 After both buds re-pair (~30s):
 
-- Wear **both** buds. **Quad-tap** either bud to toggle CROS (needs TWS link).
-- Default: **RIGHT = mic (poor / TX)**, **LEFT = speaker (good / RX)**.
-- Speak / scratch near the **right** outer face — hear it in the **left** ear.
+- Wear **both** buds. **Quad-tap** either bud to toggle BiCROS (needs TWS link).
+- Default: **RIGHT = mic (poor / TX)**, **LEFT = speaker (good / RX)** — change poor side in the app.
+- Speak / scratch near the poor outer face — hear it in the good ear.
 - Path: peer SCO mSBC BiCROS (~140 ms) + local good-ear sidetone mix.
-- **Turning CROS off/on can take ~15–40 s.** That wait is intentional (hacked
-  peer-SCO teardown on a closed-source stack). Prefer reliability over a fast
-  toggle — do not case-reset mid-wait unless it truly wedges.
-- **Status tones (v0.3.59+):** connect-like = BiCROS up; disconnect-like = off
-  requested; pairing-success-like = safe to re-enable; warning = not yet;
-  pairing-fail-like = open failed. ENABLED fires only after OPENED (not at tap).
-- Avoid phone music while testing (A2DP fights the CROS stream).
-
-**Phone logs (TOTA=1):** open \`android/cros-log\` → Connect → **Capture logs** on.
-Expect handshake lines then \`[cros_log] quiet=1\` — periodic stats are suppressed on
-purpose so SPP does not kill extra audio. Transitions (READY / DISABLE) still show.
-Share log from the app when done.
+- **Turning BiCROS off/on can take ~15–40 s.** That wait is intentional — do not
+  case-reset mid-wait unless it truly wedges.
+- Avoid phone music while testing (A2DP fights the BiCROS stream).
+- **Disable BiCROS before taking a phone call.**
 
 DIY / own-risk — **not** a hearing aid.
 
 ## Flash budget
 
 On-chip flash has limited erase cycles (~500). Flash only when you mean to.
-
-## Feedback
-
-If you test a build, note: left/right master, worn vs desk, chop y/n, delay feel, Capture on/off, version from \`init v0.x.x\` log line.
 EOF
 
 (
@@ -276,7 +316,8 @@ cp -f "$OUT_DIR/CURRENT.txt" "$OUT_DIR/LATEST.txt"
     echo "| [pinebuds-cros-v0.3.61.zip](./pinebuds-cros-v0.3.61.zip) | **Audio baseline** |"
   fi
   echo
-  echo "Each zip includes \`bestool.exe\`, flash scripts, \`CHANGELOG.md\`, and \`RELEASE_NOTES.txt\`."
+  echo "Each zip includes \`Install.ps1\` (guided flasher), \`bestool.exe\`, \`CROScontrol.apk\`,"
+  echo "flash scripts, \`CHANGELOG.md\`, and \`RELEASE_NOTES.txt\`."
   echo
   echo "**Older builds:** [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases) (not kept in this folder)."
   echo

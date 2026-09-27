@@ -11,8 +11,29 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases).
 Bring-up journals live under [`docs/archive/`](docs/archive/).
 
-**Product = Android + v0.3.65.** iPhone is not supported for daily wear —
-[docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
+**Product = Android + v0.3.65 firmware** (current flash zip **v0.3.66** bundles
+that bin + CROS Control APK + guided installer). iPhone is not supported for
+daily wear — [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
+
+## [0.3.66] — 2026-09-27
+
+### Release package — guided flasher + CROS Control APK
+- **Same Android firmware binary as v0.3.65** (`fw=` still reports `0.3.65`).
+- **`Install.ps1`** guided Windows installer: on-screen flashing instructions,
+  COM auto-detect, Backup / Flash / Backup-then-flash menu, APK sideload help.
+- **`flash.ps1` / `backup.ps1`**: COM ports optional (auto-detect when exactly
+  two serial ports are present); clearer Sync prompts.
+- Bundles **`CROScontrol.apk`** (CROS Control **0.4.5**) in the flash zip —
+  sideload on Android (not on Play Store). App source remains under
+  `android/cros-log/`.
+- `FLASH.md` rewritten around Install.ps1 + APK steps.
+
+### Test
+1. Unzip `pinebuds-cros-v0.3.66.zip` on Windows → run `Install.ps1`.
+2. Backup THEN flash both buds; seat 30–60s; pair Android; quad-tap BiCROS.
+3. Sideload `CROScontrol.apk` → Connect → Apply once.
+
+Flash zip: [`flash-packages/pinebuds-cros-v0.3.66.zip`](flash-packages/pinebuds-cros-v0.3.66.zip).
 
 ## [0.4.5] — app — disclaimer + call FAQ
 
