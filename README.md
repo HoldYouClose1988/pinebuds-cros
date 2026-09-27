@@ -13,6 +13,8 @@ earbud’s mic is relayed to the **good-side** earbud’s speaker so you hear wh
 happening on the “deaf” side, while the good ear’s own mic is mixed in locally
 so that side still sounds natural.
 
+**ANDROID APK HAS TO BE SIDELOADED. FULL ANDROID APP SOURCE IS IN GITHUB UNDER ANDROID FOLDER**
+
 | | Default mapping |
 |--|--|
 | **Poor ear (mic / TX)** | **Right or Left (Configurable)** |
