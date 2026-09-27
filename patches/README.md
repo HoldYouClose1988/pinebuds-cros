@@ -20,6 +20,7 @@ Keep patches minimal and feature-scoped.
 | `0011-cros-sco-eq-hook.patch` | SCO playback post-handler → soft bass/treble EQ |
 | `0012-cros-ibrt-cfg-cmd.patch` | Peer sync `APP_IBRT_CUSTOM_CMD_CROS_CFG` |
 | `0013-cros-absvol-to-sco.patch` | While BiCROS on, AVRCP Absolute Volume → SCO DAC (`cros_cfg_on_abs_volume`) |
+| `0014-cros-sco-btevent-teardown.patch` | `BTEVENT_SCO_DISCONNECT` → `cros_sco_on_hci_disconnect` (peer SCO teardown) |
 
 Sources:
 - Stage A: `firmware/stage_a/` → `apps/cros_loopback/`

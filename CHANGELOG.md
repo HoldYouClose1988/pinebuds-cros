@@ -6,6 +6,31 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.58] — 2026-09-27
+
+### Firmware — reliable BiCROS re-enable (BTEVENT + cool-down)
+- **Ear (074125 / 074942FAIL):** teardown almost never got
+  `sco_notify(CLOSED)`; always **hard-timeout**. Real drop was
+  `BTEVENT_SCO_DISCONNECT` ~20 s later (`err=0x22`). Immediate deferred
+  ENABLE after force teardown → `open_link rc=0` but **OPENED missing**.
+  Waiting ~1 min (or case reset) worked ~30% of the time.
+- **Fix:**
+  - Soft close ×3, then **await BTEVENT** up to 20 s before unregister
+  - `BTEVENT_SCO_DISCONNECT` (peer-filtered) finishes teardown as clean
+    `DISABLE (BTEVENT)` and may run deferred ENABLE
+  - Forced hard-timeout → **10 s cool-down** before deferred ENABLE
+  - Rearm settle 3 s
+- AbsVol DAC-vs-loudness remains backlog.
+
+### Test
+1. Flash both — `init v0.3.58`.
+2. Quad-tap on → BiCROS. Quad-tap off — expect either
+   `BTEVENT disconnect → teardown` / `DISABLE (BTEVENT)` **or**
+   `await BTEVENT` then that; prefer not only `hard-timeout`.
+3. Quad-tap on again **soon** (even during close) — should eventually
+   `OPENED` without case. Repeat on/off several times.
+4. If force path: `cool … then deferred ENABLE` before rearm.
+
 ## [0.3.57] — 2026-09-27
 
 ### Firmware — AbsVol rocker actually moves BiCROS DAC (hfp_vol stick)

@@ -16,6 +16,8 @@ void cros_sco_probe_init(void);
 void cros_sco_probe_on_cros_enable(void);
 void cros_sco_probe_on_cros_disable(void);
 void cros_sco_probe_on_peer_ready(void);
+/* HCI BTEVENT_SCO_DISCONNECT — rem6 may be NULL; peer-filtered. */
+void cros_sco_on_hci_disconnect(uint8_t err, const uint8_t *rem6);
 
 /* Re-run asymmetric mute / sidetone after live cfg change (mix / poor). */
 void cros_sco_reapply_shape(void);

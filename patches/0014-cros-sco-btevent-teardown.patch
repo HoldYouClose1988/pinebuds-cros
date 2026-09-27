@@ -1,0 +1,22 @@
+diff --git a/services/bt_app/app_bt.cpp b/services/bt_app/app_bt.cpp
+--- a/services/bt_app/app_bt.cpp
++++ b/services/bt_app/app_bt.cpp
+@@ -40,6 +40,7 @@
+ #include "l2cap_api.h"
+ #if defined(CROS_STAGE_B)
+ #include "cros_bt_log.h"
++#include "cros_sco_probe.h"
+ #endif
+ #include "me_api.h"
+ #include "mei_api.h"
+@@ -1580,6 +1581,10 @@
+                sco_bd ? sco_bd->address[0] : 0, sco_bd ? sco_bd->address[1] : 0,
+                sco_bd ? sco_bd->address[2] : 0, sco_bd ? sco_bd->address[3] : 0,
+                sco_bd ? sco_bd->address[4] : 0, sco_bd ? sco_bd->address[5] : 0);
++      if (sco_evt == BTIF_BTEVENT_SCO_DISCONNECT) {
++        cros_sco_on_hci_disconnect(
++            sco_err, sco_bd ? sco_bd->address : (const uint8_t *)0);
++      }
+     }
+   }
+ #endif
