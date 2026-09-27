@@ -736,7 +736,7 @@ void cros_tws_init(void) {
   cros_lat_reset();
 #if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
 #if defined(CROS_SCO_MEDIA) && CROS_SCO_MEDIA
-  CROS_LOG(1, "[cros_tws] init v0.3.46 SCO-BiCROS-hold+split-open (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.47 SCO-BiCROS-cfg-ack (poor_cfg=%s)",
         cros_cfg_poor_is_right() ? "RIGHT" : "LEFT");
 #else
   CROS_LOG(1, "[cros_tws] init v0.3.38 SCO-alone-silence+guard (poor_cfg=%s)",

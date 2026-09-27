@@ -5,8 +5,8 @@
  * capped per tick, and only when the TOTA SPP path is up. Never call
  * tota_printf (osSemaphoreWait forever) from a general-purpose OS timer.
  *
- * v0.3.46: while cros_sco_cfg_hold(), do not flush to SPP — tota_printf on
- * the BT thread during peer SCO wedges taps/Apply (ear log 221736).
+ * v0.3.46: while cros_sco_cfg_hold(), do not flush the ring to SPP.
+ * v0.3.47: one ack slot still flushes under hold (`[cros_cfg] set` / `get`).
  ***************************************************************************/
 #include "cros_bt_log.h"
 
@@ -42,9 +42,13 @@ static volatile uint8_t dropped;
 static volatile uint8_t flush_pending;
 static volatile uint8_t quiet;
 static uint8_t inited;
+/* Single Apply/Get confirmation — survives SCO hold (ring does not). */
+static char ack_line[CROS_BT_LOG_LINE_MAX];
+static volatile uint8_t ack_pending;
 
 static void cros_bt_log_timer(void const *arg);
 static void cros_bt_log_flush_bt(void *a, void *b);
+static void cros_bt_log_kick_flush(void);
 
 osTimerDef(CROS_BT_LOG_FLUSH, cros_bt_log_timer);
 static osTimerId flush_id;
@@ -52,6 +56,15 @@ static osTimerId flush_id;
 static void cros_bt_log_drain_ring(void) {
   tail = head;
   dropped = 0;
+}
+
+static void cros_bt_log_kick_flush(void) {
+  if (!inited || flush_pending) {
+    return;
+  }
+  flush_pending = 1;
+  app_bt_start_custom_function_in_bt_thread(0, 0,
+                                            (uint32_t)cros_bt_log_flush_bt);
 }
 
 static void cros_bt_log_flush_bt(void *a, void *b) {
@@ -68,7 +81,13 @@ static void cros_bt_log_flush_bt(void *a, void *b) {
     return;
   }
 
-  /* Peer SCO owns the BT thread budget — never block on SPP TX here. */
+  /* Always try the ack slot first (Apply/Get), even under SCO hold. */
+  if (ack_pending) {
+    ack_pending = 0;
+    tota_printf("%s", ack_line);
+  }
+
+  /* Peer SCO — drop ring backlog; do not multi-line SPP spam on BT. */
   if (cros_sco_cfg_hold()) {
     cros_bt_log_drain_ring();
     flush_pending = 0;
@@ -100,6 +119,10 @@ static void cros_bt_log_timer(void const *arg) {
   if (!inited) {
     return;
   }
+  if (ack_pending) {
+    cros_bt_log_kick_flush();
+    return;
+  }
   if (cros_sco_cfg_hold()) {
     /* Drop tee backlog while SCO hold — UART TRACE already has the lines. */
     if (tail != head || dropped) {
@@ -111,12 +134,7 @@ static void cros_bt_log_timer(void const *arg) {
   if (tail == head && dropped == 0) {
     return;
   }
-  if (flush_pending) {
-    return;
-  }
-  flush_pending = 1;
-  app_bt_start_custom_function_in_bt_thread(0, 0,
-                                            (uint32_t)cros_bt_log_flush_bt);
+  cros_bt_log_kick_flush();
 }
 
 void cros_bt_log_init(void) {
@@ -125,13 +143,15 @@ void cros_bt_log_init(void) {
   }
   head = tail = dropped = flush_pending = 0;
   quiet = 0;
+  ack_pending = 0;
+  ack_line[0] = '\0';
   flush_id = osTimerCreate(osTimer(CROS_BT_LOG_FLUSH), osTimerPeriodic, NULL);
   if (flush_id) {
     osTimerStart(flush_id, CROS_BT_LOG_FLUSH_MS);
   }
   inited = 1;
   TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, quiet-on-extra, "
-           "hold-pause)",
+           "hold-pause+ack)",
         (unsigned)CROS_BT_LOG_FLUSH_MAX);
 }
 
@@ -196,6 +216,19 @@ void cros_bt_logf_stat(const char *fmt, ...) {
   strncpy(ring[head].line, buf, CROS_BT_LOG_LINE_MAX - 1);
   ring[head].line[CROS_BT_LOG_LINE_MAX - 1] = '\0';
   head = next;
+}
+
+void cros_bt_logf_ack(const char *fmt, ...) {
+  va_list ap;
+  if (!inited) {
+    return;
+  }
+  va_start(ap, fmt);
+  vsnprintf(ack_line, sizeof(ack_line), fmt, ap);
+  va_end(ap);
+  ack_line[sizeof(ack_line) - 1] = '\0';
+  ack_pending = 1;
+  cros_bt_log_kick_flush();
 }
 
 #else /* !TEST_OVER_THE_AIR_ENANBLED */

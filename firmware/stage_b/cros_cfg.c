@@ -113,7 +113,7 @@ static void refresh_eq_gain(void) {
 }
 
 static void log_status(const char *why) {
-  CROS_LOG(0,
+  CROS_LOG_ACK(0,
            "[cros_cfg] %s poor=%s mix=%ddB bass=%d treble=%d role=%s", why,
            g_poor_is_right ? "RIGHT" : "LEFT", (int)g_mix_db, (int)g_bass_db,
            (int)g_treble_db, cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");

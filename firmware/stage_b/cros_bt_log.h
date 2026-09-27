@@ -13,6 +13,9 @@
  * Quiet mode (v0.3.16): while extra media is live, periodic stats must not
  * tee to SPP — that traffic kills the extra link. CROS_LOG always tees
  * (state transitions); CROS_LOG_STAT tees only when not quiet.
+ *
+ * Ack (v0.3.47): CROS_LOG_ACK always tees one line even under SCO hold so
+ * the phone sees `[cros_cfg] set` / `get` after Apply.
  ***************************************************************************/
 #ifndef CROS_BT_LOG_H
 #define CROS_BT_LOG_H
@@ -31,6 +34,8 @@ int cros_bt_log_is_quiet(void);
 #ifdef TEST_OVER_THE_AIR_ENANBLED
 void cros_bt_logf(const char *fmt, ...);
 void cros_bt_logf_stat(const char *fmt, ...);
+/* One-line Apply/Get confirmation — tees even while SCO hold pauses the ring. */
+void cros_bt_logf_ack(const char *fmt, ...);
 #define CROS_LOG(n, fmt, ...)                                                  \
   do {                                                                         \
     TRACE((n), (fmt), ##__VA_ARGS__);                                          \
@@ -41,11 +46,18 @@ void cros_bt_logf_stat(const char *fmt, ...);
     TRACE((n), (fmt), ##__VA_ARGS__);                                          \
     cros_bt_logf_stat((fmt), ##__VA_ARGS__);                                   \
   } while (0)
+#define CROS_LOG_ACK(n, fmt, ...)                                              \
+  do {                                                                         \
+    TRACE((n), (fmt), ##__VA_ARGS__);                                          \
+    cros_bt_logf_ack((fmt), ##__VA_ARGS__);                                    \
+  } while (0)
 #else
 #define cros_bt_logf(...) ((void)0)
 #define cros_bt_logf_stat(...) ((void)0)
+#define cros_bt_logf_ack(...) ((void)0)
 #define CROS_LOG TRACE
 #define CROS_LOG_STAT TRACE
+#define CROS_LOG_ACK TRACE
 #define cros_bt_log_set_quiet(q) ((void)(q))
 #define cros_bt_log_is_quiet() (0)
 #endif

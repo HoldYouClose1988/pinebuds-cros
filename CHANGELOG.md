@@ -6,6 +6,20 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.47] — 2026-09-27
+
+### Firmware — Apply/Get confirmation on phone during CROS
+- **0.3.46** paused the TOTA log tee while SCO hold — general spam stays off,
+  but that also hid `[cros_cfg] set` / `get` after Apply.
+- **Fix:** one-line **ack** slot (`CROS_LOG_ACK`) still flushes under hold so
+  the phone shows e.g. `[cros_cfg] set poor=RIGHT mix=-18dB …` after Apply.
+  Other CROS_LOG lines remain UART-only while SCO is up.
+
+### Test
+1. Flash both — `init v0.3.47`.
+2. Quad-tap CROS; Apply mix — expect phone log `[cros_cfg] set … mix=…`.
+3. Get — expect `[cros_cfg] get …`. Taps still work.
+
 ## [0.3.46] — 2026-09-27
 
 ### Firmware — fix Apply / quad-tap dead after CROS (BT wedge)
