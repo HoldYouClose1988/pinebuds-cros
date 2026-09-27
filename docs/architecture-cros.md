@@ -11,7 +11,7 @@
 
 Still **not** a clinical product. Missing vs this design doc: BiCROS mix, media ducking, user-selectable poor side (with role guard below), ≪100 ms glass-to-glass, prescribed gain/limiting UX.
 
-**Latency dead-ends and next ideas:** [latency-and-next.md](latency-and-next.md).
+**Latency dead-ends (archived):** [archive/latency-and-next.md](archive/latency-and-next.md).
 
 ## Hard constraint (v0.3.33+ / must keep for v1.0)
 
@@ -116,7 +116,7 @@ ANC binary blob remains opaque; CROS should **not** depend on finished ANC. FF A
 |-------|--------|
 | 1. Mode plumbing (NV/touch/TWS sync) | Done (quad-tap + peer MODE cmd; poor side compile-time default RIGHT; master×TX refuse) |
 | 2. Loopback prototype (Stage A) | Done earlier; optional bring-up |
-| 3. Cross-bud audio + measure latency | **Done on extra L2CAP** (~330 ms start→start); further cuts blocked on burstiness — see [latency-and-next.md](latency-and-next.md) |
+| 3. Cross-bud audio + measure latency | **Done** — product path is SCO mSBC ~140 ms; extra L2CAP freeze ~330 ms — see [archive/latency-and-next.md](archive/latency-and-next.md) |
 | 4. Good-ear mix with A2DP ducking | Not started |
 | 5. BiCROS / presets / power polish | Not started |
 | 6. User-selectable poor side | Not started — **requires** master×TX guard (see Hard constraint) |

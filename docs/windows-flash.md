@@ -38,12 +38,15 @@ For **community** firmware: program **APP only** (untick Factory mode). For **fa
 
 ## Get a firmware image
 
-**Preferred:** download a flash package from GitHub (bin + PowerShell helpers + `FLASH.md`):
+**Preferred:** download a flash package from
+[GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases)
+(bin + PowerShell helpers + `FLASH.md`):
 
-- [pinebuds-cros-v0.3.43.zip](../flash-packages/pinebuds-cros-v0.3.43.zip) — current iteration (versioned; no LATEST alias)  
-- [flash-packages/](../flash-packages/) — history + checksums  
+- [pinebuds-cros-v0.3.65.zip](../flash-packages/pinebuds-cros-v0.3.65.zip) — **current**
+- [pinebuds-cros-v0.3.61.zip](../flash-packages/pinebuds-cros-v0.3.61.zip) — audio baseline
+- Older builds: Releases only (not kept in-tree)
 
-Or build on WSL2/Linux/Docker, then run `./scripts/package-flash.sh` (or copy `open_source.bin` yourself).
+Or build on WSL2/Linux/Docker, then run `./scripts/package-flash.sh`.
 
 Do **not** expect the Cloud Agent to reach your COM ports.
 
@@ -136,7 +139,7 @@ On-chip flash is rated for a limited number of erase cycles (~500). Treat each s
 | Only one bud updates | Flash the other COM explicitly; don’t assume “All Start” hit both |
 | Soft-brick | Restore factory APP (+ OTA if required) with `dld_main` + wiki images |
 | Lost TWS / no quad-tap | **Case RESET ~5s** (preferred); forget phone pair; see [Lost TWS link](#lost-tws-link-after-a-flash-reset--re-pair) |
-| CROS off/on feels stuck ~15–40 s | **Expected** on SCO BiCROS (v0.3.58+). Wait for teardown; don’t case-reset mid-wait unless truly wedged. See [cros-transport.md](cros-transport.md) |
+| CROS off/on feels stuck ~15–40 s | **Expected** on SCO BiCROS (v0.3.58+). Wait for teardown; don’t case-reset mid-wait unless truly wedged. |
 | WSL2 can’t see COM | Prefer **native Windows** bestool/`dld_main`; WSL serial passthrough is unreliable |
 
 ## What stays on Windows vs cloud

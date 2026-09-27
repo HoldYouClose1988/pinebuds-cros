@@ -10,3 +10,8 @@ build.log
 *.map
 .DS_Store
 agent-tools/
+
+# Dated flash aliases — only clean semver zips (current + baseline) are tracked
+flash-packages/pinebuds-cros-v*-20[0-9][0-9][0-9][0-9][0-9][0-9]-*.zip
+flash-packages/*.b64
+flash-packages/v015-parts/

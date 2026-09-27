@@ -265,32 +265,27 @@ cp -f "$OUT_DIR/CURRENT.txt" "$OUT_DIR/LATEST.txt"
 {
   echo "# Flash packages"
   echo
-  echo "> **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS bins (extra-path from v0.3.16+). Not a clinical product."
+  echo "> **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS firmware."
   echo
-  echo "**Current version: v$VERSION**"
+  echo "**Current:** [$ZIP_NAME](./$ZIP_NAME)"
   echo
-  echo "Download **[$ZIP_NAME](./$ZIP_NAME)** (versioned only — no LATEST alias)."
+  echo "| Package | Role |"
+  echo "|---------|------|"
+  echo "| [$ZIP_NAME](./$ZIP_NAME) | **Current** (v$VERSION) |"
+  if [[ -f "$OUT_DIR/pinebuds-cros-v0.3.61.zip" && "$ZIP_NAME" != "pinebuds-cros-v0.3.61.zip" ]]; then
+    echo "| [pinebuds-cros-v0.3.61.zip](./pinebuds-cros-v0.3.61.zip) | **Audio baseline** |"
+  fi
   echo
-  echo "Each zip includes \`bestool.exe\`, \`BESTOOL.md\`, \`CHANGELOG.md\`, \`RELEASE_NOTES.txt\`, firmware, and PowerShell helpers. See the root [README](../README.md) for test steps."
+  echo "Each zip includes \`bestool.exe\`, flash scripts, \`CHANGELOG.md\`, and \`RELEASE_NOTES.txt\`."
   echo
-  echo "| Package | Version |"
-  echo "|---------|---------|"
-  # Only list clean semver zips (not dated aliases)
-  find "$OUT_DIR" -maxdepth 1 -type f -name 'pinebuds-cros-v*.zip' -printf '%f\n' \
-    | grep -E '^pinebuds-cros-v[0-9]+\.[0-9]+\.[0-9]+\.zip$' \
-    | sort -V -r \
-    | while read -r base; do
-        ver="${base#pinebuds-cros-v}"
-        ver="${ver%.zip}"
-        echo "| [$base](./$base) | v$ver |"
-      done
+  echo "**Older builds:** [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases) (not kept in this folder)."
   echo
-  echo "See [CHANGELOG.md](../CHANGELOG.md), [bestool guide](../docs/bestool-windows.md), [Windows flashing](../docs/windows-flash.md)."
+  echo "Flash guide: [Windows flashing](../docs/windows-flash.md)."
 } >"$OUT_DIR/README.md"
 
 rm -rf "$STAGE_DIR"
 
 echo "==> Packaged v$VERSION -> $OUT_DIR/$ZIP_NAME"
-echo "    + $OUT_DIR/$ALIAS_NAME"
+echo "    + $OUT_DIR/$ALIAS_NAME (local alias; not committed — see .gitignore)"
 ls -lh "$OUT_DIR/$ZIP_NAME"
 cat "$OUT_DIR/CURRENT.txt"

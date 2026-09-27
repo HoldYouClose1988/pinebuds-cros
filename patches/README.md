@@ -27,4 +27,4 @@ Sources:
 - Stage B: `firmware/stage_b/` → `apps/cros_tws/` (`cros_tws` + `cros_besaud_extra` + `cros_bt_log` + `cros_cfg`)
 
 Phone log sink + knobs (no new patch beyond 0009): `TOTA=1 ./scripts/build.sh` registers stock
-TOTA SPP (RFCOMM 12). See [docs/bt-log-sink.md](../docs/bt-log-sink.md).
+TOTA SPP (RFCOMM 12). See [docs/archive/bt-log-sink.md](../docs/archive/bt-log-sink.md).

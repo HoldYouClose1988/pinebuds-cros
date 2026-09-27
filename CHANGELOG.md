@@ -6,6 +6,11 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+**Where to get bins:** current + audio baseline in
+[`flash-packages/`](flash-packages/); **all** historical zips on
+[GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases).
+Bring-up journals live under [`docs/archive/`](docs/archive/).
+
 ## [0.3.65] — 2026-09-27
 
 ### App copy + poor-ear warn (CROS Control **0.4.2**) + `phone=` on status
@@ -843,7 +848,7 @@ audio is proven.
 ### Status
 **Freeze / keep** for BESAUD **extra L2CAP** CROS. Ear-validated daily wear with
 Capture on. Product features continue on this pipe if SCO latency work does not
-pan out. Latency chase next: **SCO/eSCO bud↔bud** ([latency-and-next.md](docs/latency-and-next.md) §K).
+pan out. Latency chase next: **SCO/eSCO bud↔bud** ([latency-and-next.md](docs/archive/latency-and-next.md) §K).
 
 ### Firmware — correct 0.3.26 misread; quiet underrun SPP tee
 - **Clarification:** 0.3.25 “video” cutouts were **PC speakers** (acoustic test),
@@ -916,7 +921,7 @@ paste `[cros_lat]` + `[cros_extra] L2CAP mode` lines. Clap should still ≈330�
 ### Where latency stands
 ~200 ms intentional RX jitter floor; ~50 ms frame; ~80 ms other → clap ≈330 ms.
 Floor/frame/tick latency levers failed usability. Review + brainstorm:
-[docs/latency-and-next.md](docs/latency-and-next.md).
+[docs/latency-and-next.md](docs/archive/latency-and-next.md).
 
 ## [0.3.22] — 2026-09-24
 
@@ -1163,7 +1168,7 @@ SPP on the master shares the radio with TWS.
 
 ### Docs / tooling (no flash required yet)
 - **TOTA/SPP log-sink investigation:** reuse stock RFCOMM channel **12** + `tota_printf` /
-  `OP_TOTA_STRING` instead of soldering UART or inventing BLE GATT — [docs/bt-log-sink.md](docs/bt-log-sink.md)
+  `OP_TOTA_STRING` instead of soldering UART or inventing BLE GATT — [docs/bt-log-sink.md](docs/archive/bt-log-sink.md)
 - Android scaffold: [`android/cros-log/`](android/cros-log/) (classic SPP reader)
 - Firmware helper: `cros_bt_log` tees `[cros_*]` to TOTA when built with **`TOTA=1`**
 - Patch `0005`: make `TOTA=1` link on open_source (force `TEST_OVER_THE_AIR`, stub ANC tool)

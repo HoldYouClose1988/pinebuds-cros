@@ -25,7 +25,7 @@ OpenPineBuds fork: **BLE GATT companion** (touch + parametric EQ) + Android app.
 Same closed `ibrt_libbt_profiles_*.a` as us (MD5 match) — **does not unlock ACL buffers**.
 
 **Useful to us:**
-- Working **BLE=1** + custom GATT (`docs/GATT_SPEC.md`, `services/ble_profiles/opb_*`, `android/`) — template if we ever move Capture logs off classic SPP to cut ACL contention with extra CROS (see [latency-and-next.md](latency-and-next.md) §L′).
+- Working **BLE=1** + custom GATT (`docs/GATT_SPEC.md`, `services/ble_profiles/opb_*`, `android/`) — template if we ever move Capture logs off classic SPP (see [archive/latency-and-next.md](archive/latency-and-next.md) §L′).
 - TWS config sync via `app_tws_if_register_sync_user` (small blobs on IBRT sync path — not a media pipe).
 - Stock `plc_utils` / `MSBC_PLC_ENABLE` already in upstream; SCO-oriented, still a reference for option **A**.
 
@@ -53,7 +53,7 @@ SDK is OpenPineBuds retargeted to over-ear Q35 — **same `HCI_NUM_ACL_BUFFERS=6
 
 ## Logging / vendor SPP
 
-- In-tree TOTA/SPP investigation for this project: [bt-log-sink.md](bt-log-sink.md)
+- In-tree TOTA/SPP investigation for this project: [archive/bt-log-sink.md](archive/bt-log-sink.md)
 - BES earbuds often expose vendor RFCOMM (commonly channel 12 / SPP 0x1101); Android HCI snoop + Wireshark SPP filter is the usual RE path
 - Example community SPP companions (not PineBuds-specific): Motobuds RFCOMM notes, Soundcore SPP RE writeups
 - **Later alternative:** Erik-style BLE GATT log notify (see community forks above) if classic SPP quiet mode is still too heavy under Capture
