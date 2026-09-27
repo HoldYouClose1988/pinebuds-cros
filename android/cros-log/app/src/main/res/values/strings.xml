@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">CROS Control</string>
+    <string name="help">Help</string>
     <string name="about">About</string>
-    <string name="status_idle">Disconnected</string>
+    <string name="faq_title">Help / FAQ</string>
+    <string name="faq_body">Do I need this app every day?\nNo. After you Apply knobs once, they live on the buds (survive case/reboot). Day to day: wear both buds and quad-tap to toggle BiCROS. Open this app only to change config or capture a support log.\n\nHow do I turn BiCROS on/off without the phone?\nQuad-tap either bud (TWS linked). Listen for status cues (chart below).\n\nWhat do the status beeps / tones mean?\n• ENABLED — 1 short beep (~880 Hz) when BiCROS is actually up\n• DISABLED — 2 short beeps when you turn it off (or a stock Disconnect tone if audio already stopped)\n• NOT YET — stock Warning tone if you enable while teardown/cool-down is still running — wait for READY\n• READY — stock Pairing success — safe to enable again\n• OPEN FAIL — stock Pairing failed — link did not come up; try again after READY or reseat\n\nWhere are my knobs saved?\nOn both buds in flash NV when you tap Apply. Connect / Get reloads them into the app.\n\nWhy can’t I set Poor = Left?\nPoor ear must be the TWS slave. Default is Right = poor, Left = good (master). Poor = Left while Left is master → enable is refused (known crash if forced).\n\nWhat does the phone volume rocker do while BiCROS is on?\nIt changes CROS path level (contralateral SCO), not music and not local-ear mix. With BiCROS off, the rocker is music again.\n\nWhy is Support log off by default?\nSPP log traffic can fight the BiCROS link. Leave it off for normal use; turn on only to Share a bug report.\n\nIs this a hearing aid / medical device?\nNo. Experimental DIY firmware on ~$70 earbuds — own risk. Not prescribed CROS/BiCROS or certified hearing protection.</string>
+    <string name="disclaimer_title">DIY / own-risk — not a hearing aid</string>
+    <string name="disclaimer_body">PineBuds Pro BiCROS is experimental firmware on consumer earbuds. It is not a medical device, prescribed CROS/BiCROS, or certified hearing protection.\n\nFlash and use only if you can restore stock firmware. Loud levels and feedback (howling) are possible if you bypass the mix ceiling (−12 dB).\n\nPoor ear must stay the TWS slave (default: Right poor / Left master).\n\nThis app is only for configuration and optional support logging. After you Apply knobs once, you do not need the app for day-to-day use — quad-tap the buds to toggle BiCROS.</string>
+    <string name="disclaimer_accept">I understand</string>
+    <string name="knobs_hint">Apply saves to both buds (survives case). Day to day you can leave this app closed — quad-tap toggles BiCROS. Phone rocker while BiCROS is on = CROS path level (not music).</string>
     <string name="status_connecting">Connecting…</string>
     <string name="status_connected">Connected — knobs ready</string>
     <string name="status_banner_idle">Buds: not connected\nBiCROS: —\nKnobs: —</string>

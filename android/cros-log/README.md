@@ -4,14 +4,18 @@ Classic-Bluetooth **SPP** client for PineBuds Pro BiCROS (firmware **v0.3.64+**,
 `TOTA=1`).
 
 Meant for people who already flash the buds — technical, but not a raw log console.
+**Day to day you do not need the app** after knobs are Applied (quad-tap toggles BiCROS).
 
 ## What you see
 
+- **Help** — FAQ + status beep/tone chart
 - **Connect** — knobs + status (support log stays **off**)
-- **Status banner** — connected / BiCROS on·off / knobs / last save (via `cros status`, not a live log dump)
+- **Status banner** — connected / BiCROS on·off / knobs / last save (via `cros status`)
 - **Knobs** — poor ear, local mix, EQ, CROS path level, hiss filter → **Apply** (NV on both buds)
-- **Support log** — hidden toggle; turn on only for bug reports (SPP log traffic can fight BiCROS)
+- **Support log** — hidden toggle; turn on only for bug reports
 - **Phone SCO** — only under support log (dev probe)
+
+First launch shows a one-time DIY disclaimer (includes “app not required day to day”).
 
 ## Requirements
 
