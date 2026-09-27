@@ -96,7 +96,7 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.64.zip`](flash-packages/pinebuds
 
 **Next:** installer. AbsVol left as-is.
 
-Flash **[v0.3.64](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.64)** + build app **0.4.0** from `android/cros-log`.
+Flash **[v0.3.64](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.64)** + build app **0.4.2** from `android/cros-log`.
 Audio-only fallback: **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)**.
 
 ## How it works (short)
