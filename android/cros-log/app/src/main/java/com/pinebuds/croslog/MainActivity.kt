@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
@@ -21,6 +22,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.tabs.TabLayout
 import com.pinebuds.croslog.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -46,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private var scoWanted = false
     private lateinit var audioManager: AudioManager
     private val writeLock = Any()
+    private val lineTimeFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
     private val scoReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -80,10 +83,11 @@ class MainActivity : AppCompatActivity() {
         deviceAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, mutableListOf())
         binding.deviceSpinner.adapter = deviceAdapter
 
+        setupTabs()
         binding.refreshButton.setOnClickListener { refreshDevices() }
         binding.clearButton.setOnClickListener {
             logLines.clear()
-            binding.logView.text = ""
+            renderLog()
         }
         binding.shareButton.setOnClickListener { shareLog() }
         binding.scoButton.setOnClickListener { togglePhoneSco() }
@@ -94,13 +98,37 @@ class MainActivity : AppCompatActivity() {
             if (checked) {
                 startLogging()
             } else {
-                stopLogging(userMessage = "Logging off — SPP closed (sniff free for ear test)")
+                stopLogging(userMessage = "Disconnected — SPP closed (sniff free for ear test)")
             }
         }
 
         wireKnobLabels()
         ensurePermissions()
         refreshDevices()
+    }
+
+    private fun setupTabs() {
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_controls))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_logs))
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                showTab(tab.position)
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+        showTab(0)
+    }
+
+    private fun showTab(position: Int) {
+        val controls = position == 0
+        binding.controlsPanel.visibility = if (controls) View.VISIBLE else View.GONE
+        binding.logsPanel.visibility = if (controls) View.GONE else View.VISIBLE
+        if (!controls) {
+            binding.logScroll.post {
+                binding.logScroll.fullScroll(View.FOCUS_DOWN)
+            }
+        }
     }
 
     private fun wireKnobLabels() {
@@ -141,7 +169,7 @@ class MainActivity : AppCompatActivity() {
     private fun sendTotaString(text: String) {
         val sock = socket
         if (sock == null || !sock.isConnected) {
-            toast("Turn Capture on first")
+            toast(getString(R.string.connect_first))
             return
         }
         val payload = text.toByteArray(Charsets.UTF_8)
@@ -313,7 +341,7 @@ class MainActivity : AppCompatActivity() {
 
         val device = bonded[idx]
         binding.statusText.text = getString(R.string.status_connecting)
-        appendUi("Logging on — connecting SPP to ${device.name} (${device.address})…")
+        appendUi("Connecting SPP to ${device.name} (${device.address})…")
         readerJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val sock = openSpp(device)
@@ -427,12 +455,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun maybeSyncKnobsFromLog(line: String) {
-        // [cros_cfg] … poor=RIGHT mix=-20dB bass=0 treble=2 …
-        if (!line.contains("[cros_cfg]")) return
-        val poor = Regex("""poor=(RIGHT|LEFT)""").find(line)?.groupValues?.getOrNull(1)
-        val mix = Regex("""mix=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val bass = Regex("""bass=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val treble = Regex("""treble=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        // Strip optional timestamp prefix before matching.
+        val body = line.substringAfter("] ", line).let {
+            if (it.startsWith("[") || it.contains("[cros_cfg]")) it else line
+        }
+        if (!body.contains("[cros_cfg]") && !line.contains("[cros_cfg]")) return
+        val src = if (line.contains("[cros_cfg]")) line else body
+        val poor = Regex("""poor=(RIGHT|LEFT)""").find(src)?.groupValues?.getOrNull(1)
+        val mix = Regex("""mix=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val bass = Regex("""bass=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val treble = Regex("""treble=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
         if (poor == "LEFT") {
             binding.poorLeft.isChecked = true
         } else if (poor == "RIGHT") {
@@ -508,10 +540,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun appendUi(line: String) {
+        val stamped = "${lineTimeFmt.format(Date())}  $line"
         while (logLines.size >= MAX_LINES) logLines.removeFirst()
-        logLines.addLast(line)
+        logLines.addLast(stamped)
+        renderLog()
+    }
+
+    private fun renderLog() {
         binding.logView.text = logLines.joinToString("\n")
-        binding.logScroll.post { binding.logScroll.fullScroll(android.view.View.FOCUS_DOWN) }
+        binding.logCountText.text = if (logLines.isEmpty()) {
+            getString(R.string.log_count_zero)
+        } else {
+            getString(R.string.log_count, logLines.size)
+        }
+        // Badge-ish hint on Logs tab when new lines arrive while on Controls.
+        val logsTab = binding.tabLayout.getTabAt(1)
+        if (logsTab != null) {
+            logsTab.text = if (logLines.isEmpty()) {
+                getString(R.string.tab_logs)
+            } else {
+                "${getString(R.string.tab_logs)} (${logLines.size})"
+            }
+        }
+        if (binding.logsPanel.visibility == View.VISIBLE) {
+            binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
+        }
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
