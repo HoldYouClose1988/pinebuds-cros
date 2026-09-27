@@ -20,8 +20,10 @@ void cros_sco_probe_on_peer_ready(void);
 /* Re-run asymmetric mute / sidetone after live cfg change (mix / poor). */
 void cros_sco_reapply_shape(void);
 
-/* True while CROS peer-SCO path owns BT — pause TOTA flush / skip IBRT cfg. */
+/* True while peer SCO is up — skip IBRT cfg sync. */
 int cros_sco_cfg_hold(void);
+/* True while CROS SCO armed/opening/up — pause SPP ring tee (ack-only). */
+int cros_sco_log_hold(void);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,26 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.50] — 2026-09-27
+
+### Firmware — fix tap-dead + bring-up dropouts (0.3.49 regression)
+- **Ear (log 225910):** BiCROS up; Apply still worked; then **quad-tap dead**, no
+  more logs. Bring-up had **dropouts**.
+- **Tap-dead cause:** 0.3.49 kept flushing SPP (1/tick) during SCO — same BT
+  wedge class as 221736. Fix: while armed/opening/up, **ack-only** (Apply/Get);
+  no ring flush. Tee resumes when SCO is fully down; `DISABLE` logged from
+  `close_bt` after flags clear.
+- **Dropout cause:** peer already `OPENED` this bud, then we still called
+  `open_link` after the 100 ms gap. Fix: **skip `open_link` if already
+  `sco_up`**; cancel open timer on `OPENED`.
+
+### Test
+1. Flash both — `init v0.3.50`.
+2. Quad-tap on — expect cleaner bring-up (log may show `already OPENED — skip
+   open_link` on one bud). Fewer/no start dropouts.
+3. Apply volume/noise — still get `[cros_cfg] set` ack.
+4. Quad-tap off — taps respond; phone shows `[cros_tws] DISABLE` / `CLOSED`.
+
 ## [0.3.49] — 2026-09-27
 
 ### Firmware — stop muting the phone log after SCO is down

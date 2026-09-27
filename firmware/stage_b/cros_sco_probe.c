@@ -95,10 +95,14 @@ static void cros_sco_close_bt(void *a, void *b);
 static void cros_sco_schedule_open(void);
 
 int cros_sco_cfg_hold(void) {
-  /* True only while peer SCO is actually up. Do NOT key off open_issued —
-   * that stayed set after CLOSED and kept the TOTA tee muted with the pipe
-   * already down (DISABLE invisible). IBRT cfg sync still skips while up. */
+  /* Skip IBRT cfg sync while peer SCO is up. */
   return sco_up ? 1 : 0;
+}
+
+int cros_sco_log_hold(void) {
+  /* Pause SPP ring tee while CROS SCO is armed, opening, or up. Resume only
+   * when fully down — flushing during SCO wedges taps (ear 225910). */
+  return (probe_armed || sco_up || open_issued) ? 1 : 0;
 }
 
 #if CROS_SCO_MEDIA
@@ -290,16 +294,20 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
   (void)link_host;
   if (event == SCO_OPENED) {
     sco_up = 1;
+    open_issued = 1; /* peer may have opened us — don't open_link again */
+    if (open_timer) {
+      osTimerStop(open_timer);
+    }
 #if CROS_SCO_ALONE
 #if CROS_SCO_MEDIA
-    CROS_LOG_ACK(0, "[cros_sco] OPENED (alone + media — voice + BiCROS)");
+    /* UART + deferred phone visibility after SCO down; no SPP during bring-up. */
+    CROS_LOG(0, "[cros_sco] OPENED (alone + media — voice + BiCROS)");
     cros_sco_voice_start();
 #else
-    CROS_LOG_ACK(0, "[cros_sco] OPENED (alone hold — leave up until disable)");
+    CROS_LOG(0, "[cros_sco] OPENED (alone hold — leave up until disable)");
 #endif
 #else
-    CROS_LOG_ACK(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
-    /* Do not leave peer SCO up under extra media / phone ACL (0.3.35 hang). */
+    CROS_LOG(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
     if (proof_timer) {
       osTimerStop(proof_timer);
       osTimerStart(proof_timer, CROS_SCO_PROOF_HOLD_MS);
@@ -310,7 +318,7 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
 #endif
   } else if (event == SCO_CLOSED) {
     sco_up = 0;
-    open_issued = 0; /* hold clears with sco_up — tee resumes immediately */
+    open_issued = 0;
 #if CROS_SCO_MEDIA
     cros_sco_voice_stop();
 #endif
@@ -413,6 +421,13 @@ static void cros_sco_open_bt(void *a, void *b) {
   }
 
   if (should_open && !open_issued) {
+    /* Peer may already have brought SCO up (CONNECT_IND/OPENED). A second
+     * open_link here causes bring-up dropouts (ear log 225910). */
+    if (sco_up) {
+      open_issued = 1;
+      CROS_LOG(0, "[cros_sco] already OPENED — skip open_link");
+      return;
+    }
     rc = sco_open_link(&peer_ba, cros_sco_notify, NULL);
     open_issued = 1;
     CROS_LOG(0, "[cros_sco] open_link rc=%d (await OPENED/CLOSED)", (int)rc);
@@ -444,6 +459,8 @@ static void cros_sco_close_bt(void *a, void *b) {
   }
   sco_up = 0;
   have_peer = 0;
+  /* Flags clear — SPP tee resumes; phone sees disable here. */
+  CROS_LOG(0, "[cros_tws] DISABLE");
 }
 
 static void cros_sco_schedule_open(void) {
@@ -457,6 +474,11 @@ static void cros_sco_schedule_open(void) {
 static void open_timer_cb(void const *arg) {
   (void)arg;
   if (!probe_armed || open_issued) {
+    return;
+  }
+  if (sco_up) {
+    open_issued = 1;
+    CROS_LOG(0, "[cros_sco] open gap — already OPENED, skip open_link");
     return;
   }
   CROS_LOG(0, "[cros_sco] open gap done — open_link");
@@ -628,5 +650,6 @@ void cros_sco_probe_on_cros_disable(void) {}
 void cros_sco_probe_on_peer_ready(void) {}
 void cros_sco_reapply_shape(void) {}
 int cros_sco_cfg_hold(void) { return 0; }
+int cros_sco_log_hold(void) { return 0; }
 
 #endif /* CROS_SCO_PROBE */

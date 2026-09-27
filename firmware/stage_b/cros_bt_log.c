@@ -5,10 +5,9 @@
  * capped per tick, and only when the TOTA SPP path is up. Never call
  * tota_printf (osSemaphoreWait forever) from a general-purpose OS timer.
  *
- * v0.3.46: while peer SCO is up, throttle TOTA flush (don't block BT).
- * v0.3.47: ack slot for Apply/Get under load.
- * v0.3.49: hold = sco_up only — never mute after the SCO pipe is down;
- *   under SCO, throttle to 1 line/tick (do not drain/discard the ring).
+ * v0.3.50: while CROS SCO is armed/up, do NOT flush the ring to SPP
+ * (0.3.49 throttle still wedged taps — ear log 225910). Ack slot only for
+ * Apply/Get. Tee resumes as soon as sco_up/open_issued/probe_armed clear.
  ***************************************************************************/
 #include "cros_bt_log.h"
 
@@ -23,17 +22,13 @@
 extern int app_bt_start_custom_function_in_bt_thread(uint32_t param0,
                                                      uint32_t param1,
                                                      uint32_t funcPtr);
-/* Defined in cros_sco_probe.c — 0 when SCO probe is compiled out. */
-extern int cros_sco_cfg_hold(void);
+/* log_hold — SPP tee pause while CROS SCO armed/opening/up. */
+extern int cros_sco_log_hold(void);
 
 #define CROS_BT_LOG_LINE_MAX 120
 #define CROS_BT_LOG_DEPTH 24
 #define CROS_BT_LOG_FLUSH_MS 80
-/* Cap per BT-thread flush so a slow phone degrades to drop/delay, not a
- * multi-line blocking chain on the BT thread. */
 #define CROS_BT_LOG_FLUSH_MAX 2
-/* While peer SCO is up, still tee — but at most one SPP line per tick. */
-#define CROS_BT_LOG_FLUSH_MAX_SCO 1
 
 typedef struct {
   char line[CROS_BT_LOG_LINE_MAX];
@@ -46,7 +41,7 @@ static volatile uint8_t dropped;
 static volatile uint8_t flush_pending;
 static volatile uint8_t quiet;
 static uint8_t inited;
-/* Single Apply/Get confirmation — flushed first under load. */
+/* Apply/Get only — one SPP line under SCO; never multi-line ring flush. */
 static char ack_line[CROS_BT_LOG_LINE_MAX];
 static volatile uint8_t ack_pending;
 
@@ -56,6 +51,11 @@ static void cros_bt_log_kick_flush(void);
 
 osTimerDef(CROS_BT_LOG_FLUSH, cros_bt_log_timer);
 static osTimerId flush_id;
+
+static void cros_bt_log_drain_ring(void) {
+  tail = head;
+  dropped = 0;
+}
 
 static void cros_bt_log_kick_flush(void) {
   if (!inited || flush_pending) {
@@ -68,34 +68,37 @@ static void cros_bt_log_kick_flush(void) {
 
 static void cros_bt_log_flush_bt(void *a, void *b) {
   uint8_t sent = 0;
-  uint8_t max_lines;
   uint8_t drops;
   (void)a;
   (void)b;
 
-  /*
-   * app_is_in_tota_mode() = SPP connected (what string TX needs).
-   * is_tota_connected() is the AES handshake flag — not required for
-   * OP_TOTA_STRING, which is explicitly unencrypted.
-   */
   if (!app_is_in_tota_mode()) {
     flush_pending = 0;
     return;
   }
 
-  /* Ack first (Apply/Get / DISABLE) — one line even under SCO. */
+  /*
+   * Under SCO/bring-up: at most one ack line (Apply/Get). Never ring-flush —
+   * tota_printf on BT during peer SCO wedges taps (225910 / 221736).
+   */
+  if (cros_sco_log_hold()) {
+    if (ack_pending) {
+      ack_pending = 0;
+      tota_printf("%s", ack_line);
+    }
+    cros_bt_log_drain_ring();
+    flush_pending = 0;
+    return;
+  }
+
   if (ack_pending) {
     ack_pending = 0;
     tota_printf("%s", ack_line);
     sent++;
   }
 
-  /* SCO up: throttle, never discard. SCO down: normal multi-line flush. */
-  max_lines = cros_sco_cfg_hold() ? CROS_BT_LOG_FLUSH_MAX_SCO
-                                  : CROS_BT_LOG_FLUSH_MAX;
-
   drops = dropped;
-  if (drops && !quiet && sent < max_lines) {
+  if (drops && !quiet && sent < CROS_BT_LOG_FLUSH_MAX) {
     dropped = 0;
     tota_printf("[cros_log] dropped=%u", (unsigned)drops);
     sent++;
@@ -103,7 +106,7 @@ static void cros_bt_log_flush_bt(void *a, void *b) {
     dropped = 0;
   }
 
-  while (sent < max_lines && tail != head) {
+  while (sent < CROS_BT_LOG_FLUSH_MAX && tail != head) {
     uint8_t i = tail;
     tota_printf("%s", ring[i].line);
     tail = (uint8_t)((i + 1u) % CROS_BT_LOG_DEPTH);
@@ -116,6 +119,15 @@ static void cros_bt_log_flush_bt(void *a, void *b) {
 static void cros_bt_log_timer(void const *arg) {
   (void)arg;
   if (!inited) {
+    return;
+  }
+  if (cros_sco_log_hold()) {
+    /* Keep ack path alive; drop ring backlog (UART already has TRACE). */
+    if (ack_pending) {
+      cros_bt_log_kick_flush();
+    } else if (tail != head || dropped) {
+      cros_bt_log_drain_ring();
+    }
     return;
   }
   if (ack_pending || tail != head || dropped != 0) {
@@ -136,8 +148,8 @@ void cros_bt_log_init(void) {
     osTimerStart(flush_id, CROS_BT_LOG_FLUSH_MS);
   }
   inited = 1;
-  TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, sco_throttle=%u)",
-        (unsigned)CROS_BT_LOG_FLUSH_MAX, (unsigned)CROS_BT_LOG_FLUSH_MAX_SCO);
+  TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, sco=ack-only)",
+        (unsigned)CROS_BT_LOG_FLUSH_MAX);
 }
 
 void cros_bt_log_set_quiet(int on) {
@@ -159,7 +171,10 @@ void cros_bt_logf(const char *fmt, ...) {
   if (!inited) {
     return;
   }
-  /* Always enqueue — SCO-up only throttles flush rate, never drops on hold. */
+  /* Under SCO/bring-up: UART TRACE only (caller already TRACE'd via CROS_LOG). */
+  if (cros_sco_log_hold()) {
+    return;
+  }
   va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
@@ -181,6 +196,9 @@ void cros_bt_logf_stat(const char *fmt, ...) {
   char buf[CROS_BT_LOG_LINE_MAX];
   va_list ap;
   if (!inited || quiet) {
+    return;
+  }
+  if (cros_sco_log_hold()) {
     return;
   }
   va_start(ap, fmt);
