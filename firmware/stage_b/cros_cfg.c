@@ -52,6 +52,7 @@ enum {
 extern void cros_sco_sidetone_set_gain_db(int db);
 extern void cros_sco_reapply_shape(void);
 extern int cros_sco_set_hfp_volume(int level);
+extern int cros_sco_get_hfp_volume(void);
 extern int cros_a2dp_set_volume(int level);
 extern int cros_a2dp_get_volume(void);
 extern int cros_sco_cfg_hold(void);
@@ -483,17 +484,13 @@ void cros_cfg_on_abs_volume(int tgt_level) {
     user = (int)CROS_VOL_MAX;
   }
   next = (uint8_t)user;
-  if (next == g_vol && next == g_a2dp) {
-    /* Still re-apply DAC — phone may re-send same step after focus change. */
-    if (!cros_tws_is_poor_side()) {
-      cros_sco_set_hfp_volume((int)g_vol);
-    }
-    return;
-  }
   g_vol = next;
   g_a2dp = next;
   if (!cros_tws_is_poor_side()) {
-    cros_sco_set_hfp_volume((int)g_vol);
+    int applied = cros_sco_set_hfp_volume((int)g_vol);
+    int now = cros_sco_get_hfp_volume();
+    CROS_LOG_ACK(0, "[cros_cfg] absvol apply sco=%d dac=%d hfp_vol=%d",
+                 (int)g_vol, applied, now);
   }
   log_status("absvol");
 }

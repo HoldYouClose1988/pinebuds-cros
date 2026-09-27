@@ -6,6 +6,26 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.57] — 2026-09-27
+
+### Firmware — AbsVol rocker actually moves BiCROS DAC (hfp_vol stick)
+- **Ear (log 004700):** AbsVol was intercepted (`absvol sco=8→0→…`) but no
+  audible change. Hook updated `g_vol` only; `cros_sco_set_hfp_volume` called
+  `volumeset` without writing **`hfp_vol` NV**. Stock paths re-apply from
+  `hfp_vol` and snapped the DAC back — rocker looked dead.
+- **Fix:** persist `hfp_vol` (+ `current_btdevice_volume`) on every SCO DAC
+  set (AbsVol, TOTA Apply, BiCROS enable). Log `absvol apply sco=N dac=N
+  hfp_vol=N` for confirmation.
+- Defaults unchanged (sco=8, noise=3).
+
+### Test
+1. Flash both — `init v0.3.57`.
+2. BiCROS on + Capture. Rocker down to near 0 — contralateral should get
+   quiet / mute; rocker up — louder. Expect `absvol apply` + matching
+   `hfp_vol=`.
+3. Stimulate the **poor** bud (RIGHT mic) while listening on good ear —
+   sidetone is independent of this knob.
+
 ## [0.3.56] — 2026-09-27
 
 ### Firmware + app — phone volume rocker drives BiCROS SCO DAC

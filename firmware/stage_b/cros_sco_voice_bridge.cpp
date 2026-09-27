@@ -34,6 +34,8 @@ extern "C" bool app_bt_stream_isrun(uint16_t player);
 extern "C" struct btdevice_volume *app_bt_stream_volume_get_ptr(void);
 extern "C" void nv_record_btdevicevolume_set_a2dp_vol(
     struct btdevice_volume *device_vol, int8_t vol);
+extern "C" void nv_record_btdevicevolume_set_hfp_vol(
+    struct btdevice_volume *device_vol, int8_t vol);
 extern "C" void btapp_a2dp_report_speak_gain(void);
 extern "C" void hal_codec_sidetone_enable(void);
 extern "C" void hal_codec_sidetone_disable(void);
@@ -61,9 +63,29 @@ extern "C" int cros_sco_forcemute(int mic_mute, int spk_mute) {
   return bt_sco_player_forcemute(mic_mute != 0, spk_mute != 0);
 }
 
-/* HFP/SCO DAC gain (BiCROS contralateral playback) — not music volume. */
+/*
+ * HFP/SCO DAC gain (BiCROS contralateral playback) — not music volume.
+ *
+ * Must update hfp_vol NV / current_btdevice_volume, not only stream_cfg.vol.
+ * AbsVol / TOTA used to call volumeset alone; stock paths (bud keys, SCO
+ * swap) re-apply from hfp_vol and snapped the DAC back — rocker looked like
+ * a no-op in the ear even though [cros_cfg] absvol sco=N logged.
+ *
+ * Units: UI / g_vol 0..15 as stream_cfg.vol indices (ear-tuned; same as
+ * prior BiCROS defaults). Not stock HFP speaker-gain (+2 TGT) — peer SCO
+ * has no AG Absolute Volume.
+ */
 extern "C" int cros_sco_set_hfp_volume(int level) {
+  struct btdevice_volume *vp;
+
   level = clamp_vol(level);
+  vp = app_bt_stream_volume_get_ptr();
+  if (vp) {
+    nv_record_btdevicevolume_set_hfp_vol(vp, (int8_t)level);
+  }
+  current_btdevice_volume.hfp_vol = (int8_t)level;
+
+  /* Mailbox marshals to audio thread when called from BT/AVRCP. */
   app_audio_manager_ctrl_volume(CROS_VOL_CTRL_SET, (uint16_t)level);
   app_bt_stream_volumeset((int8_t)level);
   return level;
