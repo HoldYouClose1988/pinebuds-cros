@@ -7,6 +7,8 @@
 | [windows-flash.md](windows-flash.md) | Flash / backup on Windows |
 | [bestool-windows.md](bestool-windows.md) | Bundled `bestool.exe` details |
 | [architecture-cros.md](architecture-cros.md) | How BiCROS works + hard constraints |
+| [iphone.md](iphone.md) | Why iPhone is not supported for daily wear |
+| [BRANCHES.md](BRANCHES.md) | `main` = Android product; iOS branch parked |
 | [development.md](development.md) | Build from source |
 | [hardware.md](hardware.md) | PineBuds Pro hardware notes |
 | [references.md](references.md) | Upstream / external links |

@@ -1,7 +1,8 @@
-# CROS Control (Android) v0.4.3
+# CROS Control (Android) v0.4.4
 
-Classic-Bluetooth **SPP** client for PineBuds Pro BiCROS (firmware **v0.3.64+**,
-`TOTA=1`; **v0.3.65+** reports `phone=` on status for the poor-ear warning).
+Classic-Bluetooth **SPP** client for PineBuds Pro BiCROS (firmware **v0.3.65**,
+`TOTA=1`). **Pair the buds to an Android phone** — iPhone is not supported for
+daily BiCROS (see repo [docs/iphone.md](../../docs/iphone.md)).
 
 Meant for people who already flash the buds — technical, but not a raw log console.
 **Day to day you do not need the app** after knobs are Applied (quad-tap toggles BiCROS).

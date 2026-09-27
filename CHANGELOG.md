@@ -11,6 +11,15 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases).
 Bring-up journals live under [`docs/archive/`](docs/archive/).
 
+**Product = Android + v0.3.65.** iPhone is not supported for daily wear —
+[docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
+
+## [0.4.4] — app — Android-only messaging
+
+### CROS Control **0.4.4**
+- Help FAQ: iPhone not for day-to-day; use Android + firmware v0.3.65.
+- Repo: Android-first README, [docs/iphone.md](docs/iphone.md), iOS branch parked.
+
 ## [0.3.65] — 2026-09-27
 
 ### App copy + poor-ear warn (CROS Control **0.4.2**) + `phone=` on status

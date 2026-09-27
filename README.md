@@ -9,23 +9,57 @@
 Poor-side mic → good-side speaker over a bud↔bud link, plus local good-ear mic
 mix (BiCROS). Stock TWS / media / calls remain when CROS is off.
 
-## Current (v0.3.65 + app 0.4.2)
+## Supported phone: **Android**
+
+This project is **Android-first**. Pair the buds to an **Android** phone for
+day-to-day BiCROS. **iPhone is not a supported daily driver** — see
+[Why not iPhone?](#why-not-iphone) below.
+
+## Current (v0.3.65 + app 0.4.4)
 
 | | |
 |--|--|
 | **Flash** | **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** |
-| **App** | [CROS Control 0.4.2](android/cros-log/) — knobs, status, Help FAQ |
+| **App** | [CROS Control](android/cros-log/) — knobs, status, Help FAQ (APK on Releases when published) |
 | **Audio baseline** | v0.3.61 — SCO mSBC BiCROS ≈ **140 ms** |
 | **Day to day** | Quad-tap toggles BiCROS (no app needed after Apply) |
 | **Default ears** | RIGHT = poor (mic), LEFT = good (phone / master) |
 
 | Mode | Status |
 |------|--------|
-| SCO BiCROS | Ear PASS — mSBC 16 kHz, ~140 ms |
+| SCO BiCROS on **Android** | Ear PASS — held ~20 min quiet + loud desk tests |
 | App knobs | Mix / EQ / SCO DAC / noise / poor — saved on buds (NV) |
 | Poor = phone master | Enable **refused** (known crash) |
 | Extra L2CAP CROS | Legacy freeze at v0.3.27 (~330 ms) |
+| **iPhone** | **Not supported** for daily wear (link drops) |
 | Industrial damp | Not implemented |
+
+## Why not iPhone?
+
+BiCROS uses **bud↔bud eSCO** plus the stock **HFP voice player** (same class of
+link iOS uses for calls). That fights how iPhone expects Bluetooth audio to work.
+
+**What we measured (2026-09-27):**
+
+| Setup | Result |
+|-------|--------|
+| Android + Support log, quiet ~20 min | Held — intentional OFF |
+| Android + Support log, white noise ~20 min | Held — intentional OFF |
+| iPhone (store / desk) | Dropped ~**1–11 min**; buds needed case reset |
+| iPhone while BiCROS on | System sounds half-routed to **left pod + phone speaker**, hissy SCO quality |
+
+Mic load / “starvation” is **not** the cause (loud desk test passed on Android).
+
+**Why iOS is harder:** Apple’s accessory guidelines treat HFP eSCO as an
+*exclusive* call-like pipe (speaker + mic dedicated to that link). Music /
+system sounds are supposed to use A2DP. Our peer SCO sits on the reserved voice
+path iPhone thinks it owns, so iOS can half-route audio and later kill the ACL.
+Android is less strict — which is why it works.
+
+A parked experimental branch (`cursor/ios-coexist-3d85`, release **v0.4.0**)
+pauses BiCROS when the phone opens HFP — **not** productized; daily use stays
+Android + **v0.3.65**. Details: [docs/iphone.md](docs/iphone.md) ·
+[docs/BRANCHES.md](docs/BRANCHES.md).
 
 ## Quick start (Windows)
 
@@ -38,8 +72,8 @@ mix (BiCROS). Stock TWS / media / calls remain when CROS is off.
 ```
 
 3. Seat both in the case ~30–60 s so TWS re-pairs.
-4. Wear both; **quad-tap** to toggle BiCROS. Speak near the **right** outer face — hear it in the **left** ear.
-5. Optional: build/install [android/cros-log](android/cros-log/) for knobs and Help.
+4. Pair / use with an **Android** phone. Wear both; **quad-tap** to toggle BiCROS.
+5. Optional: install CROS Control for knobs and Help.
 
 Full flash notes: [docs/windows-flash.md](docs/windows-flash.md).
 
@@ -70,17 +104,14 @@ See [docs/development.md](docs/development.md). Doc index: [docs/](docs/).
 
 | Path | Purpose |
 |------|---------|
-| `firmware/stage_b/` | BiCROS firmware sources |
-| `android/cros-log/` | Phone control / support-log app |
-| `flash-packages/` | Current + audio-baseline zips only |
-| `docs/` | Current docs; bring-up journals in `docs/archive/` |
-| `docs/BRANCHES.md` | **Android vs iOS firmware tracks** |
+| `firmware/stage_b/` | BiCROS firmware sources (**v0.3.65** Android product) |
+| `android/cros-log/` | CROS Control app |
+| `flash-packages/` | Current + audio-baseline zips |
+| `docs/` | Docs; bring-up journals in `docs/archive/` |
+| `docs/iphone.md` | iPhone findings (unsupported) |
 | `patches/` | OpenPineBuds integration patches |
-| `CHANGELOG.md` | Full version history |
-| GitHub Releases | All historical flash zips |
-
-**Tracks:** [`main` / `android`](docs/BRANCHES.md) = Android-stable **v0.3.65**.  
-[`cursor/ios-coexist-3d85`](docs/BRANCHES.md) = iPhone coexist work (**v0.4.x**).
+| `CHANGELOG.md` | Version history |
+| GitHub Releases | Flash zips + app APK when published |
 
 ## License
 
