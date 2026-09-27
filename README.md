@@ -33,11 +33,11 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 | **SCO mSBC BiCROS (v0.3.61 baseline)** | ≈ **140 ms** | **Product baseline** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.63 — NV persist on 0.3.61 audio baseline)
+## Current status (v0.3.64 + app 0.4.0)
 
-**Audio / cue baseline = [v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61).**
-**[v0.3.63](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.63)** adds bud NV for knobs (poor / mix / EQ / sco / noise / a2dp)
-so case/reboot keeps your Apply. App v0.3.9 confirms load in the log.
+**Audio baseline = v0.3.61.** **v0.3.63** NV knobs. **v0.3.64** `cros status` +
+polished **CROS Control 0.4.0** (disclaimer, status banner, support log off by
+default).
 
 | Mode | Status |
 |------|--------|
@@ -80,6 +80,7 @@ so case/reboot keeps your Apply. App v0.3.9 confirms load in the log.
 26. **v0.3.61** — DISABLED/NOT_YET audible (media when voice down; cue-hold)
 27. **v0.3.62** — Cue PASS confirmed; 75 s hold-escape vs stuck NOT_YET
 28. **v0.3.63** — Knobs (incl. poor side) persist in bud NV + app confirm
+29. **v0.3.64** — `cros status` + CROS Control 0.4.0 (status banner, log hidden)
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -88,18 +89,14 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.63.zip`](flash-packages/pinebuds-cros-v0.3.63.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.64.zip`](flash-packages/pinebuds-cros-v0.3.64.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
-**SCO BiCROS audio baseline is v0.3.61**; **v0.3.63** adds config NV (poor ear
-included). Residual SCO/SPP flake accepted.
+**Next:** installer. AbsVol left as-is.
 
-**Next:** further app polish · AbsVol left as-is · installer.
-
-Flash **[v0.3.63](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.63)**.
+Flash **[v0.3.64](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.64)** + build app **0.4.0** from `android/cros-log`.
 Audio-only fallback: **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)**.
-Extra L2CAP: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)**.
 
 ## How it works (short)
 
