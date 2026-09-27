@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">CROS Control</string>
-    <string name="status_idle">SPP off — turn Capture on to send knobs / read logs</string>
+    <string name="status_idle">Disconnected — connect to send knobs / capture logs</string>
     <string name="status_connecting">Connecting TOTA SPP…</string>
-    <string name="status_connected">Connected — knobs + logs live</string>
+    <string name="status_connected">Connected</string>
     <string name="refresh">Refresh</string>
-    <string name="logging_toggle">Capture / control</string>
-    <string name="logging_hint">On opens TOTA SPP for logs and BiCROS knobs. Off frees sniff for ear tests.</string>
+    <string name="logging_toggle">Connect</string>
+    <string name="tab_controls">Controls</string>
+    <string name="tab_logs">Logs</string>
     <string name="clear">Clear</string>
-    <string name="share">Share log</string>
+    <string name="share">Share</string>
     <string name="share_title">CROS bud log</string>
     <string name="share_empty">Nothing to share yet</string>
+    <string name="log_count_zero">0 lines</string>
+    <string name="log_count">%1$d lines</string>
+    <string name="connect_first">Connect first</string>
     <string name="sco_start">Phone SCO on</string>
     <string name="sco_stop">Phone SCO off</string>
-    <string name="sco_hint">Reference phone SCO only. Prefer bud volume keys for BiCROS level.</string>
-    <string name="knobs_title">BiCROS knobs (v0.3.44+)</string>
-    <string name="knobs_hint">Needs Capture on. Mix = local good-ear sidetone. Bass/treble = SCO shelves. Poor side keeps master≠TX guard.</string>
+    <string name="sco_hint">Reference only — starts phone HFP SCO. Prefer bud volume keys for BiCROS level.</string>
+    <string name="advanced_title">Advanced</string>
+    <string name="knobs_title">BiCROS</string>
+    <string name="knobs_hint">Connect required. Mix = local good-ear sidetone. Bass/treble = SCO shelves. Keep good ear as IBRT master.</string>
     <string name="poor_side_label">Poor side (mic / TX)</string>
     <string name="poor_right">RIGHT</string>
     <string name="poor_left">LEFT</string>
@@ -23,5 +28,5 @@
     <string name="bass_label">Bass 0 dB</string>
     <string name="treble_label">Treble 0 dB</string>
     <string name="apply_cfg">Apply</string>
-    <string name="get_cfg">Get</string>
+    <string name="get_cfg">Get from buds</string>
 </resources>
