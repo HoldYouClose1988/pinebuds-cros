@@ -140,12 +140,12 @@ static void cros_sco_apply_cros_mute(void) {
     cros_sco_sidetone_set_gain_db(mix);
     cros_sco_sidetone_set(1);
     vol_before = cros_sco_get_hfp_volume();
-    vol_after = cros_sco_set_hfp_volume(CROS_SCO_HFP_VOL);
+    vol_after = cros_sco_set_hfp_volume(cros_cfg_vol());
     CROS_LOG(0,
              "[cros_sco] BiCROS GOOD/RX — SCO+local mic mix, no TX; "
-             "hfp_vol %d→%d sidetone ON mix=%ddB bass=%d treble=%d",
+             "hfp_vol %d→%d sidetone ON mix=%ddB bass=%d treble=%d noise=%d",
              vol_before, vol_after, mix, (int)cros_cfg_bass_db(),
-             (int)cros_cfg_treble_db());
+             (int)cros_cfg_treble_db(), cros_cfg_noise());
   }
 }
 
@@ -290,14 +290,13 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
     sco_up = 1;
 #if CROS_SCO_ALONE
 #if CROS_SCO_MEDIA
-    CROS_LOG(0, "[cros_sco] OPENED (alone + media — start voice + CROS shape)");
+    CROS_LOG_ACK(0, "[cros_sco] OPENED (alone + media — voice + BiCROS)");
     cros_sco_voice_start();
 #else
-    CROS_LOG(0, "[cros_sco] OPENED (alone hold — no extra, leave up until "
-                "disable)");
+    CROS_LOG_ACK(0, "[cros_sco] OPENED (alone hold — leave up until disable)");
 #endif
 #else
-    CROS_LOG(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
+    CROS_LOG_ACK(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
     /* Do not leave peer SCO up under extra media / phone ACL (0.3.35 hang). */
     if (proof_timer) {
       osTimerStop(proof_timer);
@@ -312,7 +311,7 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
 #if CROS_SCO_MEDIA
     cros_sco_voice_stop();
 #endif
-    CROS_LOG(0, "[cros_sco] CLOSED");
+    CROS_LOG_ACK(0, "[cros_sco] CLOSED");
   } else {
     CROS_LOG(0, "[cros_sco] notify event=%d", (int)event);
   }

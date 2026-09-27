@@ -6,6 +6,26 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.48] — 2026-09-27
+
+### Firmware + app — volume, link-noise filter, DISABLE ack
+- **Ear (log 223823):** mixing OK; Apply acks OK; quad-tap **did** turn BiCROS
+  off but phone saw no DISABLE (hold still muted that `CROS_LOG`).
+- **DISABLE / OPENED / CLOSED** now use `CROS_LOG_ACK` so the phone sees them
+  under SCO hold.
+- **Volume** (`vol=0..15`): drives good-ear HFP/SCO playback (same path as bud
+  keys). Default 13. App SeekBar + `cros set … vol=N`.
+- **Link noise filter** (`noise=0..5`): soft gate + mild HF rolloff on good-ear
+  SCO PCM (hiss between speech). `0` = off (default). App SeekBar.
+- Get/set status now includes `vol=` and `noise=`.
+
+### Test
+1. Flash both — `init v0.3.48`. Rebuild/install app **0.3.4**.
+2. Quad-tap on → expect `[cros_tws] ENABLE` (+ later OPENED if teed).
+3. Volume slider → Apply → hear level change; log `vol=…`.
+4. Noise 2–3 → Apply — hiss should drop; speech still clear. Try 0 vs 5.
+5. Quad-tap off → phone log `[cros_tws] DISABLE` and/or `[cros_sco] CLOSED`.
+
 ## [0.3.47] — 2026-09-27
 
 ### Firmware — Apply/Get confirmation on phone during CROS

@@ -736,7 +736,7 @@ void cros_tws_init(void) {
   cros_lat_reset();
 #if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
 #if defined(CROS_SCO_MEDIA) && CROS_SCO_MEDIA
-  CROS_LOG(1, "[cros_tws] init v0.3.47 SCO-BiCROS-cfg-ack (poor_cfg=%s)",
+  CROS_LOG(1, "[cros_tws] init v0.3.48 SCO-BiCROS-vol+noise (poor_cfg=%s)",
         cros_cfg_poor_is_right() ? "RIGHT" : "LEFT");
 #else
   CROS_LOG(1, "[cros_tws] init v0.3.38 SCO-alone-silence+guard (poor_cfg=%s)",
@@ -779,6 +779,7 @@ int cros_tws_start(void) {
         0
 #endif
   );
+  CROS_LOG_ACK(0, "[cros_tws] ENABLE");
   rc = apply_enabled(true);
   if (rc != 0) {
     /* Roll back so a refused poor-master enable does not leave half-on state. */
@@ -804,7 +805,7 @@ int cros_tws_stop(void) {
   }
   cros_sco_probe_on_cros_disable();
   cros_bt_log_set_quiet(0);
-  CROS_LOG(0, "[cros_tws] DISABLE");
+  CROS_LOG_ACK(0, "[cros_tws] DISABLE");
   return apply_enabled(false);
 }
 
@@ -839,6 +840,7 @@ void cros_tws_on_peer_mode(uint8_t on) {
       /* Remote stop while already disabled — still clear quiet. */
       cros_sco_probe_on_cros_disable();
       cros_bt_log_set_quiet(0);
+      CROS_LOG_ACK(0, "[cros_tws] DISABLE (peer, already off)");
     }
     return;
   }
@@ -857,6 +859,7 @@ void cros_tws_on_peer_mode(uint8_t on) {
     /* Remote-initiated stop must leave quiet mode (local stop already does). */
     cros_sco_probe_on_cros_disable();
     cros_bt_log_set_quiet(0);
+    CROS_LOG_ACK(0, "[cros_tws] DISABLE (peer)");
     apply_enabled(false);
   }
 }

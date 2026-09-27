@@ -3,9 +3,13 @@
  *
  * Phone (OP_TOTA_STRING, unencrypted):
  *   "cros get"
- *   "cros set poor=right mix=-20 bass=0 treble=0"
- * Keys may be sent individually. poor=left|right|0|1; mix=-30..0 dB;
- * bass/treble=-6..+6 dB (SCO playback shelves on good ear).
+ *   "cros set poor=right mix=-20 bass=0 treble=0 vol=13 noise=0"
+ * Keys may be sent individually.
+ *   poor=left|right|0|1
+ *   mix=-30..-12 dB (HW sidetone; never 0 — howls)
+ *   bass/treble=-6..+6 dB (SCO shelves on good ear)
+ *   vol=0..15 (HFP/SCO playback on good ear; bud keys still work)
+ *   noise=0..5 (soft gate + HF rolloff on good-ear SCO link hiss)
  ***************************************************************************/
 #ifndef CROS_CFG_H
 #define CROS_CFG_H
@@ -29,8 +33,10 @@ int cros_cfg_poor_is_right(void);
 int8_t cros_cfg_mix_db(void);
 int8_t cros_cfg_bass_db(void);
 int8_t cros_cfg_treble_db(void);
+int cros_cfg_vol(void);
+int cros_cfg_noise(void);
 
-/* Soft EQ on SCO PCM (good ear). No-op if flat or poor side. */
+/* Soft EQ + optional noise gate on SCO PCM (good ear). */
 void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len);
 
 /* Re-apply sidetone gain / EQ coeffs after live change. */

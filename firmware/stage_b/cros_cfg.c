@@ -1,9 +1,12 @@
 /***************************************************************************
- * Runtime BiCROS config (poor side / mix / EQ) over TOTA + IBRT.
+ * Runtime BiCROS config (poor / mix / EQ / vol / noise) over TOTA + IBRT.
  *
  * TOTA RX only copies the command and arms a timer — never call
  * tws_ctrl_send_cmd / heavy work from the SPP RX path (wedges BT).
  * Mix ceiling −12 dB (0 dB howls). Signed ints parsed by hand.
+ *
+ * vol=0..15 → HFP/SCO playback level on good ear (bud keys still work).
+ * noise=0..5 → soft gate + mild HF rolloff on good-ear SCO (link hiss).
  ***************************************************************************/
 #include "cros_cfg.h"
 
@@ -29,19 +32,27 @@ enum {
   CROS_MIX_DB_MAX = -12,
   CROS_EQ_DB_MIN = -6,
   CROS_EQ_DB_MAX = 6,
-  CROS_CFG_PKT_LEN = 4,
+  CROS_VOL_MIN = 0,
+  CROS_VOL_MAX = 15,
+  CROS_VOL_DEFAULT = 13,
+  CROS_NOISE_MIN = 0,
+  CROS_NOISE_MAX = 5,
+  CROS_CFG_PKT_LEN = 6,
+  CROS_CFG_PKT_LEN_LEGACY = 4,
   CROS_CFG_CMD_MAX = 128,
 };
 
 extern void cros_sco_sidetone_set_gain_db(int db);
 extern void cros_sco_reapply_shape(void);
-/* Defined in cros_sco_probe.c — also declared in cros_sco_probe.h. */
+extern int cros_sco_set_hfp_volume(int level);
 extern int cros_sco_cfg_hold(void);
 
 static uint8_t g_poor_is_right = (CROS_POOR_IS_RIGHT != 0);
 static int8_t g_mix_db = -20;
 static int8_t g_bass_db = 0;
 static int8_t g_treble_db = 0;
+static uint8_t g_vol = CROS_VOL_DEFAULT;
+static uint8_t g_noise = 0;
 
 static const int16_t k_db_to_q14[13] = {
     8192,  9192,  10313, 11572, 12983, 14568, 16384,
@@ -51,6 +62,8 @@ static const int16_t k_db_to_q14[13] = {
 static int32_t g_bass_q14 = 16384;
 static int32_t g_treble_q14 = 16384;
 static int32_t g_lp_state;
+static int32_t g_nf_env;
+static int32_t g_nf_lp;
 
 static char g_pending_cmd[CROS_CFG_CMD_MAX];
 static volatile uint8_t g_pending_len;
@@ -65,6 +78,16 @@ static int8_t clamp_i8(int v, int lo, int hi) {
     return (int8_t)hi;
   }
   return (int8_t)v;
+}
+
+static uint8_t clamp_u8(int v, int lo, int hi) {
+  if (v < lo) {
+    return (uint8_t)lo;
+  }
+  if (v > hi) {
+    return (uint8_t)hi;
+  }
+  return (uint8_t)v;
 }
 
 static int parse_int(const char *s, int *ok) {
@@ -114,9 +137,12 @@ static void refresh_eq_gain(void) {
 
 static void log_status(const char *why) {
   CROS_LOG_ACK(0,
-           "[cros_cfg] %s poor=%s mix=%ddB bass=%d treble=%d role=%s", why,
-           g_poor_is_right ? "RIGHT" : "LEFT", (int)g_mix_db, (int)g_bass_db,
-           (int)g_treble_db, cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
+               "[cros_cfg] %s poor=%s mix=%ddB bass=%d treble=%d vol=%u "
+               "noise=%u role=%s",
+               why, g_poor_is_right ? "RIGHT" : "LEFT", (int)g_mix_db,
+               (int)g_bass_db, (int)g_treble_db, (unsigned)g_vol,
+               (unsigned)g_noise,
+               cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
 }
 
 static void sync_to_peer_bt(void *a, void *b) {
@@ -131,19 +157,21 @@ static void sync_to_peer_bt(void *a, void *b) {
   pkt[1] = (uint8_t)(int8_t)g_mix_db;
   pkt[2] = (uint8_t)(int8_t)g_bass_db;
   pkt[3] = (uint8_t)(int8_t)g_treble_db;
+  pkt[4] = g_vol;
+  pkt[5] = g_noise;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_CFG, pkt, CROS_CFG_PKT_LEN);
 }
 
 static void schedule_peer_sync(void) {
   if (cros_sco_cfg_hold()) {
-    /* Local apply still done; peer picks up on next safe sync / re-enable. */
     CROS_LOG(0, "[cros_cfg] skip peer sync while SCO up");
     return;
   }
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)sync_to_peer_bt);
 }
 
-static void apply_audio_local(int poor_changed, int mix_changed, int eq_changed) {
+static void apply_audio_local(int poor_changed, int mix_changed, int eq_changed,
+                              int vol_changed) {
   if (eq_changed) {
     refresh_eq_gain();
     g_lp_state = 0;
@@ -153,11 +181,13 @@ static void apply_audio_local(int poor_changed, int mix_changed, int eq_changed)
   }
   if (poor_changed) {
     cros_sco_reapply_shape();
+  } else if (vol_changed && !cros_tws_is_poor_side()) {
+    cros_sco_set_hfp_volume((int)g_vol);
   }
 }
 
 void cros_cfg_apply_audio(void) {
-  apply_audio_local(1, 1, 1);
+  apply_audio_local(1, 1, 1, 1);
 }
 
 static int parse_poor(const char *v) {
@@ -184,11 +214,15 @@ static int8_t snap_mix_db(int v) {
   return m;
 }
 
-static void apply_set(int poor, int mix, int bass, int treble, int have_poor,
-                      int have_mix, int have_bass, int have_treble, int do_sync) {
+static void apply_set(int poor, int mix, int bass, int treble, int vol,
+                      int noise, int have_poor, int have_mix, int have_bass,
+                      int have_treble, int have_vol, int have_noise,
+                      int do_sync) {
   int poor_changed = 0;
   int mix_changed = 0;
   int eq_changed = 0;
+  int vol_changed = 0;
+  int noise_changed = 0;
 
   if (have_poor && poor != (int)g_poor_is_right) {
     g_poor_is_right = poor ? 1 : 0;
@@ -215,12 +249,29 @@ static void apply_set(int poor, int mix, int bass, int treble, int have_poor,
       eq_changed = 1;
     }
   }
-  if (!poor_changed && !mix_changed && !eq_changed && !do_sync) {
+  if (have_vol) {
+    uint8_t v = clamp_u8(vol, CROS_VOL_MIN, CROS_VOL_MAX);
+    if (v != g_vol) {
+      g_vol = v;
+      vol_changed = 1;
+    }
+  }
+  if (have_noise) {
+    uint8_t n = clamp_u8(noise, CROS_NOISE_MIN, CROS_NOISE_MAX);
+    if (n != g_noise) {
+      g_noise = n;
+      noise_changed = 1;
+      g_nf_env = 0;
+      g_nf_lp = 0;
+    }
+  }
+  if (!poor_changed && !mix_changed && !eq_changed && !vol_changed &&
+      !noise_changed && !do_sync) {
     log_status("unchanged");
     return;
   }
-  if (poor_changed || mix_changed || eq_changed) {
-    apply_audio_local(poor_changed, mix_changed, eq_changed);
+  if (poor_changed || mix_changed || eq_changed || vol_changed) {
+    apply_audio_local(poor_changed, mix_changed, eq_changed, vol_changed);
   }
   if (do_sync) {
     schedule_peer_sync();
@@ -229,8 +280,9 @@ static void apply_set(int poor, int mix, int bass, int treble, int have_poor,
 }
 
 static void parse_set_args(char *args, int do_sync) {
-  int poor = 0, mix = 0, bass = 0, treble = 0;
+  int poor = 0, mix = 0, bass = 0, treble = 0, vol = 0, noise = 0;
   int have_poor = 0, have_mix = 0, have_bass = 0, have_treble = 0;
+  int have_vol = 0, have_noise = 0;
   char *p = args;
   while (p && *p) {
     char *tok;
@@ -283,10 +335,22 @@ static void parse_set_args(char *args, int do_sync) {
         treble = iv;
         have_treble = 1;
       }
+    } else if (strcmp(key, "vol") == 0) {
+      iv = parse_int(val, &ok);
+      if (ok) {
+        vol = iv;
+        have_vol = 1;
+      }
+    } else if (strcmp(key, "noise") == 0) {
+      iv = parse_int(val, &ok);
+      if (ok) {
+        noise = iv;
+        have_noise = 1;
+      }
     }
   }
-  apply_set(poor, mix, bass, treble, have_poor, have_mix, have_bass, have_treble,
-            do_sync);
+  apply_set(poor, mix, bass, treble, vol, noise, have_poor, have_mix, have_bass,
+            have_treble, have_vol, have_noise, do_sync);
 }
 
 static void cros_cfg_run_pending(void) {
@@ -334,7 +398,11 @@ void cros_cfg_init(void) {
   g_mix_db = -20;
   g_bass_db = 0;
   g_treble_db = 0;
+  g_vol = CROS_VOL_DEFAULT;
+  g_noise = 0;
   g_lp_state = 0;
+  g_nf_env = 0;
+  g_nf_lp = 0;
   g_pending_len = 0;
   g_pending_busy = 0;
   refresh_eq_gain();
@@ -349,36 +417,81 @@ int cros_cfg_poor_is_right(void) { return g_poor_is_right ? 1 : 0; }
 int8_t cros_cfg_mix_db(void) { return g_mix_db; }
 int8_t cros_cfg_bass_db(void) { return g_bass_db; }
 int8_t cros_cfg_treble_db(void) { return g_treble_db; }
+int cros_cfg_vol(void) { return (int)g_vol; }
+int cros_cfg_noise(void) { return (int)g_noise; }
 
 void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len) {
   int16_t *s;
   uint32_t n;
   uint32_t i;
+  int do_eq;
+  int noise;
   if (!buf || len < 2) {
     return;
   }
-  if (g_bass_db == 0 && g_treble_db == 0) {
+  if (cros_tws_is_poor_side()) {
     return;
   }
-  if (cros_tws_is_poor_side()) {
+  do_eq = (g_bass_db != 0 || g_treble_db != 0);
+  noise = (int)g_noise;
+  if (!do_eq && noise == 0) {
     return;
   }
   s = (int16_t *)buf;
   n = len / sizeof(int16_t);
   for (i = 0; i < n; i++) {
     int32_t x = s[i];
-    g_lp_state += (x - g_lp_state) >> 4;
-    {
-      int32_t low = g_lp_state;
-      int32_t high = x - g_lp_state;
-      int32_t y = (low * g_bass_q14 + high * g_treble_q14) >> 14;
-      if (y > 32767) {
-        y = 32767;
-      } else if (y < -32768) {
-        y = -32768;
+    int32_t y = x;
+
+    if (do_eq) {
+      g_lp_state += (x - g_lp_state) >> 4;
+      {
+        int32_t low = g_lp_state;
+        int32_t high = x - g_lp_state;
+        y = (low * g_bass_q14 + high * g_treble_q14) >> 14;
       }
-      s[i] = (int16_t)y;
     }
+
+    if (noise > 0) {
+      int32_t ax = y >= 0 ? y : -y;
+      int32_t thresh;
+      int32_t floor_q14;
+      int32_t gain_q14;
+      /* Envelope ~1–2 ms at 16 kHz. */
+      g_nf_env += (ax - g_nf_env) >> 3;
+      /* Soft gate: higher noise → higher threshold + lower floor. */
+      thresh = 120 + noise * 140;
+      floor_q14 = 16384 - noise * 2200;
+      if (floor_q14 < 2048) {
+        floor_q14 = 2048;
+      }
+      if (g_nf_env < thresh) {
+        gain_q14 = (g_nf_env << 14) / (thresh ? thresh : 1);
+        if (gain_q14 < floor_q14) {
+          gain_q14 = floor_q14;
+        }
+        y = (y * gain_q14) >> 14;
+      }
+      /* Mild HF rolloff for hiss (stronger with noise level). */
+      if (noise >= 2) {
+        int shift = (noise >= 4) ? 2 : 3;
+        g_nf_lp += (y - g_nf_lp) >> shift;
+        {
+          int32_t blend = noise * 2048; /* Q14, max ~0.625 at noise=5 */
+          if (blend > 10240) {
+            blend = 10240;
+          }
+          y = y + (((g_nf_lp - y) * blend) >> 14);
+        }
+      }
+    }
+
+    if (y > 32767) {
+      y = 32767;
+    } else if (y < -32768) {
+      y = -32768;
+    }
+    s[i] = (int16_t)y;
   }
 }
 
@@ -386,13 +499,24 @@ void cros_cfg_on_peer(const uint8_t *data, uint16_t len) {
   int8_t mix;
   int8_t bass;
   int8_t treble;
-  if (!data || len < CROS_CFG_PKT_LEN) {
+  int have_vol = 0;
+  int have_noise = 0;
+  int vol = 0;
+  int noise = 0;
+  if (!data || len < CROS_CFG_PKT_LEN_LEGACY) {
     return;
   }
   mix = (int8_t)data[1];
   bass = (int8_t)data[2];
   treble = (int8_t)data[3];
-  apply_set(data[0] ? 1 : 0, mix, bass, treble, 1, 1, 1, 1, 0);
+  if (len >= CROS_CFG_PKT_LEN) {
+    vol = data[4];
+    noise = data[5];
+    have_vol = 1;
+    have_noise = 1;
+  }
+  apply_set(data[0] ? 1 : 0, mix, bass, treble, vol, noise, 1, 1, 1, 1,
+            have_vol, have_noise, 0);
 }
 
 void cros_cfg_on_tota_string(uint8_t *param, uint32_t param_len) {
@@ -400,7 +524,6 @@ void cros_cfg_on_tota_string(uint8_t *param, uint32_t param_len) {
   if (!param || param_len == 0) {
     return;
   }
-  /* Copy only — return to SPP RX immediately. */
   n = param_len;
   if (n >= CROS_CFG_CMD_MAX) {
     n = CROS_CFG_CMD_MAX - 1;

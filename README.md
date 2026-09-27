@@ -21,25 +21,25 @@ Ear-validated on hardware:
 | **Transport** | Bud↔bud **SCO/eSCO** + stock HFP **mSBC 16 kHz** voice path |
 | **Latency** | Clap ≈ **140 ms** (vs ≈ **330 ms** on extra L2CAP v0.3.27) |
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
-| **Knobs (v0.3.46)** | App: mix / bass / treble / poor side over TOTA |
+| **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.47](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.47)** |
+| **Flash** | **[v0.3.48](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.48)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.46)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.48)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.46)
+## Current status (v0.3.48)
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds when CROS is off |
 | **SCO BiCROS** | **Ear PASS** — mSBC 16 kHz, ~140 ms, CROS + sidetone mix |
-| **App knobs** | Mix / EQ / poor side via [android/cros-log](android/cros-log/) (v0.3.46) |
+| **App knobs** | Mix / EQ / volume / noise / poor via [android/cros-log](android/cros-log/) (v0.3.4) |
 | **Extra L2CAP CROS** | v0.3.27 freeze (~330 ms) — keep as fallback |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
 | **Phone / tablet volume** | Does **not** drive peer-SCO HFP vol; **bud volume keys** do (+ boot bump to 13/15) |
@@ -59,6 +59,8 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 9. **v0.3.44** — App knobs: mix / EQ / selectable poor side
 10. **v0.3.45** — Fix knob howling (signed parse + mix ≤ −12 dB)
 11. **v0.3.46** — Split SCO register/open + pause TOTA flush (Apply/taps)
+12. **v0.3.47** — Phone ack for Apply/Get under SCO hold
+13. **v0.3.48** — App volume + link-noise filter; DISABLE ack
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -67,15 +69,15 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.46.zip`](flash-packages/pinebuds-cros-v0.3.46.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.48.zip`](flash-packages/pinebuds-cros-v0.3.48.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
 **Product path is in.** Eyes wanted on wear testing, mix balance (sidetone −20 dB),
-and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
-EQ / smoothing, mix gain, tablet volume UX, FF mic vs talk mic, configurable poor side.
+noise filter strength, and the backlog in [latency-and-next.md](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26):
+EQ / smoothing, tablet UX, FF mic vs talk mic.
 
-Flash **[v0.3.46](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.46)**.
+Flash **[v0.3.48](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.48)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)
