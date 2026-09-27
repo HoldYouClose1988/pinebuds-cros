@@ -74,9 +74,13 @@ See [docs/development.md](docs/development.md). Doc index: [docs/](docs/).
 | `android/cros-log/` | Phone control / support-log app |
 | `flash-packages/` | Current + audio-baseline zips only |
 | `docs/` | Current docs; bring-up journals in `docs/archive/` |
+| `docs/BRANCHES.md` | **Android vs iOS firmware tracks** |
 | `patches/` | OpenPineBuds integration patches |
 | `CHANGELOG.md` | Full version history |
 | GitHub Releases | All historical flash zips |
+
+**Tracks:** [`main` / `android`](docs/BRANCHES.md) = Android-stable **v0.3.65**.  
+[`cursor/ios-coexist-3d85`](docs/BRANCHES.md) = iPhone coexist work (**v0.4.x**).
 
 ## License
 
