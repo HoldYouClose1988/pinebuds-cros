@@ -5,7 +5,9 @@
  * tws_ctrl_send_cmd / heavy work from the SPP RX path (wedges BT).
  * Mix ceiling −12 dB (0 dB howls). Signed ints parsed by hand.
  *
- * vol=0..15 → HFP/SCO playback level on good ear (bud keys still work).
+ * vol=0..15 → HFP/SCO DAC playback level on good ear (NOT A2DP music vol).
+ *   Ear: default 13 (−6 dB) made mSBC/SCO floor too loud; 11 (−12 dB) is
+ *   steady with noise=3. Bud volume keys still nudge the same hfp_vol.
  * noise=0..5 → soft gate + mild HF rolloff on good-ear SCO (link hiss).
  ***************************************************************************/
 #include "cros_cfg.h"
@@ -34,9 +36,11 @@ enum {
   CROS_EQ_DB_MAX = 6,
   CROS_VOL_MIN = 0,
   CROS_VOL_MAX = 15,
-  CROS_VOL_DEFAULT = 13,
+  /* Ear 2026-09-27: 13 too hot; 11 + noise 3 holds clean. */
+  CROS_VOL_DEFAULT = 11,
   CROS_NOISE_MIN = 0,
   CROS_NOISE_MAX = 5,
+  CROS_NOISE_DEFAULT = 3,
   CROS_CFG_PKT_LEN = 6,
   CROS_CFG_PKT_LEN_LEGACY = 4,
   CROS_CFG_CMD_MAX = 128,
@@ -52,7 +56,7 @@ static int8_t g_mix_db = -20;
 static int8_t g_bass_db = 0;
 static int8_t g_treble_db = 0;
 static uint8_t g_vol = CROS_VOL_DEFAULT;
-static uint8_t g_noise = 0;
+static uint8_t g_noise = CROS_NOISE_DEFAULT;
 
 static const int16_t k_db_to_q14[13] = {
     8192,  9192,  10313, 11572, 12983, 14568, 16384,
@@ -399,7 +403,7 @@ void cros_cfg_init(void) {
   g_bass_db = 0;
   g_treble_db = 0;
   g_vol = CROS_VOL_DEFAULT;
-  g_noise = 0;
+  g_noise = CROS_NOISE_DEFAULT;
   g_lp_state = 0;
   g_nf_env = 0;
   g_nf_lp = 0;

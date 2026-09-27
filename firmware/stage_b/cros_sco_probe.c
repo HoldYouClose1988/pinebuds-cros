@@ -146,9 +146,9 @@ static uint16_t cros_sco_peer_handle(void) {
   return h;
 }
 
-/* Default HFP/SCO playback level (0..15). 15 beeps; 13 is loud usable. */
+/* Fallback only — live level comes from cros_cfg (default 11). */
 #ifndef CROS_SCO_HFP_VOL
-#define CROS_SCO_HFP_VOL 13
+#define CROS_SCO_HFP_VOL 11
 #endif
 
 /* Asymmetric CROS / BiCROS on SCO:

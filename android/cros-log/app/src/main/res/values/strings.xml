@@ -27,8 +27,8 @@
     <string name="mix_label">Mix (local mic) −20 dB</string>
     <string name="bass_label">Bass 0 dB</string>
     <string name="treble_label">Treble 0 dB</string>
-    <string name="vol_label">Volume 13 / 15</string>
-    <string name="noise_label">Link noise filter 0 (off)</string>
+    <string name="vol_label">Volume 11 / 15</string>
+    <string name="noise_label">Link noise filter 3 / 5</string>
     <string name="apply_cfg">Apply</string>
     <string name="get_cfg">Get from buds</string>
 </resources>

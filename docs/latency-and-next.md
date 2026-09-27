@@ -13,30 +13,29 @@
 | BiCROS | Good-ear HW sidetone mix — **PASS (v0.3.43)** |
 | App knobs | Mix / bass / treble / poor side over TOTA — **v0.3.45** |
 
-**Current flash:** [v0.3.53](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.53).
+**Current flash:** [v0.3.54](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.54).
 
-### Open lead — “clean link” may be ANC (or volume), not teardown
+### Resolved — “clean link” was HFP volume, not ANC/teardown
 
-Ear (2026-09-27): clean BiCROS coincided with a LEFT touch the user read as
-“triple-tap → ANC.” In our key map **hold = ANC**, **LEFT triple = volume
-down**. See [anc-vs-bicros-noise.md](anc-vs-bicros-noise.md). Teardown
-(v0.3.52–53) still matters for re-arm; it is probably **not** what cleaned
-in-session noise.
+Ear A/B (2026-09-27): **hold/ANC did nothing**; LEFT triple (vol down) cleaned
+it. **vol=11 + noise=3** holds. Our knob is **`hfp_vol` (SCO/call DAC gain)**,
+separate from **`a2dp_vol` (music)**. High call gain amplifies the mSBC/SCO
+noise floor so it *sounds* like link hash. Details:
+[anc-vs-bicros-noise.md](anc-vs-bicros-noise.md). Defaults shipped in v0.3.54.
 
 ### Suggested next (priority order)
 
-1. **A/B ANC vs volume** — with BiCROS up: hold LEFT (ANC) vs triple LEFT
-   (vol down) vs app Volume slider; see which restores “clean.” Details in
-   [anc-vs-bicros-noise.md](anc-vs-bicros-noise.md).
+1. **Wear-test vol 11 / noise 3** — confirm all-day comfort; nudge mix if local
+   sidetone now dominates quieter SCO.
 2. **Wear-test clean re-open** — on/off/on without case; prefer
-   `DISABLE (CLOSED)` (not `hard-timeout`).
-3. **Wear-test the knobs** — mix/EQ presets; optionally save NV.
+   `DISABLE (CLOSED)`.
+3. **Wear-test the knobs** — mix/EQ presets; optionally save NV (incl. vol/noise).
 4. **Mic choice** — talk mic vs FF for poor TX and good sidetone.
-5. **If ANC wins** — stop killing ANC on the good ear at CROS enable; consider
-   auto-ANC on BiCROS; re-check poor-side mute after ANC sync.
-6. **If volume wins** — lower default HFP vol; document LEFT triple = vol down.
-7. **Noise filter** — leave at 0 until ANC/vol A/B is done.
-8. **v1.0 / industrial damp / defer** — unchanged backlog.
+5. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases;
+   poor-side UX that steers away from master×TX.
+6. **Industrial damp** — still design-only; separate from BiCROS audio path.
+7. **Defer** — thinning extra L2CAP jitter floor; BLE VOB media; running SCO+extra
+   together (known bad).
 
 ---
 

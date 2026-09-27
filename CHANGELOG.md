@@ -6,6 +6,27 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.54] — 2026-09-27
+
+### Firmware + app — default vol 11 + noise 3 (ear: 13 was the “link noise”)
+- **Ear:** hold/ANC did nothing; LEFT triple (vol down) cleaned it.
+  **vol=11 + noise=3** holds steady. Not teardown; not ANC.
+- **Why vol sounded like “link noise”:** our knob is **HFP/SCO call volume**
+  (`hfp_vol` → codec DAC gain on the SCO player), **not** A2DP music volume
+  (`a2dp_vol`). Separate NV fields. BiCROS rides the call path, so turning
+  it up amplifies the mSBC/SCO noise floor the same way a loud call does —
+  it does not invent RF hash; it just makes the existing floor audible.
+  Codec table: level **13 = −6 dB**, **11 = −12 dB** (6 dB quieter).
+  HW sidetone mix is a **separate** gain (still −20 dB default).
+- **Defaults:** `vol=11`, `noise=3` (was 13 / 0). App seekbars match.
+- Teardown CLOSED-wait from 0.3.53 kept for re-arm.
+
+### Test
+1. Flash both — `init v0.3.54`. Fresh enable should start at vol 11 / noise 3.
+2. Quad-tap BiCROS — expect usable contralateral without the old “hash”
+   at 13. Nudge vol up to 13 briefly to confirm hash returns, then back.
+3. Optional: rebuild/install android/cros-log 0.3.5 for matching slider defaults.
+
 ## [0.3.53] — 2026-09-27
 
 ### Firmware — wait for real SCO CLOSED so every re-open is clean
