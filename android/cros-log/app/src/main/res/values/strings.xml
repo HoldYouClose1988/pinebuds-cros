@@ -17,17 +17,18 @@
     <string name="connect_first">Connect first</string>
     <string name="sco_start">Phone SCO on</string>
     <string name="sco_stop">Phone SCO off</string>
-    <string name="sco_hint">Reference only — starts phone HFP SCO. BiCROS level is the Volume slider (or bud keys).</string>
+    <string name="sco_hint">Reference only — starts phone HFP SCO. BiCROS level is SCO DAC gain (or bud keys while CROS is on).</string>
     <string name="advanced_title">Advanced</string>
     <string name="knobs_title">BiCROS</string>
-    <string name="knobs_hint">Connect required. Mix = local good-ear sidetone (−30…−12 dB). Volume = SCO playback 0–15. Noise = soft gate on link hiss (0=off). Keep good ear as IBRT master.</string>
+    <string name="knobs_hint">Connect required. Mix = local good-ear sidetone (−30…−12 dB). SCO DAC gain = contralateral SCO playback 0–15 (not music). Music = A2DP headphone volume 0–15. Noise = soft gate on SCO hiss (0=off). Keep good ear as IBRT master.</string>
     <string name="poor_side_label">Poor side (mic / TX)</string>
     <string name="poor_right">RIGHT</string>
     <string name="poor_left">LEFT</string>
     <string name="mix_label">Mix (local mic) −20 dB</string>
     <string name="bass_label">Bass 0 dB</string>
     <string name="treble_label">Treble 0 dB</string>
-    <string name="vol_label">Volume 11 / 15</string>
+    <string name="vol_label">SCO DAC gain 8 / 15</string>
+    <string name="a2dp_label">Music (A2DP) 12 / 15</string>
     <string name="noise_label">Link noise filter 3 / 5</string>
     <string name="apply_cfg">Apply</string>
     <string name="get_cfg">Get from buds</string>

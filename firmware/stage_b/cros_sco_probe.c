@@ -146,9 +146,9 @@ static uint16_t cros_sco_peer_handle(void) {
   return h;
 }
 
-/* Fallback only — live level comes from cros_cfg (default 11). */
+/* Fallback only — live level comes from cros_cfg (default 8). */
 #ifndef CROS_SCO_HFP_VOL
-#define CROS_SCO_HFP_VOL 11
+#define CROS_SCO_HFP_VOL 8
 #endif
 
 /* Asymmetric CROS / BiCROS on SCO:
@@ -174,9 +174,10 @@ static void cros_sco_apply_cros_mute(void) {
     vol_after = cros_sco_set_hfp_volume(cros_cfg_vol());
     CROS_LOG_ACK(0,
              "[cros_sco] BiCROS GOOD/RX — SCO+local mic mix, no TX; "
-             "hfp_vol %d→%d sidetone ON mix=%ddB bass=%d treble=%d noise=%d",
+             "hfp_vol %d→%d sidetone ON mix=%ddB bass=%d treble=%d noise=%d "
+             "a2dp=%d",
              vol_before, vol_after, mix, (int)cros_cfg_bass_db(),
-             (int)cros_cfg_treble_db(), cros_cfg_noise());
+             (int)cros_cfg_treble_db(), cros_cfg_noise(), cros_cfg_a2dp());
   }
 }
 

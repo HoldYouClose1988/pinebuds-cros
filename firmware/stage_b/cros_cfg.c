@@ -1,13 +1,14 @@
 /***************************************************************************
- * Runtime BiCROS config (poor / mix / EQ / vol / noise) over TOTA + IBRT.
+ * Runtime BiCROS config (poor / mix / EQ / sco / a2dp / noise) over TOTA +
+ * IBRT.
  *
  * TOTA RX only copies the command and arms a timer — never call
  * tws_ctrl_send_cmd / heavy work from the SPP RX path (wedges BT).
  * Mix ceiling −12 dB (0 dB howls). Signed ints parsed by hand.
  *
- * vol=0..15 → HFP/SCO DAC playback level on good ear (NOT A2DP music vol).
- *   Ear: default 13 (−6 dB) made mSBC/SCO floor too loud; 11 (−12 dB) is
- *   steady with noise=3. Bud volume keys still nudge the same hfp_vol.
+ * vol= / sco= 0..15 → HFP/SCO DAC gain on good ear (NOT music).
+ *   Ear: 13 too hot; 11 better; 8 + noise=3 preferred.
+ * a2dp=0..15 → A2DP music volume (separate NV / DAC when music plays).
  * noise=0..5 → soft gate + mild HF rolloff on good-ear SCO (link hiss).
  ***************************************************************************/
 #include "cros_cfg.h"
@@ -36,12 +37,14 @@ enum {
   CROS_EQ_DB_MAX = 6,
   CROS_VOL_MIN = 0,
   CROS_VOL_MAX = 15,
-  /* Ear 2026-09-27: 13 too hot; 11 + noise 3 holds clean. */
-  CROS_VOL_DEFAULT = 11,
+  /* Ear 2026-09-27: 8 + noise 3 preferred (11 still a bit hot). */
+  CROS_VOL_DEFAULT = 8,
+  CROS_A2DP_DEFAULT = 12,
   CROS_NOISE_MIN = 0,
   CROS_NOISE_MAX = 5,
   CROS_NOISE_DEFAULT = 3,
-  CROS_CFG_PKT_LEN = 6,
+  CROS_CFG_PKT_LEN = 7,
+  CROS_CFG_PKT_LEN_V2 = 6, /* vol+noise, no a2dp */
   CROS_CFG_PKT_LEN_LEGACY = 4,
   CROS_CFG_CMD_MAX = 128,
 };
@@ -49,6 +52,8 @@ enum {
 extern void cros_sco_sidetone_set_gain_db(int db);
 extern void cros_sco_reapply_shape(void);
 extern int cros_sco_set_hfp_volume(int level);
+extern int cros_a2dp_set_volume(int level);
+extern int cros_a2dp_get_volume(void);
 extern int cros_sco_cfg_hold(void);
 
 static uint8_t g_poor_is_right = (CROS_POOR_IS_RIGHT != 0);
@@ -56,6 +61,7 @@ static int8_t g_mix_db = -20;
 static int8_t g_bass_db = 0;
 static int8_t g_treble_db = 0;
 static uint8_t g_vol = CROS_VOL_DEFAULT;
+static uint8_t g_a2dp = CROS_A2DP_DEFAULT;
 static uint8_t g_noise = CROS_NOISE_DEFAULT;
 
 static const int16_t k_db_to_q14[13] = {
@@ -141,11 +147,11 @@ static void refresh_eq_gain(void) {
 
 static void log_status(const char *why) {
   CROS_LOG_ACK(0,
-               "[cros_cfg] %s poor=%s mix=%ddB bass=%d treble=%d vol=%u "
-               "noise=%u role=%s",
+               "[cros_cfg] %s poor=%s mix=%ddB bass=%d treble=%d sco=%u "
+               "a2dp=%u noise=%u role=%s",
                why, g_poor_is_right ? "RIGHT" : "LEFT", (int)g_mix_db,
                (int)g_bass_db, (int)g_treble_db, (unsigned)g_vol,
-               (unsigned)g_noise,
+               (unsigned)g_a2dp, (unsigned)g_noise,
                cros_tws_is_poor_side() ? "POOR/TX" : "GOOD/RX");
 }
 
@@ -163,6 +169,7 @@ static void sync_to_peer_bt(void *a, void *b) {
   pkt[3] = (uint8_t)(int8_t)g_treble_db;
   pkt[4] = g_vol;
   pkt[5] = g_noise;
+  pkt[6] = g_a2dp;
   tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_CFG, pkt, CROS_CFG_PKT_LEN);
 }
 
@@ -175,7 +182,7 @@ static void schedule_peer_sync(void) {
 }
 
 static void apply_audio_local(int poor_changed, int mix_changed, int eq_changed,
-                              int vol_changed) {
+                              int vol_changed, int a2dp_changed) {
   if (eq_changed) {
     refresh_eq_gain();
     g_lp_state = 0;
@@ -188,10 +195,13 @@ static void apply_audio_local(int poor_changed, int mix_changed, int eq_changed,
   } else if (vol_changed && !cros_tws_is_poor_side()) {
     cros_sco_set_hfp_volume((int)g_vol);
   }
+  if (a2dp_changed) {
+    cros_a2dp_set_volume((int)g_a2dp);
+  }
 }
 
 void cros_cfg_apply_audio(void) {
-  apply_audio_local(1, 1, 1, 1);
+  apply_audio_local(1, 1, 1, 1, 1);
 }
 
 static int parse_poor(const char *v) {
@@ -219,14 +229,15 @@ static int8_t snap_mix_db(int v) {
 }
 
 static void apply_set(int poor, int mix, int bass, int treble, int vol,
-                      int noise, int have_poor, int have_mix, int have_bass,
-                      int have_treble, int have_vol, int have_noise,
-                      int do_sync) {
+                      int noise, int a2dp, int have_poor, int have_mix,
+                      int have_bass, int have_treble, int have_vol,
+                      int have_noise, int have_a2dp, int do_sync) {
   int poor_changed = 0;
   int mix_changed = 0;
   int eq_changed = 0;
   int vol_changed = 0;
   int noise_changed = 0;
+  int a2dp_changed = 0;
 
   if (have_poor && poor != (int)g_poor_is_right) {
     g_poor_is_right = poor ? 1 : 0;
@@ -269,13 +280,22 @@ static void apply_set(int poor, int mix, int bass, int treble, int vol,
       g_nf_lp = 0;
     }
   }
+  if (have_a2dp) {
+    uint8_t a = clamp_u8(a2dp, CROS_VOL_MIN, CROS_VOL_MAX);
+    if (a != g_a2dp) {
+      g_a2dp = a;
+      a2dp_changed = 1;
+    }
+  }
   if (!poor_changed && !mix_changed && !eq_changed && !vol_changed &&
-      !noise_changed && !do_sync) {
+      !noise_changed && !a2dp_changed && !do_sync) {
     log_status("unchanged");
     return;
   }
-  if (poor_changed || mix_changed || eq_changed || vol_changed) {
-    apply_audio_local(poor_changed, mix_changed, eq_changed, vol_changed);
+  if (poor_changed || mix_changed || eq_changed || vol_changed ||
+      a2dp_changed) {
+    apply_audio_local(poor_changed, mix_changed, eq_changed, vol_changed,
+                      a2dp_changed);
   }
   if (do_sync) {
     schedule_peer_sync();
@@ -284,9 +304,9 @@ static void apply_set(int poor, int mix, int bass, int treble, int vol,
 }
 
 static void parse_set_args(char *args, int do_sync) {
-  int poor = 0, mix = 0, bass = 0, treble = 0, vol = 0, noise = 0;
+  int poor = 0, mix = 0, bass = 0, treble = 0, vol = 0, noise = 0, a2dp = 0;
   int have_poor = 0, have_mix = 0, have_bass = 0, have_treble = 0;
-  int have_vol = 0, have_noise = 0;
+  int have_vol = 0, have_noise = 0, have_a2dp = 0;
   char *p = args;
   while (p && *p) {
     char *tok;
@@ -339,11 +359,17 @@ static void parse_set_args(char *args, int do_sync) {
         treble = iv;
         have_treble = 1;
       }
-    } else if (strcmp(key, "vol") == 0) {
+    } else if (strcmp(key, "vol") == 0 || strcmp(key, "sco") == 0) {
       iv = parse_int(val, &ok);
       if (ok) {
         vol = iv;
         have_vol = 1;
+      }
+    } else if (strcmp(key, "a2dp") == 0 || strcmp(key, "music") == 0) {
+      iv = parse_int(val, &ok);
+      if (ok) {
+        a2dp = iv;
+        have_a2dp = 1;
       }
     } else if (strcmp(key, "noise") == 0) {
       iv = parse_int(val, &ok);
@@ -353,8 +379,8 @@ static void parse_set_args(char *args, int do_sync) {
       }
     }
   }
-  apply_set(poor, mix, bass, treble, vol, noise, have_poor, have_mix, have_bass,
-            have_treble, have_vol, have_noise, do_sync);
+  apply_set(poor, mix, bass, treble, vol, noise, a2dp, have_poor, have_mix,
+            have_bass, have_treble, have_vol, have_noise, have_a2dp, do_sync);
 }
 
 static void cros_cfg_run_pending(void) {
@@ -398,12 +424,19 @@ static void cros_cfg_cmd_timer_cb(void const *arg) {
 osTimerDef(CROS_CFG_CMD, cros_cfg_cmd_timer_cb);
 
 void cros_cfg_init(void) {
+  int cur_a2dp;
   g_poor_is_right = (CROS_POOR_IS_RIGHT != 0);
   g_mix_db = -20;
   g_bass_db = 0;
   g_treble_db = 0;
   g_vol = CROS_VOL_DEFAULT;
   g_noise = CROS_NOISE_DEFAULT;
+  cur_a2dp = cros_a2dp_get_volume();
+  if (cur_a2dp >= CROS_VOL_MIN && cur_a2dp <= CROS_VOL_MAX) {
+    g_a2dp = (uint8_t)cur_a2dp;
+  } else {
+    g_a2dp = CROS_A2DP_DEFAULT;
+  }
   g_lp_state = 0;
   g_nf_env = 0;
   g_nf_lp = 0;
@@ -422,6 +455,7 @@ int8_t cros_cfg_mix_db(void) { return g_mix_db; }
 int8_t cros_cfg_bass_db(void) { return g_bass_db; }
 int8_t cros_cfg_treble_db(void) { return g_treble_db; }
 int cros_cfg_vol(void) { return (int)g_vol; }
+int cros_cfg_a2dp(void) { return (int)g_a2dp; }
 int cros_cfg_noise(void) { return (int)g_noise; }
 
 void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len) {
@@ -505,22 +539,28 @@ void cros_cfg_on_peer(const uint8_t *data, uint16_t len) {
   int8_t treble;
   int have_vol = 0;
   int have_noise = 0;
+  int have_a2dp = 0;
   int vol = 0;
   int noise = 0;
+  int a2dp = 0;
   if (!data || len < CROS_CFG_PKT_LEN_LEGACY) {
     return;
   }
   mix = (int8_t)data[1];
   bass = (int8_t)data[2];
   treble = (int8_t)data[3];
-  if (len >= CROS_CFG_PKT_LEN) {
+  if (len >= CROS_CFG_PKT_LEN_V2) {
     vol = data[4];
     noise = data[5];
     have_vol = 1;
     have_noise = 1;
   }
-  apply_set(data[0] ? 1 : 0, mix, bass, treble, vol, noise, 1, 1, 1, 1,
-            have_vol, have_noise, 0);
+  if (len >= CROS_CFG_PKT_LEN) {
+    a2dp = data[6];
+    have_a2dp = 1;
+  }
+  apply_set(data[0] ? 1 : 0, mix, bass, treble, vol, noise, a2dp, 1, 1, 1, 1,
+            have_vol, have_noise, have_a2dp, 0);
 }
 
 void cros_cfg_on_tota_string(uint8_t *param, uint32_t param_len) {

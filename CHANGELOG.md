@@ -6,6 +6,27 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.55] — 2026-09-27
+
+### Firmware + app — SCO DAC default 8; Music (A2DP) knob
+- **Ear:** correct BiCROS level is **sco=8** (not 11). Hold-still restart OK
+  (slow bring-up/tear-down expected on this SCO hack).
+- **Defaults:** SCO DAC **8**, noise **3**. App label is now **SCO DAC gain**
+  (was “Volume”) — this is `hfp_vol` / call DAC, not music.
+- **New:** **Music (A2DP)** slider `a2dp=0..15` — separate NV + DAC when A2DP
+  plays; never applied while BiCROS SCO owns the DAC. Phone AVRCP speak-gain
+  report on change.
+- Logs: `sco=` / `a2dp=` (still accept `vol=` as SCO alias).
+
+### Test
+1. Flash both — `init v0.3.55`. Expect `sco=8 a2dp=… noise=3` on get.
+2. BiCROS at 8 should match the tuned ear level; raise sco briefly to hear
+   the old floor return.
+3. With CROS **off**, play music — move Music (A2DP) slider / Apply; bud
+   music level should follow. With CROS **on**, A2DP change stores for later
+   (does not steal SCO DAC).
+4. Install android/cros-log **0.3.6** for the new labels + slider.
+
 ## [0.3.54] — 2026-09-27
 
 ### Firmware + app — default vol 11 + noise 3 (ear: 13 was the “link noise”)

@@ -3,12 +3,13 @@
  *
  * Phone (OP_TOTA_STRING, unencrypted):
  *   "cros get"
- *   "cros set poor=right mix=-20 bass=0 treble=0 vol=13 noise=0"
+ *   "cros set poor=right mix=-20 bass=0 treble=0 vol=8 a2dp=12 noise=3"
  * Keys may be sent individually.
  *   poor=left|right|0|1
  *   mix=-30..-12 dB (HW sidetone; never 0 — howls)
  *   bass/treble=-6..+6 dB (SCO shelves on good ear)
- *   vol=0..15 (HFP/SCO playback on good ear; bud keys still work)
+ *   vol= / sco= 0..15 (HFP/SCO DAC gain on good ear — NOT music)
+ *   a2dp= / music= 0..15 (A2DP music volume)
  *   noise=0..5 (soft gate + HF rolloff on good-ear SCO link hiss)
  ***************************************************************************/
 #ifndef CROS_CFG_H
@@ -34,6 +35,7 @@ int8_t cros_cfg_mix_db(void);
 int8_t cros_cfg_bass_db(void);
 int8_t cros_cfg_treble_db(void);
 int cros_cfg_vol(void);
+int cros_cfg_a2dp(void);
 int cros_cfg_noise(void);
 
 /* Soft EQ + optional noise gate on SCO PCM (good ear). */

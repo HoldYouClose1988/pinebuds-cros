@@ -23,7 +23,7 @@ CROS_SCO_MEDIA ?= 1
 # v0.3.42: mSBC wideband 16 kHz (was CVSD 8 kHz — sounded like dropouts).
 CROS_SCO_MSBC ?= 1
 # v0.3.41: default HFP/SCO playback level on good side (0..15).
-CROS_SCO_HFP_VOL ?= 11
+CROS_SCO_HFP_VOL ?= 8
 # v0.3.33: allow POOR/TX when it is IBRT master (default refuse — known crash).
 CROS_ALLOW_POOR_MASTER ?= 0
 

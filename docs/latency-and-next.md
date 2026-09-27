@@ -13,29 +13,24 @@
 | BiCROS | Good-ear HW sidetone mix — **PASS (v0.3.43)** |
 | App knobs | Mix / bass / treble / poor side over TOTA — **v0.3.45** |
 
-**Current flash:** [v0.3.54](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.54).
+**Current flash:** [v0.3.55](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.55).
 
-### Resolved — “clean link” was HFP volume, not ANC/teardown
+### Resolved — “clean link” was HFP/SCO DAC gain, not ANC/teardown
 
-Ear A/B (2026-09-27): **hold/ANC did nothing**; LEFT triple (vol down) cleaned
-it. **vol=11 + noise=3** holds. Our knob is **`hfp_vol` (SCO/call DAC gain)**,
-separate from **`a2dp_vol` (music)**. High call gain amplifies the mSBC/SCO
-noise floor so it *sounds* like link hash. Details:
-[anc-vs-bicros-noise.md](anc-vs-bicros-noise.md). Defaults shipped in v0.3.54.
+Ear A/B: volume wins. Preferred **sco=8 + noise=3** (v0.3.55). Knob is
+**`hfp_vol` (SCO/call DAC)**, separate from **`a2dp_vol` (music)** — now both
+in the app. Details: [anc-vs-bicros-noise.md](anc-vs-bicros-noise.md).
 
 ### Suggested next (priority order)
 
-1. **Wear-test vol 11 / noise 3** — confirm all-day comfort; nudge mix if local
-   sidetone now dominates quieter SCO.
-2. **Wear-test clean re-open** — on/off/on without case; prefer
-   `DISABLE (CLOSED)`.
-3. **Wear-test the knobs** — mix/EQ presets; optionally save NV (incl. vol/noise).
+1. **Wear-test sco 8 / noise 3 + Music slider** — CROS off → music; CROS on →
+   contralateral at 8.
+2. **Wear-test clean re-open** — slow bring-up/tear-down expected on SCO path.
+3. **Wear-test the knobs** — mix/EQ; optionally save NV.
 4. **Mic choice** — talk mic vs FF for poor TX and good sidetone.
-5. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases;
-   poor-side UX that steers away from master×TX.
-6. **Industrial damp** — still design-only; separate from BiCROS audio path.
-7. **Defer** — thinning extra L2CAP jitter floor; BLE VOB media; running SCO+extra
-   together (known bad).
+5. **v1.0 productization** — stock restore docs, longer wear + case/TWS edge cases.
+6. **Industrial damp** — still design-only.
+7. **Defer** — extra L2CAP thinning; BLE VOB; SCO+extra together.
 
 ---
 

@@ -4,7 +4,8 @@
 **Trigger:** Ear note after v0.3.52/53 — clean BiCROS coincided with a LEFT
 touch the user first read as ANC. A/B showed **volume**, not ANC.
 
-**Verdict:** **vol=11 + noise=3** holds. Defaults shipped in **v0.3.54**.
+**Verdict:** **sco=8 + noise=3** holds (ear). Shipped in **v0.3.55** (was 11
+in 0.3.54). App label: **SCO DAC gain**. Separate **Music (A2DP)** slider.
 
 ## Gesture map (what our flash actually does)
 
