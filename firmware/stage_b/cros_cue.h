@@ -1,8 +1,9 @@
 /***************************************************************************
  * BiCROS audible status cues.
  *
- * In-SCO: mix beeps into good-ear SCO PCM (never media_PlayAudio).
- * SCO-down: stock standalone prompts OK for READY / OPEN_FAIL.
+ * Voice up: mix beeps into good-ear SCO PCM (never media_PlayAudio).
+ * Voice down: stock standalone prompts (READY / OPEN_FAIL / DISABLED /
+ * NOT_YET when teardown already stopped voice).
  ***************************************************************************/
 #ifndef CROS_CUE_H
 #define CROS_CUE_H

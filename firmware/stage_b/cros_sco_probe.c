@@ -91,6 +91,9 @@ extern void cros_sco_sidetone_set_gain_db(int db);
 #define CROS_SCO_OPEN_GAP_MS 100
 /* Let HFP voice path drop before close_link (helps CLOSED arrive). */
 #define CROS_SCO_VOICE_DRAIN_MS 300
+/* Hold voice_stop while DISABLED SCO-PCM cue finishes (ear 091029 silent). */
+#define CROS_SCO_CUE_HOLD_MS 50
+#define CROS_SCO_CUE_HOLD_MAX 12 /* 12×50ms = 600ms — covers 2×120+80 beeps */
 /* Soft wait for SCO_CLOSED after close_link — do NOT unregister yet. */
 #define CROS_SCO_CLOSE_WAIT_MS 4000
 /* Soft re-close attempts before awaiting HCI disconnect (3×4s ≈ 12s). */
@@ -127,6 +130,7 @@ static uint8_t pending_enable; /* quad-tap on while still waiting CLOSED */
 static uint8_t rearm; /* set after a completed session — longer settle */
 static uint8_t open_retries;
 static uint8_t cooldown_want_enable;
+static uint8_t cue_hold_ticks; /* voice still up — waiting for SCO-PCM cue */
 static uint8_t force_cooldown_pending; /* play READY after force cool-down */
 static uint8_t enabled_cued; /* one ENABLED cue per OPENED session */
 static struct bdaddr_t peer_ba;
@@ -137,6 +141,7 @@ static void cros_sco_schedule_open(void);
 static void cros_sco_finish_teardown(const char *why, int force_cooldown);
 static void cros_sco_finish_teardown_bt(void *a, void *b);
 static void cros_sco_issue_close_link_bt(void *a, void *b);
+static void cros_sco_voice_drain_bt(void *a, void *b);
 static void cros_sco_arm_after_teardown(void);
 static void cros_sco_arm_after_teardown_bt(void *a, void *b);
 
@@ -667,14 +672,23 @@ static void cros_sco_close_bt(void *a, void *b) {
   closing = 1;
   await_hci = 0;
   close_attempts = 0;
-#if CROS_SCO_MEDIA
-  cros_sco_voice_stop();
-#endif
+  cue_hold_ticks = 0;
   if (have_peer && (sco_up || registered)) {
     /*
      * Drain voice first, then close_link, then wait for real CLOSED / HCI
      * disconnect before unregister (ear 233307 / 074125).
+     * If DISABLED SCO-PCM cue is still playing, keep voice up until it
+     * finishes — otherwise the mix has no PCM and the cue is silent (091029).
      */
+#if CROS_SCO_MEDIA
+    if (voice_started && cros_cue_sco_busy() && voice_drain_timer) {
+      osTimerStop(voice_drain_timer);
+      osTimerStart(voice_drain_timer, CROS_SCO_CUE_HOLD_MS);
+      CROS_LOG_ACK(0, "[cros_sco] cue hold — voice stays up for DISABLED");
+      return;
+    }
+    cros_sco_voice_stop();
+#endif
     if (voice_drain_timer) {
       osTimerStop(voice_drain_timer);
       osTimerStart(voice_drain_timer, CROS_SCO_VOICE_DRAIN_MS);
@@ -685,7 +699,51 @@ static void cros_sco_close_bt(void *a, void *b) {
     }
     return;
   }
+#if CROS_SCO_MEDIA
+  cros_sco_voice_stop();
+#endif
   cros_sco_finish_teardown("idle", 0);
+}
+
+static void cros_sco_voice_drain_bt(void *a, void *b) {
+  (void)a;
+  (void)b;
+  if (!closing) {
+    return;
+  }
+#if CROS_SCO_MEDIA
+  /* Keep voice up until DISABLED SCO-PCM cue finishes, then stop + drain. */
+  if (voice_started) {
+    if (cros_cue_sco_busy() && cue_hold_ticks < CROS_SCO_CUE_HOLD_MAX) {
+      cue_hold_ticks++;
+      if (voice_drain_timer) {
+        osTimerStart(voice_drain_timer, CROS_SCO_CUE_HOLD_MS);
+      }
+      return;
+    }
+    cros_sco_voice_stop();
+    cue_hold_ticks = 0;
+    if (voice_drain_timer) {
+      osTimerStop(voice_drain_timer);
+      osTimerStart(voice_drain_timer, CROS_SCO_VOICE_DRAIN_MS);
+      CROS_LOG_ACK(0, "[cros_sco] voice drained — close in %ums",
+                   (unsigned)CROS_SCO_VOICE_DRAIN_MS);
+    } else {
+      cros_sco_issue_close_link_bt(NULL, NULL);
+    }
+    return;
+  }
+#endif
+  cros_sco_issue_close_link_bt(NULL, NULL);
+}
+
+static void voice_drain_timer_cb(void const *arg) {
+  (void)arg;
+  if (!closing) {
+    return;
+  }
+  app_bt_start_custom_function_in_bt_thread(0, 0,
+                                            (uint32_t)cros_sco_voice_drain_bt);
 }
 
 static void cros_sco_schedule_open(void) {
@@ -740,15 +798,6 @@ static void open_retry_timer_cb(void const *arg) {
     return;
   }
   app_bt_start_custom_function_in_bt_thread(0, 0, (uint32_t)open_retry_bt);
-}
-
-static void voice_drain_timer_cb(void const *arg) {
-  (void)arg;
-  if (!closing) {
-    return;
-  }
-  app_bt_start_custom_function_in_bt_thread(0, 0,
-                                            (uint32_t)cros_sco_issue_close_link_bt);
 }
 
 static void close_timer_cb(void const *arg) {

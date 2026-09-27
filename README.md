@@ -23,17 +23,17 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.60](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.60)** |
+| **Flash** | **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.60)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.61)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.60)
+## Current status (v0.3.61)
 
 | Mode | Status |
 |------|--------|
@@ -73,6 +73,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 23. **v0.3.58** — Re-arm via BTEVENT disconnect + force cool-down
 24. **v0.3.59** — Audible BiCROS status cues (stock tones) — **wedged AF (084801)**
 25. **v0.3.60** — Status cues via SCO-PCM mix (no media_PlayAudio while SCO up)
+26. **v0.3.61** — DISABLED/NOT_YET audible (media when voice down; cue-hold)
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -81,7 +82,7 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.60.zip`](flash-packages/pinebuds-cros-v0.3.60.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.61.zip`](flash-packages/pinebuds-cros-v0.3.61.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
@@ -92,11 +93,11 @@ Latest zip: [`flash-packages/pinebuds-cros-v0.3.60.zip`](flash-packages/pinebuds
 force cool-down). **Disable/re-enable can take ~15–40 s — intentional:** peer
 SCO close is unreliable on this closed-source stack; reliability beats a fast
 toggle. Note that in any installer / flasher UX for others.
-**v0.3.60** status cues are mixed into SCO PCM while voice is up (ENABLED /
-DISABLED / NOT_YET). Stock media prompts only when SCO is down (READY /
-OPEN_FAIL). Do **not** flash v0.3.59 — media during SCO wedged AF/SPP.
+**v0.3.61** status cues: ENABLED = SCO-PCM beep while voice up; DISABLED /
+NOT_YET = SCO-PCM if voice still up, else stock media; READY / OPEN_FAIL =
+stock pairing success/fail when voice down. Do **not** flash v0.3.59.
 
-Flash **[v0.3.60](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.60)**.
+Flash **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)

@@ -1,20 +1,20 @@
 /***************************************************************************
  * BiCROS status cues.
  *
- * v0.3.59 used media_PlayAudio during SCO (CONNECTED after OPENED). Ear log
- * 084801: ENABLED cue fired → SPP/taps died; case reset required. Same class
- * of failure as v0.3.1 (prompt AF vs CROS AF).
+ * v0.3.59 media_PlayAudio during SCO wedged AF/SPP (ear 084801).
+ * v0.3.60 SCO-PCM for in-SCO cues — ENABLED PASS; DISABLED/NOT_YET silent
+ *   because they fire as voice stops or after soft-close (no PCM to mix).
+ * v0.3.61: gate on cros_sco_voice_is_up() only (not log_hold).
+ *   Voice up  → SCO-PCM mix (ENABLED; DISABLED while still playing).
+ *   Voice down → stock media (safe — READY/OPEN_FAIL ear-proven).
+ *   Teardown holds voice_stop until DISABLED PCM finishes (probe).
  *
- * v0.3.60: while peer SCO / voice is up, mix short square beeps into the
- * good-ear SCO PCM path only — never start APP_PLAY_BACK_AUDIO. Media
- * prompts are allowed only when SCO is fully down (READY / OPEN_FAIL).
- *
- * Patterns (16 kHz mono, good ear):
- *   ENABLED   — 1× medium  (~880 Hz)
- *   DISABLED  — 2× short
- *   READY     — media PAIRING_SUC if SCO down, else 1× high short
- *   NOT_YET   — 3× staccato
- *   OPEN_FAIL — media PAIRING_FAIL if SCO down, else 1× long low
+ * Patterns:
+ *   ENABLED   — SCO-PCM 1× ~880 Hz (never media while voice up)
+ *   DISABLED  — SCO-PCM 2× if voice up; else media DIS_CONNECT
+ *   NOT_YET   — SCO-PCM 3× if voice up; else media WARNING
+ *   READY     — media PAIRING_SUC when voice down (leave as stock)
+ *   OPEN_FAIL — media PAIRING_FAIL when voice down (leave as stock)
  ***************************************************************************/
 #include "cros_cue.h"
 
@@ -26,7 +26,7 @@
 
 enum {
   CROS_CUE_RATE = 16000,
-  CROS_CUE_AMP = 9000,
+  CROS_CUE_AMP = 11000,
 };
 
 enum cros_cue_kind {
@@ -47,13 +47,9 @@ static volatile uint16_t g_freq_hz;
 static volatile uint8_t g_in_gap;
 static uint32_t g_tone_ph;
 
-static int sco_live(void) {
-  /* Prefer dedicated probe helper; fall back to log-hold (armed/up/closing). */
-  if (cros_sco_voice_is_up()) {
-    return 1;
-  }
-  return cros_sco_log_hold();
-}
+/* Only true voice playback — log_hold stays set through soft-close / cool-down
+ * and must not force silent SCO-PCM when the AF path is already dead. */
+static int voice_up(void) { return cros_sco_voice_is_up(); }
 
 static void sco_start(uint8_t kind, uint8_t beeps, uint16_t freq_hz,
                       uint16_t beep_ms, uint16_t gap_ms) {
@@ -94,7 +90,6 @@ void cros_cue_mix_sco_pcm(uint8_t *buf, uint32_t len) {
       break;
     }
     if (!g_in_gap) {
-      /* Square wave into playback. */
       {
         int16_t tone;
         g_tone_ph++;
@@ -137,35 +132,48 @@ int cros_cue_sco_busy(void) {
 }
 
 void cros_cue_enabled(void) {
+  /* Voice is up by construction (post-shape). Never media — ear 084801. */
   CROS_LOG_ACK(0, "[cros_cue] ENABLED (sco-pcm)");
-  /* Never media_PlayAudio here — ear 084801 wedge. */
   sco_start(CROS_CUE_KIND_ENABLED, 1, 880, 180, 80);
 }
 
 void cros_cue_disabled(void) {
-  CROS_LOG_ACK(0, "[cros_cue] DISABLED (sco-pcm)");
-  sco_start(CROS_CUE_KIND_DISABLED, 2, 660, 90, 70);
+  if (voice_up()) {
+    /* Teardown holds voice_stop until this finishes (probe cue-hold). */
+    CROS_LOG_ACK(0, "[cros_cue] DISABLED (sco-pcm)");
+    sco_start(CROS_CUE_KIND_DISABLED, 2, 660, 120, 80);
+    return;
+  }
+  /* Voice already down (e.g. after OPEN_FAIL) — media is safe. */
+  play_media_safe(AUD_ID_BT_DIS_CONNECT, "DISABLED");
 }
 
 void cros_cue_ready(void) {
-  if (sco_live()) {
+  if (voice_up()) {
     CROS_LOG_ACK(0, "[cros_cue] READY (sco-pcm fallback)");
     sco_start(CROS_CUE_KIND_READY, 1, 1200, 120, 60);
     return;
   }
+  /* Stock PAIRING_SUC — ear keep (091029). */
   play_media_safe(AUD_ID_BT_PAIRING_SUC, "READY");
 }
 
 void cros_cue_not_yet(void) {
-  CROS_LOG_ACK(0, "[cros_cue] NOT_YET (sco-pcm)");
-  sco_start(CROS_CUE_KIND_NOT_YET, 3, 990, 50, 45);
+  if (voice_up()) {
+    CROS_LOG_ACK(0, "[cros_cue] NOT_YET (sco-pcm)");
+    sco_start(CROS_CUE_KIND_NOT_YET, 3, 990, 60, 50);
+    return;
+  }
+  /* Typical path: mid-teardown / cool-down — no SCO PCM. */
+  play_media_safe(AUD_ID_BT_WARNING, "NOT_YET");
 }
 
 void cros_cue_open_fail(void) {
-  if (sco_live()) {
+  if (voice_up()) {
     CROS_LOG_ACK(0, "[cros_cue] OPEN_FAIL (sco-pcm fallback)");
     sco_start(CROS_CUE_KIND_OPEN_FAIL, 1, 420, 350, 80);
     return;
   }
+  /* Stock PAIRING_FAIL — ear keep (091029). */
   play_media_safe(AUD_ID_BT_PAIRING_FAIL, "OPEN_FAIL");
 }

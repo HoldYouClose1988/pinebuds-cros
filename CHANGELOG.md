@@ -6,6 +6,31 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.61] — 2026-09-27
+
+### Firmware — DISABLED / NOT_YET cues audible again
+- **Ear PASS (091029 / v0.3.60):** ENABLED SCO-PCM beep good; READY / OPEN_FAIL
+  stock media good; SCO recoverable after OPEN_FAIL — **keep those**.
+- **Ear miss:** `[cros_cue] DISABLED (sco-pcm)` and `NOT_YET (sco-pcm)` fired but
+  **no sound**. DISABLED arms PCM then teardown stops voice ~200 ms later (or
+  voice already down after OPEN_FAIL). NOT_YET fires mid soft-close / cool-down
+  with **no SCO PCM path**. Gate was also wrong: `sco_live()` used `log_hold`,
+  so cool-down READY took silent SCO-PCM fallback instead of stock media.
+- **Fix:**
+  - Gate PCM vs media on `cros_sco_voice_is_up()` only
+  - Voice down → stock media for DISABLED (`DIS_CONNECT`) / NOT_YET (`WARNING`)
+  - Voice up → SCO-PCM; teardown **holds `voice_stop`** until DISABLED cue
+    finishes (cue-hold ≤600 ms)
+  - READY / OPEN_FAIL unchanged when voice down (stock PAIRING_SUC / FAIL)
+
+### Test
+1. Flash both — `init v0.3.61`.
+2. On → one ENABLED beep; off → **two** DISABLED beeps (or disconnect tone if
+   voice already down); logs: `DISABLED (sco-pcm)` or `DISABLED media`.
+3. Mid-teardown on → NOT_YET **WARNING** tone; log `NOT_YET media`.
+4. READY / OPEN_FAIL still stock pairing success/fail.
+5. ≥3 on/off cycles; confirm cues never kill BiCROS / SPP.
+
 ## [0.3.60] — 2026-09-27
 
 ### Firmware — status cues via SCO-PCM (fix media wedge)
