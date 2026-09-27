@@ -14,6 +14,7 @@
 #include "cros_cfg.h"
 
 #include "cros_bt_log.h"
+#include "cros_cue.h"
 #include "cros_tws.h"
 
 #include "app_ibrt_customif_cmd.h"
@@ -501,6 +502,7 @@ void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len) {
   uint32_t i;
   int do_eq;
   int noise;
+  int cue;
   if (!buf || len < 2) {
     return;
   }
@@ -509,7 +511,8 @@ void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len) {
   }
   do_eq = (g_bass_db != 0 || g_treble_db != 0);
   noise = (int)g_noise;
-  if (!do_eq && noise == 0) {
+  cue = cros_cue_sco_busy();
+  if (!do_eq && noise == 0 && !cue) {
     return;
   }
   s = (int16_t *)buf;
@@ -568,6 +571,8 @@ void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len) {
     }
     s[i] = (int16_t)y;
   }
+  /* After EQ/noise so the cue is not soft-gated away. */
+  cros_cue_mix_sco_pcm(buf, len);
 }
 
 void cros_cfg_on_peer(const uint8_t *data, uint16_t len) {

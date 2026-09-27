@@ -28,6 +28,8 @@ void cros_sco_reapply_shape(void);
 int cros_sco_cfg_hold(void);
 /* True while CROS SCO armed/opening/up — pause SPP ring tee (ack-only). */
 int cros_sco_log_hold(void);
+/* True while HFP voice player is up on peer SCO (in-SCO cue gating). */
+int cros_sco_voice_is_up(void);
 
 #ifdef __cplusplus
 }

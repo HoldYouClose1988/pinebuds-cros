@@ -6,9 +6,42 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.60] — 2026-09-27
+
+### Firmware — status cues via SCO-PCM (fix media wedge)
+- **Ear FAIL (084801 / v0.3.59):** ENABLED fired (`[cros_cue] ENABLED id=27`
+  = `AUD_ID_BT_CONNECTED`); two stock beeps played, then **SPP/log/taps died**.
+  Quad-tap disable sent no event; could not re-enable — **case reset required**.
+  Same class as v0.3.1: `media_PlayAudio` during peer SCO races AF / kills the
+  CROS voice path.
+- **Fix:** while peer SCO / voice is up, mix short **square beeps into good-ear
+  SCO PCM** only — **never** start `APP_PLAY_BACK_AUDIO` / `media_PlayAudio` for
+  ENABLED / DISABLED / NOT_YET. Media prompts allowed **only when SCO is fully
+  down** (READY / OPEN_FAIL).
+
+| Cue | Path | Pattern |
+|-----|------|---------|
+| **ENABLED** | SCO-PCM | 1× medium ~880 Hz |
+| **DISABLED** | SCO-PCM | 2× short ~660 Hz |
+| **NOT_YET** | SCO-PCM | 3× staccato ~990 Hz |
+| **READY** | media `PAIRING_SUC` if SCO down; else 1× high PCM | |
+| **OPEN_FAIL** | media `PAIRING_FAIL` if SCO down; else 1× long low PCM | |
+
+Long SCO teardown buffer from v0.3.58 unchanged (~15–40 s).
+
+### Test
+1. Flash both — `init v0.3.60 SCO-PCM-status-cues`.
+2. Quad-tap on → after BiCROS up, **one** short beep (not stock CONNECTED); log
+   `[cros_cue] ENABLED (sco-pcm)`. Logs/taps must keep working.
+3. Quad-tap off → **two** short beeps; teardown continues; later READY
+   (stock success tone once SCO is down, or PCM fallback).
+4. Tap on mid-teardown → three staccato NOT_YET; after READY, enable again.
+5. Repeat on/off **≥3 cycles** without case reset. Confirm cues never kill
+   BiCROS / SPP.
+
 ## [0.3.59] — 2026-09-27
 
-### Firmware — audible BiCROS status cues (stock tones)
+### Firmware — audible BiCROS status cues (stock tones) — **revoked for ear use**
 Distinct stock `AUD_ID` prompts (no new PCM). **Reliability / AF-race note:**
 v0.3.1 WARNING-on-tap killed CROS audio; ENABLED fires only after confirmed
 OPENED + voice/shape + **500 ms** settle — never on the tap itself.

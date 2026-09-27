@@ -153,6 +153,10 @@ int cros_sco_log_hold(void) {
              : 0;
 }
 
+int cros_sco_voice_is_up(void) {
+  return (sco_up && voice_started) ? 1 : 0;
+}
+
 #if CROS_SCO_MEDIA
 static osTimerId voice_timer;
 static osTimerId cros_mute_timer;
@@ -1049,5 +1053,6 @@ void cros_sco_on_hci_disconnect(uint8_t err, const uint8_t *rem6) {
 }
 int cros_sco_cfg_hold(void) { return 0; }
 int cros_sco_log_hold(void) { return 0; }
+int cros_sco_voice_is_up(void) { return 0; }
 
 #endif /* CROS_SCO_PROBE */
