@@ -1,34 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">CROS Control</string>
-    <string name="status_idle">Disconnected — connect to send knobs / capture logs</string>
-    <string name="status_connecting">Connecting TOTA SPP…</string>
-    <string name="status_connected">Connected</string>
-    <string name="refresh">Refresh</string>
-    <string name="logging_toggle">Connect</string>
-    <string name="tab_controls">Controls</string>
-    <string name="tab_logs">Logs</string>
+    <string name="about">About</string>
+    <string name="status_idle">Disconnected</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_connected">Connected — knobs ready</string>
+    <string name="status_banner_idle">Buds: not connected\nBiCROS: —\nKnobs: —</string>
+    <string name="refresh">Refresh devices</string>
+    <string name="connect_toggle">Connect</string>
+    <string name="refresh_status">Refresh status</string>
     <string name="clear">Clear</string>
-    <string name="share">Share</string>
-    <string name="share_title">CROS bud log</string>
+    <string name="share">Share log</string>
+    <string name="share_title">CROS support log</string>
     <string name="share_empty">Nothing to share yet</string>
     <string name="log_count_zero">0 lines</string>
     <string name="log_count">%1$d lines</string>
     <string name="connect_first">Connect first</string>
     <string name="sco_start">Phone SCO on</string>
     <string name="sco_stop">Phone SCO off</string>
-    <string name="sco_hint">Reference only — starts phone HFP SCO. BiCROS level is the phone volume rocker (or SCO DAC slider) while CROS is on.</string>
-    <string name="advanced_title">Advanced</string>
-    <string name="knobs_title">BiCROS</string>
-    <string name="knobs_hint">Connect required. Apply writes knobs to both buds (flash NV — survives case). Connect / Get reloads from the bud. Mix = local sidetone (−30…−12 dB). Rocker while BiCROS on = SCO DAC. Noise = soft gate on SCO hiss. Keep good ear as IBRT master.</string>
-    <string name="poor_side_label">Poor side (mic / TX)</string>
-    <string name="poor_right">RIGHT</string>
-    <string name="poor_left">LEFT</string>
-    <string name="mix_label">Mix (local mic) −20 dB</string>
+    <string name="sco_hint">Dev only — starts phone HFP SCO (not BiCROS). Confuses most users; leave off.</string>
+    <string name="dev_title">Support log</string>
+    <string name="dev_toggle">Show support log</string>
+    <string name="dev_hint">Off by default — SPP log traffic can fight BiCROS. Turn on only when capturing a bug report.</string>
+    <string name="knobs_title">BiCROS knobs</string>
+    <string name="knobs_hint">Apply saves to both buds (survives case). Get / Connect reloads from the bud. Phone rocker while BiCROS is on = CROS path level (not music).</string>
+    <string name="poor_side_label">Poor ear (mic side)</string>
+    <string name="poor_right">Right</string>
+    <string name="poor_left">Left</string>
+    <string name="poor_side_hint">Default: Right = poor, Left = good (master). Poor ear must not be the TWS master or enable is refused.</string>
+    <string name="mix_label">Local ear mix −20 dB</string>
     <string name="bass_label">Bass 0 dB</string>
     <string name="treble_label">Treble 0 dB</string>
-    <string name="vol_label">SCO DAC gain 8 / 15</string>
-    <string name="noise_label">Link noise filter 3 / 5</string>
-    <string name="apply_cfg">Apply</string>
+    <string name="vol_label">CROS path level 8 / 15</string>
+    <string name="noise_label">Link hiss filter 3 / 5</string>
+    <string name="apply_cfg">Apply to buds</string>
     <string name="get_cfg">Get from buds</string>
+    <string name="disclaimer_title">DIY / own-risk — not a hearing aid</string>
+    <string name="disclaimer_body">PineBuds Pro BiCROS is experimental firmware on consumer earbuds. It is not a medical device, prescribed CROS/BiCROS, or certified hearing protection.\n\nFlash and use only if you can restore stock firmware. Loud levels and feedback (howling) are possible if you bypass the mix ceiling (−12 dB).\n\nPoor ear must stay the TWS slave (default: Right poor / Left master).</string>
+    <string name="disclaimer_accept">I understand</string>
+    <string name="poor_warn_title">Poor ear = likely master</string>
+    <string name="poor_warn_body">You set poor = Left. On most setups Left is the TWS master — BiCROS enable will be refused (known crash if forced).\n\nKeep Right = poor unless you have made Right the master. Apply anyway?</string>
+    <string name="poor_warn_apply">Apply anyway</string>
+    <string name="poor_warn_cancel">Cancel</string>
 </resources>

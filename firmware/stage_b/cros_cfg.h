@@ -3,6 +3,7 @@
  *
  * Phone (OP_TOTA_STRING, unencrypted):
  *   "cros get"
+ *   "cros status"   — enabled + knobs (one ACK; for phone UI without log spam)
  *   "cros set poor=right mix=-20 bass=0 treble=0 vol=8 a2dp=12 noise=3"
  * Keys may be sent individually.
  *   poor=left|right|0|1

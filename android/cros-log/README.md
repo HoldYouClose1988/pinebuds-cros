@@ -1,57 +1,32 @@
-# CROS Control (Android)
+# CROS Control (Android) v0.4.0
 
-Classic-Bluetooth **SPP** client for PineBuds Pro CROS/BiCROS:
+Classic-Bluetooth **SPP** client for PineBuds Pro BiCROS (firmware **v0.3.64+**,
+`TOTA=1`).
 
-- **Controls** tab — BiCROS knobs (poor side, mix, bass, treble)
-- **Logs** tab — live TOTA capture with per-line timestamps (`HH:mm:ss.SSS`)
+Meant for people who already flash the buds — technical, but not a raw log console.
 
-Firmware **v0.3.44+** with **`TOTA=1`**. See [docs/bt-log-sink.md](../../docs/bt-log-sink.md).
+## What you see
+
+- **Connect** — knobs + status (support log stays **off**)
+- **Status banner** — connected / BiCROS on·off / knobs / last save (via `cros status`, not a live log dump)
+- **Knobs** — poor ear, local mix, EQ, CROS path level, hiss filter → **Apply** (NV on both buds)
+- **Support log** — hidden toggle; turn on only for bug reports (SPP log traffic can fight BiCROS)
+- **Phone SCO** — only under support log (dev probe)
 
 ## Requirements
 
-- Android Studio with AGP 9 support (Panda / Quail / recent Otter+)
-- **Gradle 9.1+** (wrapper ships 9.1.0) — required to run the Gradle daemon on **JDK 25**
-- Phone with classic Bluetooth (BLE-only tablets will not work)
+- Android Studio with AGP 9 / Gradle 9.1+ (JDK 17–25)
+- Phone with classic Bluetooth
 
-### JDK / Gradle note
-
-Gradle **8.9** only runs on Java ≤22. If Android Studio selected **JVM 25** for Gradle,
-you need this project's Gradle **9.1** wrapper (already set). After a pull:
-
-1. **File → Sync Project with Gradle Files**
-2. If it still complains: **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK**
-   - Either leave **JDK 25** (works with Gradle 9.1), or pick **JDK 17 / 21** embedded in Studio
-
-## Knobs protocol
-
-With **Connect** on, the app sends UTF-8 payloads in `OP_TOTA_STRING` frames:
-
-```text
-cros get
-cros set poor=right mix=-20 bass=0 treble=0
-```
-
-| Knob | Range | Notes |
-|------|-------|-------|
-| Poor side | LEFT / RIGHT | Keep good ear as IBRT master |
-| Mix | −30…0 dB (step 2) | Local good-ear sidetone vs SCO |
-| Bass / treble | −6…+6 dB | Soft shelves on SCO playback |
-
-## Build / run
-
-In Android Studio: open `android/cros-log` → Sync → Run.
-
-Or from a terminal (needs a local Gradle wrapper / Studio-installed SDK):
+## Build
 
 ```bash
 cd android/cros-log
-# Studio can generate gradlew on first sync; or:
-gradle wrapper --gradle-version 9.1.0
 ./gradlew :app:assembleDebug
 # apk: app/build/outputs/apk/debug/app-debug.apk
 ```
 
 1. Pair PineBuds in system Bluetooth.
-2. Open app → pick device → **Connect**.
-3. **Controls** tab: adjust knobs → **Apply**.
-4. **Logs** tab: watch timestamped lines; **Share** / **Clear** as needed.
+2. Open app → accept DIY disclaimer → pick device → **Connect**.
+3. Adjust knobs → **Apply**. Case/reboot keeps them (fw NV).
+4. Leave **Show support log** off unless sharing a bug report.

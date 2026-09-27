@@ -6,6 +6,22 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.64] — 2026-09-27
+
+### Firmware — `cros status` one-shot + app polish (v0.4.0)
+- **`cros status`** → one ACK with `enabled=` + knobs + `fw=` so the phone can
+  refresh BiCROS state **without** leaving the support log on.
+- Android **CROS Control 0.4.0:** DIY disclaimer; poor-ear Apply warning; human
+  knob labels; status banner; Connect separate from support log (log + Phone
+  SCO hidden, off by default — log traffic fights BiCROS).
+
+### Test
+1. Flash both — `init v0.3.64`. Install app 0.4.0.
+2. Connect (log off) → banner shows fw + knobs; Enable BiCROS → Refresh status
+   → `enabled=1`.
+3. Apply → toast “Saved on buds”; case → reconnect → NV load in banner/knobs.
+4. Support log off during ear use; on only for Share bug reports.
+
 ## [0.3.63] — 2026-09-27
 
 ### Firmware + app — BiCROS knobs persist on the buds (incl. poor side)

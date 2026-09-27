@@ -501,6 +501,17 @@ static void cros_cfg_run_pending(void) {
     log_status("get");
     return;
   }
+  if (strncmp(p, "cros status", 11) == 0) {
+    /* One-shot status for the phone UI — no continuous log tee required. */
+    CROS_LOG_ACK(0,
+                 "[cros_cfg] status enabled=%u poor=%s mix=%ddB bass=%d "
+                 "treble=%d sco=%u a2dp=%u noise=%u fw=0.3.64",
+                 cros_tws_is_enabled() ? 1u : 0u,
+                 g_poor_is_right ? "RIGHT" : "LEFT", (int)g_mix_db,
+                 (int)g_bass_db, (int)g_treble_db, (unsigned)g_vol,
+                 (unsigned)g_a2dp, (unsigned)g_noise);
+    return;
+  }
   if (strncmp(p, "cros set", 8) == 0) {
     p += 8;
     while (*p == ' ' || *p == '\t') {

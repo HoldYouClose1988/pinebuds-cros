@@ -17,12 +17,12 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.tabs.TabLayout
 import com.pinebuds.croslog.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,12 +43,16 @@ class MainActivity : AppCompatActivity() {
     private val logLines = ArrayDeque<String>(MAX_LINES)
     private lateinit var deviceAdapter: ArrayAdapter<String>
     private var bonded: List<BluetoothDevice> = emptyList()
-    /** Ignore programmatic switch updates while we sync UI after connect/fail. */
-    private var suppressSwitchCallback = false
+    private var suppressConnectCallback = false
     private var scoWanted = false
     private lateinit var audioManager: AudioManager
     private val writeLock = Any()
     private val lineTimeFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+
+    private var fwVersion: String = "—"
+    private var bicrosOn: Boolean? = null
+    private var knobsSummary: String = "—"
+    private var lastSavedNote: String = "—"
 
     private val scoReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -64,7 +68,7 @@ class MainActivity : AppCompatActivity() {
                 AudioManager.SCO_AUDIO_STATE_ERROR -> "ERROR"
                 else -> "state=$state"
             }
-            appendUi("[phone_sco] ACTION_SCO_AUDIO_STATE_UPDATED → $label")
+            appendDevLog("[phone_sco] ACTION_SCO_AUDIO_STATE_UPDATED → $label")
             if (state == AudioManager.SCO_AUDIO_STATE_DISCONNECTED ||
                 state == AudioManager.SCO_AUDIO_STATE_ERROR
             ) {
@@ -83,52 +87,57 @@ class MainActivity : AppCompatActivity() {
         deviceAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, mutableListOf())
         binding.deviceSpinner.adapter = deviceAdapter
 
-        setupTabs()
         binding.refreshButton.setOnClickListener { refreshDevices() }
+        binding.refreshStatusButton.setOnClickListener { sendStatus() }
         binding.clearButton.setOnClickListener {
             logLines.clear()
             renderLog()
         }
         binding.shareButton.setOnClickListener { shareLog() }
         binding.scoButton.setOnClickListener { togglePhoneSco() }
-        binding.applyCfgButton.setOnClickListener { sendCfgSet() }
-        binding.getCfgButton.setOnClickListener { sendCfgGet() }
-        binding.loggingSwitch.setOnCheckedChangeListener { _, checked ->
-            if (suppressSwitchCallback) return@setOnCheckedChangeListener
+        binding.applyCfgButton.setOnClickListener { onApplyClicked() }
+        binding.getCfgButton.setOnClickListener {
+            sendTotaString("cros get")
+            sendStatus()
+        }
+        binding.aboutButton.setOnClickListener { showDisclaimer(force = true) }
+        binding.connectSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressConnectCallback) return@setOnCheckedChangeListener
             if (checked) {
-                startLogging()
+                startConnect()
             } else {
-                stopLogging(userMessage = "Disconnected — SPP closed (sniff free for ear test)")
+                stopConnect(userMessage = "Disconnected")
             }
+        }
+        binding.devLogSwitch.setOnCheckedChangeListener { _, checked ->
+            binding.devPanel.visibility = if (checked) View.VISIBLE else View.GONE
+            if (checked) renderLog()
         }
 
         wireKnobLabels()
+        renderStatusBanner()
         ensurePermissions()
         refreshDevices()
+        maybeShowFirstRunDisclaimer()
     }
 
-    private fun setupTabs() {
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_controls))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_logs))
-        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) {
-                showTab(tab.position)
-            }
-            override fun onTabUnselected(tab: TabLayout.Tab) {}
-            override fun onTabReselected(tab: TabLayout.Tab) {}
-        })
-        showTab(0)
-    }
+    private fun prefs() = getSharedPreferences(PREFS, MODE_PRIVATE)
 
-    private fun showTab(position: Int) {
-        val controls = position == 0
-        binding.controlsPanel.visibility = if (controls) View.VISIBLE else View.GONE
-        binding.logsPanel.visibility = if (controls) View.GONE else View.VISIBLE
-        if (!controls) {
-            binding.logScroll.post {
-                binding.logScroll.fullScroll(View.FOCUS_DOWN)
-            }
+    private fun maybeShowFirstRunDisclaimer() {
+        if (!prefs().getBoolean(PREF_DISCLAIMER_OK, false)) {
+            showDisclaimer(force = false)
         }
+    }
+
+    private fun showDisclaimer(force: Boolean) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.disclaimer_title)
+            .setMessage(R.string.disclaimer_body)
+            .setPositiveButton(R.string.disclaimer_accept) { _, _ ->
+                prefs().edit().putBoolean(PREF_DISCLAIMER_OK, true).apply()
+            }
+            .setCancelable(force)
+            .show()
     }
 
     private fun wireKnobLabels() {
@@ -157,14 +166,27 @@ class MainActivity : AppCompatActivity() {
         if (binding.poorLeft.isChecked) "left" else "right"
 
     private fun refreshKnobLabels() {
-        binding.mixLabel.text = "Mix (local mic) ${mixDb()} dB"
+        binding.mixLabel.text = "Local ear mix ${mixDb()} dB"
         binding.bassLabel.text = "Bass ${bassDb()} dB"
         binding.trebleLabel.text = "Treble ${trebleDb()} dB"
-        binding.volLabel.text = "SCO DAC gain ${scoLevel()} / 15"
+        binding.volLabel.text = "CROS path level ${scoLevel()} / 15"
         binding.noiseLabel.text = if (noiseLevel() == 0) {
-            "Link noise filter 0 (off)"
+            "Link hiss filter 0 (off)"
         } else {
-            "Link noise filter ${noiseLevel()} / 5"
+            "Link hiss filter ${noiseLevel()} / 5"
+        }
+    }
+
+    private fun onApplyClicked() {
+        if (binding.poorLeft.isChecked) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.poor_warn_title)
+                .setMessage(R.string.poor_warn_body)
+                .setPositiveButton(R.string.poor_warn_apply) { _, _ -> sendCfgSet() }
+                .setNegativeButton(R.string.poor_warn_cancel, null)
+                .show()
+        } else {
+            sendCfgSet()
         }
     }
 
@@ -174,8 +196,8 @@ class MainActivity : AppCompatActivity() {
         sendTotaString(cmd)
     }
 
-    private fun sendCfgGet() {
-        sendTotaString("cros get")
+    private fun sendStatus() {
+        sendTotaString("cros status")
     }
 
     private fun sendTotaString(text: String) {
@@ -202,11 +224,11 @@ class MainActivity : AppCompatActivity() {
                     sock.outputStream.flush()
                 }
                 withContext(Dispatchers.Main) {
-                    appendUi("[phone] → $text")
+                    appendDevLog("[phone] → $text")
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    appendUi("[phone] send failed: ${e.message}")
+                    appendDevLog("[phone] send failed: ${e.message}")
                     toast("Send failed")
                 }
             }
@@ -234,7 +256,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         stopPhoneSco(userMessage = null)
-        stopLogging(userMessage = null)
+        stopConnect(userMessage = null)
         super.onDestroy()
     }
 
@@ -270,7 +292,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (!audioManager.isBluetoothScoAvailableOffCall) {
             toast("Phone reports SCO unavailable off-call")
-            appendUi("[phone_sco] isBluetoothScoAvailableOffCall=false")
+            appendDevLog("[phone_sco] isBluetoothScoAvailableOffCall=false")
             return
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -282,7 +304,7 @@ class MainActivity : AppCompatActivity() {
         }
         scoWanted = true
         binding.scoButton.text = getString(R.string.sco_stop)
-        appendUi("[phone_sco] startBluetoothSco() — watch bud for BTEVENT_SCO_*")
+        appendDevLog("[phone_sco] startBluetoothSco()")
         try {
             audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
             audioManager.startBluetoothSco()
@@ -290,7 +312,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             scoWanted = false
             binding.scoButton.text = getString(R.string.sco_start)
-            appendUi("[phone_sco] start failed: ${e.message}")
+            appendDevLog("[phone_sco] start failed: ${e.message}")
         }
     }
 
@@ -307,10 +329,10 @@ class MainActivity : AppCompatActivity() {
             audioManager.isBluetoothScoOn = false
             audioManager.mode = AudioManager.MODE_NORMAL
         } catch (e: Exception) {
-            appendUi("[phone_sco] stop failed: ${e.message}")
+            appendDevLog("[phone_sco] stop failed: ${e.message}")
         }
         if (userMessage != null) {
-            appendUi(userMessage)
+            appendDevLog(userMessage)
         }
     }
 
@@ -333,54 +355,59 @@ class MainActivity : AppCompatActivity() {
             deviceAdapter.add("${d.name ?: "?"}  ${d.address}")
         }
         deviceAdapter.notifyDataSetChanged()
-        appendUi("Found ${bonded.size} bonded device(s)")
+        appendDevLog("Found ${bonded.size} bonded device(s)")
     }
 
     @SuppressLint("MissingPermission")
-    private fun startLogging() {
+    private fun startConnect() {
         val idx = binding.deviceSpinner.selectedItemPosition
         if (idx < 0 || idx >= bonded.size) {
             toast("Pick a bonded device")
-            setSwitchChecked(false)
+            setConnectChecked(false)
             return
         }
         if (!hasConnectPermission()) {
             toast("Bluetooth permission required")
-            setSwitchChecked(false)
+            setConnectChecked(false)
             return
         }
         closeSession()
 
         val device = bonded[idx]
         binding.statusText.text = getString(R.string.status_connecting)
-        appendUi("Connecting SPP to ${device.name} (${device.address})…")
+        appendDevLog("Connecting SPP to ${device.name} (${device.address})…")
         readerJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val sock = openSpp(device)
                 socket = sock
                 withContext(Dispatchers.Main) {
-                    appendUi("SPP connected — knobs + OP_TOTA_STRING (0x1000)")
+                    appendDevLog("SPP connected")
                     binding.statusText.text = getString(R.string.status_connected)
+                    renderStatusBanner()
                     sendTotaString("cros get")
+                    sendStatus()
                 }
                 readLoop(BufferedInputStream(sock.inputStream))
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    appendUi("Connect failed: ${e.message}")
+                    appendDevLog("Connect failed: ${e.message}")
                     binding.statusText.text = getString(R.string.status_idle)
-                    setSwitchChecked(false)
+                    setConnectChecked(false)
+                    renderStatusBanner()
                 }
                 closeQuietly()
             }
         }
     }
 
-    private fun stopLogging(userMessage: String?) {
+    private fun stopConnect(userMessage: String?) {
         closeSession()
         binding.statusText.text = getString(R.string.status_idle)
-        setSwitchChecked(false)
+        setConnectChecked(false)
+        bicrosOn = null
+        renderStatusBanner()
         if (userMessage != null) {
-            appendUi(userMessage)
+            appendDevLog(userMessage)
         }
     }
 
@@ -390,11 +417,11 @@ class MainActivity : AppCompatActivity() {
         closeQuietly()
     }
 
-    private fun setSwitchChecked(checked: Boolean) {
-        if (binding.loggingSwitch.isChecked == checked) return
-        suppressSwitchCallback = true
-        binding.loggingSwitch.isChecked = checked
-        suppressSwitchCallback = false
+    private fun setConnectChecked(checked: Boolean) {
+        if (binding.connectSwitch.isChecked == checked) return
+        suppressConnectCallback = true
+        binding.connectSwitch.isChecked = checked
+        suppressConnectCallback = false
     }
 
     @SuppressLint("MissingPermission")
@@ -407,7 +434,7 @@ class MainActivity : AppCompatActivity() {
         } catch (first: IOException) {
             viaSdp.close()
             withContext(Dispatchers.Main) {
-                appendUi("SDP SPP failed (${first.message}); trying channel $TOTA_RFCOMM_CHANNEL")
+                appendDevLog("SDP SPP failed (${first.message}); trying channel $TOTA_RFCOMM_CHANNEL")
             }
             val ctor = device.javaClass.getMethod(
                 "createRfcommSocket",
@@ -431,9 +458,11 @@ class MainActivity : AppCompatActivity() {
             }
             if (n < 0) {
                 withContext(Dispatchers.Main) {
-                    appendUi("SPP closed by peer")
+                    appendDevLog("SPP closed by peer")
                     binding.statusText.text = getString(R.string.status_idle)
-                    setSwitchChecked(false)
+                    setConnectChecked(false)
+                    bicrosOn = null
+                    renderStatusBanner()
                 }
                 break
             }
@@ -460,26 +489,80 @@ class MainActivity : AppCompatActivity() {
             repeat(4 + len) { acc.removeAt(0) }
             val text = textBytes.toString(Charsets.UTF_8)
             withContext(Dispatchers.Main) {
-                appendUi(text)
-                maybeSyncKnobsFromLog(text)
+                onBudLine(text)
             }
         }
     }
 
-    private fun maybeSyncKnobsFromLog(line: String) {
-        // Strip optional timestamp prefix before matching.
-        val body = line.substringAfter("] ", line).let {
-            if (it.startsWith("[") || it.contains("[cros_cfg]")) it else line
+    /** Always parse for status/knobs; only buffer UI log when support log is on. */
+    private fun onBudLine(line: String) {
+        appendDevLog(line)
+        maybeSyncKnobsFromLog(line)
+        updateStatusFromLine(line)
+    }
+
+    private fun updateStatusFromLine(line: String) {
+        Regex("""init v([\d.]+)""").find(line)?.groupValues?.getOrNull(1)?.let {
+            fwVersion = it
         }
-        if (!body.contains("[cros_cfg]") && !line.contains("[cros_cfg]")) return
-        val src = if (line.contains("[cros_cfg]")) line else body
-        val poor = Regex("""poor=(RIGHT|LEFT)""").find(src)?.groupValues?.getOrNull(1)
-        val mix = Regex("""mix=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val bass = Regex("""bass=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val treble = Regex("""treble=(-?\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val vol = Regex("""(?:sco|vol)=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val noise = Regex("""noise=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
-        val a2dp = Regex("""a2dp=(\d+)""").find(src)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        when {
+            line.contains("[cros_cue] ENABLED") ||
+                line.contains("BiCROS GOOD/RX") ||
+                line.contains("CROS shape POOR/TX") -> bicrosOn = true
+            line.contains("[cros_cue] DISABLED") ||
+                line.contains("[cros_tws] DISABLE") ||
+                line.contains("[cros_cue] READY") -> bicrosOn = false
+            line.contains("[cros_cfg] status enabled=") -> {
+                val en = Regex("""enabled=(\d+)""").find(line)?.groupValues?.getOrNull(1)
+                bicrosOn = en == "1"
+                Regex("""fw=([\d.]+)""").find(line)?.groupValues?.getOrNull(1)?.let {
+                    fwVersion = it
+                }
+            }
+        }
+        if (line.contains("[cros_cfg] NV save")) {
+            lastSavedNote = "Saved on buds"
+            toast("Saved on buds")
+        }
+        if (line.contains("[cros_cfg] NV load") || line.contains("[cros_cfg] get") ||
+            line.contains("[cros_cfg] status")
+        ) {
+            val poor = Regex("""poor=(RIGHT|LEFT)""").find(line)?.groupValues?.getOrNull(1)
+            val mix = Regex("""mix=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)
+            val sco = Regex("""(?:sco|vol)=(\d+)""").find(line)?.groupValues?.getOrNull(1)
+            val noise = Regex("""noise=(\d+)""").find(line)?.groupValues?.getOrNull(1)
+            if (poor != null || mix != null) {
+                knobsSummary = "poor=${poor ?: "?"} mix=${mix ?: "?"} sco=${sco ?: "?"} noise=${noise ?: "?"}"
+                if (line.contains("NV load")) {
+                    lastSavedNote = "Loaded from bud NV"
+                } else if (line.contains("[cros_cfg] get")) {
+                    lastSavedNote = "Loaded via Get"
+                }
+            }
+        }
+        renderStatusBanner()
+    }
+
+    private fun renderStatusBanner() {
+        val connected = socket?.isConnected == true
+        val link = if (connected) "Connected (fw $fwVersion)" else "Not connected"
+        val cros = when (bicrosOn) {
+            true -> "On"
+            false -> "Off"
+            null -> "—"
+        }
+        binding.statusBanner.text =
+            "Buds: $link\nBiCROS: $cros\nKnobs: $knobsSummary\nLast: $lastSavedNote"
+    }
+
+    private fun maybeSyncKnobsFromLog(line: String) {
+        if (!line.contains("[cros_cfg]")) return
+        val poor = Regex("""poor=(RIGHT|LEFT)""").find(line)?.groupValues?.getOrNull(1)
+        val mix = Regex("""mix=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val bass = Regex("""bass=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val treble = Regex("""treble=(-?\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val vol = Regex("""(?:sco|vol)=(\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        val noise = Regex("""noise=(\d+)""").find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
         if (poor == null && mix == null && vol == null && noise == null) return
 
         if (poor == "LEFT") {
@@ -505,27 +588,6 @@ class MainActivity : AppCompatActivity() {
             binding.noiseSeek.progress = noise.coerceIn(0, binding.noiseSeek.max)
         }
         refreshKnobLabels()
-
-        /* Confirm knobs came from the bud (boot NV / get / save). */
-        val fromBuds = when {
-            src.contains("NV load") -> "NV load (boot)"
-            src.contains("NV save") -> "NV save"
-            src.contains("[cros_cfg] get") -> "get"
-            src.contains("init defaults") -> "init defaults"
-            src.contains("[cros_cfg] set") -> "set applied"
-            else -> null
-        }
-        if (fromBuds != null) {
-            val poorS = poor ?: if (binding.poorLeft.isChecked) "LEFT" else "RIGHT"
-            val mixS = mix?.toString() ?: mixDb().toString()
-            val scoS = vol?.toString() ?: scoLevel().toString()
-            val noiseS = noise?.toString() ?: noiseLevel().toString()
-            appendUi(
-                "[phone] knobs from buds ($fromBuds): poor=$poorS mix=${mixS}dB " +
-                    "sco=$scoS noise=$noiseS" +
-                    (a2dp?.let { " a2dp=$it" } ?: "")
-            )
-        }
     }
 
     private fun shareLog() {
@@ -537,6 +599,7 @@ class MainActivity : AppCompatActivity() {
         val body = buildString {
             appendLine("CROS Log export $stamp")
             appendLine("device=${selectedDeviceLabel()}")
+            appendLine("fw=$fwVersion bicros=$bicrosOn knobs=$knobsSummary")
             appendLine("---")
             logLines.forEach { appendLine(it) }
         }
@@ -560,7 +623,7 @@ class MainActivity : AppCompatActivity() {
                 putExtra(Intent.EXTRA_TEXT, body)
             }
             startActivity(Intent.createChooser(send, getString(R.string.share)))
-            appendUi("Share file failed (${e.message}); sent as plain text")
+            appendDevLog("Share file failed (${e.message}); sent as plain text")
         }
     }
 
@@ -583,7 +646,9 @@ class MainActivity : AppCompatActivity() {
         socket = null
     }
 
-    private fun appendUi(line: String) {
+    /** Buffer + show only when support log is enabled. */
+    private fun appendDevLog(line: String) {
+        if (!binding.devLogSwitch.isChecked) return
         val stamped = "${lineTimeFmt.format(Date())}  $line"
         while (logLines.size >= MAX_LINES) logLines.removeFirst()
         logLines.addLast(stamped)
@@ -597,26 +662,24 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.log_count, logLines.size)
         }
-        // Badge-ish hint on Logs tab when new lines arrive while on Controls.
-        val logsTab = binding.tabLayout.getTabAt(1)
-        if (logsTab != null) {
-            logsTab.text = if (logLines.isEmpty()) {
-                getString(R.string.tab_logs)
-            } else {
-                "${getString(R.string.tab_logs)} (${logLines.size})"
+        if (binding.devLogSwitch.isChecked) {
+            binding.logScroll.post {
+                binding.logScroll.fullScroll(View.FOCUS_DOWN)
             }
-        }
-        if (binding.logsPanel.visibility == View.VISIBLE) {
-            binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
         }
     }
 
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-
     private fun hasConnectPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) ==
-            PackageManager.PERMISSION_GRANTED
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun toast(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
     companion object {
@@ -625,9 +688,10 @@ class MainActivity : AppCompatActivity() {
         private const val OP_TOTA_STRING = 0x1000
         private const val TOTA_RFCOMM_CHANNEL = 12
         private const val MIX_DB_MIN = -30
-        /* Must match firmware CROS_MIX_DB_MAX — 0 dB howls. */
         private const val MIX_DB_MAX = -12
         private const val EQ_DB_MIN = -6
+        private const val PREFS = "cros_control"
+        private const val PREF_DISCLAIMER_OK = "disclaimer_ok"
         private val SPP_UUID: UUID =
             UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
