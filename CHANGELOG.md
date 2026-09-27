@@ -31,7 +31,7 @@ daily wear — [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 b
   COM auto-detect, Backup / Flash / Backup-then-flash menu, APK sideload help.
 - **`flash.ps1` / `backup.ps1`**: COM ports optional (auto-detect when exactly
   two serial ports are present); clearer Sync prompts.
-- Bundles **`CROScontrol.apk`** (CROS Control **0.4.5**) in the flash zip —
+- Bundles **`CROScontrol.apk`** (CROS Control **0.4.6**) in the flash zip —
   sideload on Android (not on Play Store). App source remains under
   `android/cros-log/`.
 - `FLASH.md` rewritten around Install.ps1 + APK steps.

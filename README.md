@@ -55,12 +55,12 @@ HFP) — [Why not iPhone?](#why-not-iphone).
 
 More architecture: [docs/architecture-cros.md](docs/architecture-cros.md).
 
-## Current (v0.3.66 flash zip = fw 0.3.65 + app 0.4.5)
+## Current (v0.3.66 flash zip = fw 0.3.65 + app 0.4.6)
 
 | | |
 |--|--|
 | **Flash** | **[v0.3.66](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.66)** (same BiCROS bin as v0.3.65) |
-| **App** | [CROS Control](android/cros-log/) **0.4.5** — `CROScontrol.apk` inside the flash zip (sideload) |
+| **App** | [CROS Control](android/cros-log/) **0.4.6** — `CROScontrol.apk` inside the flash zip (sideload) |
 | **Phone** | **Android** (iPhone not supported for daily wear) |
 | **Audio baseline** | v0.3.61 — SCO mSBC BiCROS ≈ **140 ms** |
 | **Day to day** | Quad-tap toggles BiCROS (no app needed after Apply) |
