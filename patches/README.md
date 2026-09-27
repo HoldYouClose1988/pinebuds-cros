@@ -21,6 +21,7 @@ Keep patches minimal and feature-scoped.
 | `0012-cros-ibrt-cfg-cmd.patch` | Peer sync `APP_IBRT_CUSTOM_CMD_CROS_CFG` |
 | `0013-cros-absvol-to-sco.patch` | While BiCROS on, AVRCP Absolute Volume → SCO DAC (`cros_cfg_on_abs_volume`) |
 | `0014-cros-sco-btevent-teardown.patch` | `BTEVENT_SCO_DISCONNECT` → `cros_sco_on_hci_disconnect` (peer SCO teardown) |
+| `0015-cros-phone-coexist.patch` | **iOS track:** HF audio / non-peer SCO → `cros_phone_*` (pause BiCROS) |
 
 Sources:
 - Stage A: `firmware/stage_a/` → `apps/cros_loopback/`

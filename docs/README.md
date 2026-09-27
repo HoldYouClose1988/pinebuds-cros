@@ -15,3 +15,5 @@
 
 Older investigation notes and roadmaps live in [archive/](archive/). Prefer
 [CHANGELOG.md](../CHANGELOG.md) and [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases) for version history.
+
+Firmware tracks (Android vs iOS): [BRANCHES.md](BRANCHES.md).

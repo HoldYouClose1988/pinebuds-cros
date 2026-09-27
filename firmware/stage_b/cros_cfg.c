@@ -508,7 +508,7 @@ static void cros_cfg_run_pending(void) {
      * IBRT master). App warns if poor is set to that same side. */
     CROS_LOG_ACK(0,
                  "[cros_cfg] status enabled=%u poor=%s mix=%ddB bass=%d "
-                 "treble=%d sco=%u a2dp=%u noise=%u phone=%s fw=0.3.65",
+                 "treble=%d sco=%u a2dp=%u noise=%u phone=%s fw=0.4.0",
                  cros_tws_is_enabled() ? 1u : 0u,
                  g_poor_is_right ? "RIGHT" : "LEFT", (int)g_mix_db,
                  (int)g_bass_db, (int)g_treble_db, (unsigned)g_vol,

@@ -5,7 +5,7 @@ Two firmware tracks in this repo:
 | Track | Branch | Flash / tag | Role |
 |-------|--------|-------------|------|
 | **Android** | [`main`](https://github.com/HoldYouClose1988/pinebuds-cros/tree/main) · [`android`](https://github.com/HoldYouClose1988/pinebuds-cros/tree/android) | **v0.3.65** / `v0.3.65-android` | Known-good BiCROS on Android. Freeze / bugfix only unless agreed. |
-| **iOS** | [`cursor/ios-coexist-3d85`](https://github.com/HoldYouClose1988/pinebuds-cros/tree/cursor/ios-coexist-3d85) | **v0.4.x** | iPhone coexist: pause BiCROS when the phone wants HFP/eSCO. |
+| **iOS** | [`cursor/ios-coexist-3d85`](https://github.com/HoldYouClose1988/pinebuds-cros/tree/cursor/ios-coexist-3d85) | **v0.4.0+** | iPhone coexist: pause BiCROS when the phone wants HFP/eSCO. |
 
 ## Why
 

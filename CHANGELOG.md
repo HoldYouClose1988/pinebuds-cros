@@ -11,6 +11,30 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases).
 Bring-up journals live under [`docs/archive/`](docs/archive/).
 
+**Tracks:** Android-stable = **v0.3.65** (`main` / `android`). iOS coexist =
+**v0.4.x** (`cursor/ios-coexist-3d85`). See [docs/BRANCHES.md](docs/BRANCHES.md).
+
+## [0.4.0] — 2026-09-27 — **iOS track**
+
+### Firmware — pause BiCROS when the phone wants HFP/SCO
+- **Why:** Android holds BiCROS ~20 min; iPhone drops ~1–11 min with half-routed
+  system sounds on the SCO path. Apple expects exclusive HFP eSCO for call-like
+  audio; peer SCO fights that.
+- **Policy (this branch only):** on real `HF_EVENT_AUDIO_CONNECTED` or non-peer
+  `SCO_CONNECT_IND/CNF` while BiCROS is on → tear BiCROS down and let stock HFP
+  own the link. After `HF_AUDIO_DISCONNECTED` → READY cue; **quad-tap** to
+  re-enable (no auto-restart).
+- Does **not** yet fix silent iPhone ACL starvation with no HF event — that needs
+  more ear logs. First step is call / phone-SCO yield.
+- Expect `init v0.4.0 ios-coexist`. Android users stay on **v0.3.65**.
+
+### Test (iPhone)
+1. Flash both buds with v0.4.0 iOS-track zip.
+2. BiCROS on → place/receive a call — BiCROS should pause; call audio stock.
+3. Hang up → READY; quad-tap BiCROS back on.
+4. Long wear without a call — note time-to-drop vs 0.3.65 (may still drop until
+   further work).
+
 ## [0.3.65] — 2026-09-27
 
 ### App copy + poor-ear warn (CROS Control **0.4.2**) + `phone=` on status

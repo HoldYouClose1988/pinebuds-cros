@@ -21,6 +21,10 @@ void cros_sco_probe_on_peer_ready(void);
 /* HCI BTEVENT_SCO_DISCONNECT — rem6 may be NULL; peer-filtered. */
 void cros_sco_on_hci_disconnect(uint8_t err, const uint8_t *rem6);
 
+/* 1 if rem6 matches the peer SCO BDADDR we opened (0 if unknown / NULL). */
+int cros_sco_rem_is_peer(const uint8_t *rem6);
+int cros_sco_peer_bdaddr_copy(uint8_t out[6]);
+
 /* Re-run asymmetric mute / sidetone after live cfg change (mix / poor). */
 void cros_sco_reapply_shape(void);
 

@@ -1,0 +1,47 @@
+--- a/services/bt_app/app_bt.cpp
++++ b/services/bt_app/app_bt.cpp
+@@ -40,6 +40,7 @@
+ #include "l2cap_api.h"
+ #if defined(CROS_STAGE_B)
+ #include "cros_bt_log.h"
+ #include "cros_sco_probe.h"
++#include "cros_phone_coexist.h"
+ #endif
+ #include "me_api.h"
+ #include "mei_api.h"
+@@ -1585,6 +1586,9 @@
+       if (sco_evt == BTIF_BTEVENT_SCO_DISCONNECT) {
+         cros_sco_on_hci_disconnect(
+             sco_err, sco_bd ? sco_bd->address : (const uint8_t *)0);
+       }
++      cros_phone_on_sco_event(sco_evt, sco_err,
++                              sco_bd ? sco_bd->address : (const uint8_t *)0);
+     }
+   }
+ #endif
+--- a/services/bt_app/app_hfp.cpp
++++ b/services/bt_app/app_hfp.cpp
+@@ -38,6 +38,7 @@
+ #include "app_fp_rfcomm.h"
+ #if defined(CROS_STAGE_B)
+ #include "cros_bt_log.h"
++#include "cros_phone_coexist.h"
+ #endif
+ #include "app_hfp.h"
+ #include "apps.h"
+@@ -1791,6 +1792,7 @@
+ #if defined(CROS_STAGE_B)
+     CROS_LOG(0, "[cros_sco] HF_EVENT_AUDIO_CONNECTED chan=%d",
+              (int)chan_id_flag.id);
++    cros_phone_on_hf_audio(1);
+ #endif
+ 
+     if (bt_drv_func_cb->bt_switch_agc != NULL) {
+@@ -1804,6 +1806,7 @@
+ #if defined(CROS_STAGE_B)
+     CROS_LOG(0, "[cros_sco] HF_EVENT_AUDIO_DISCONNECTED chan=%d",
+              (int)chan_id_flag.id);
++    cros_phone_on_hf_audio(0);
+ #endif
+ 
+     if (bt_drv_func_cb->bt_switch_agc != NULL) {

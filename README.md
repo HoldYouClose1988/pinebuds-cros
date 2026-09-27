@@ -9,15 +9,18 @@
 Poor-side mic → good-side speaker over a bud↔bud link, plus local good-ear mic
 mix (BiCROS). Stock TWS / media / calls remain when CROS is off.
 
-## Current (v0.3.65 + app 0.4.2)
+## Current (iOS track v0.4.0 — see also Android v0.3.65 on `main`)
 
 | | |
 |--|--|
-| **Flash** | **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** |
-| **App** | [CROS Control 0.4.2](android/cros-log/) — knobs, status, Help FAQ |
+| **Flash (iOS)** | **[v0.4.0](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.4.0)** — pause BiCROS when phone wants HFP |
+| **Flash (Android)** | **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)** on `main` / `android` |
+| **App** | [CROS Control 0.4.3](android/cros-log/) |
 | **Audio baseline** | v0.3.61 — SCO mSBC BiCROS ≈ **140 ms** |
 | **Day to day** | Quad-tap toggles BiCROS (no app needed after Apply) |
 | **Default ears** | RIGHT = poor (mic), LEFT = good (phone / master) |
+
+Tracks: [docs/BRANCHES.md](docs/BRANCHES.md).
 
 | Mode | Status |
 |------|--------|
@@ -29,7 +32,7 @@ mix (BiCROS). Stock TWS / media / calls remain when CROS is off.
 
 ## Quick start (Windows)
 
-1. Download **[pinebuds-cros-v0.3.65.zip](https://github.com/HoldYouClose1988/pinebuds-cros/releases/download/v0.3.65/pinebuds-cros-v0.3.65.zip)** (or from [`flash-packages/`](flash-packages/)).
+1. Download **[pinebuds-cros-v0.4.0.zip](https://github.com/HoldYouClose1988/pinebuds-cros/releases/download/v0.4.0/pinebuds-cros-v0.4.0.zip)** (iOS track) or **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/download/v0.3.65/pinebuds-cros-v0.3.65.zip)** (Android-stable).
 2. Backup once, then flash **both** buds:
 
 ```powershell

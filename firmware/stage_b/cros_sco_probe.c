@@ -973,6 +973,30 @@ void cros_sco_on_hci_disconnect(uint8_t err, const uint8_t *rem6) {
   }
 }
 
+int cros_sco_rem_is_peer(const uint8_t *rem6) {
+  if (!rem6 || !have_peer) {
+    return 0;
+  }
+  return (rem6[0] == peer_ba.addr[0] && rem6[1] == peer_ba.addr[1] &&
+          rem6[2] == peer_ba.addr[2] && rem6[3] == peer_ba.addr[3] &&
+          rem6[4] == peer_ba.addr[4] && rem6[5] == peer_ba.addr[5])
+             ? 1
+             : 0;
+}
+
+int cros_sco_peer_bdaddr_copy(uint8_t out[6]) {
+  if (!out || !have_peer) {
+    return -1;
+  }
+  out[0] = peer_ba.addr[0];
+  out[1] = peer_ba.addr[1];
+  out[2] = peer_ba.addr[2];
+  out[3] = peer_ba.addr[3];
+  out[4] = peer_ba.addr[4];
+  out[5] = peer_ba.addr[5];
+  return 0;
+}
+
 static void late_timer_cb(void const *arg) {
   (void)arg;
   if (!probe_armed || open_issued || closing) {
@@ -1172,6 +1196,14 @@ void cros_sco_reapply_shape(void) {}
 void cros_sco_on_hci_disconnect(uint8_t err, const uint8_t *rem6) {
   (void)err;
   (void)rem6;
+}
+int cros_sco_rem_is_peer(const uint8_t *rem6) {
+  (void)rem6;
+  return 0;
+}
+int cros_sco_peer_bdaddr_copy(uint8_t out[6]) {
+  (void)out;
+  return -1;
 }
 int cros_sco_cfg_hold(void) { return 0; }
 int cros_sco_log_hold(void) { return 0; }
