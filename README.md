@@ -30,10 +30,10 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.57)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.58)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.57)
+## Current status (v0.3.58)
 
 | Mode | Status |
 |------|--------|
@@ -70,6 +70,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 20. **v0.3.55** — SCO DAC default 8; Music (A2DP) knob; label fix
 21. **v0.3.56** — Phone volume rocker → BiCROS SCO DAC while CROS on
 22. **v0.3.57** — Persist hfp_vol so AbsVol rocker actually moves DAC
+23. **v0.3.58** — Re-arm via BTEVENT disconnect + force cool-down
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -78,17 +79,19 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.57.zip`](flash-packages/pinebuds-cros-v0.3.57.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.58.zip`](flash-packages/pinebuds-cros-v0.3.58.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
 **Product path is in.** Ear-tuned BiCROS level is **SCO DAC 8** + noise 3
 (call DAC gain). **While BiCROS is on, the phone volume rocker drives SCO DAC**
 (AVRCP Absolute Volume → `sco=` / `hfp_vol`). With CROS off, the rocker is music again.
-Restart works; slow on/off is the SCO method.
-See [anc-vs-bicros-noise.md](docs/anc-vs-bicros-noise.md).
+**v0.3.58** re-enables without case reset by waiting for HCI disconnect (or a
+force cool-down). **Disable/re-enable can take ~15–40 s — intentional:** peer
+SCO close is unreliable on this closed-source stack; reliability beats a fast
+toggle. Note that in any installer / flasher UX for others.
 
-Flash **[v0.3.57](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.57)**.
+Flash **[v0.3.58](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.58)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)

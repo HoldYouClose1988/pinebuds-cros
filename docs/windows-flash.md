@@ -136,6 +136,7 @@ On-chip flash is rated for a limited number of erase cycles (~500). Treat each s
 | Only one bud updates | Flash the other COM explicitly; don’t assume “All Start” hit both |
 | Soft-brick | Restore factory APP (+ OTA if required) with `dld_main` + wiki images |
 | Lost TWS / no quad-tap | **Case RESET ~5s** (preferred); forget phone pair; see [Lost TWS link](#lost-tws-link-after-a-flash-reset--re-pair) |
+| CROS off/on feels stuck ~15–40 s | **Expected** on SCO BiCROS (v0.3.58+). Wait for teardown; don’t case-reset mid-wait unless truly wedged. See [cros-transport.md](cros-transport.md) |
 | WSL2 can’t see COM | Prefer **native Windows** bestool/`dld_main`; WSL serial passthrough is unreliable |
 
 ## What stays on Windows vs cloud

@@ -216,7 +216,10 @@ After both buds re-pair (~30s):
 - Wear **both** buds. **Quad-tap** either bud to toggle CROS (needs TWS link).
 - Default: **RIGHT = mic (poor / TX)**, **LEFT = speaker (good / RX)**.
 - Speak / scratch near the **right** outer face — hear it in the **left** ear.
-- Path: 50 ms ADPCM on BESAUD **extra L2CAP** after peer READY; cmd fallback until then.
+- Path: peer SCO mSBC BiCROS (~140 ms) + local good-ear sidetone mix.
+- **Turning CROS off/on can take ~15–40 s.** That wait is intentional (hacked
+  peer-SCO teardown on a closed-source stack). Prefer reliability over a fast
+  toggle — do not case-reset mid-wait unless it truly wedges.
 - Avoid phone music while testing (A2DP fights the CROS stream).
 
 **Phone logs (TOTA=1):** open \`android/cros-log\` → Connect → **Capture logs** on.

@@ -1,5 +1,23 @@
 # CROS transport notes (Stage B)
 
+## Current product path (v0.3.45+) — peer SCO mSBC BiCROS
+
+| Piece | Notes |
+|-------|--------|
+| Transport | Bud↔bud **SCO/eSCO** + stock HFP **mSBC 16 kHz** (~140 ms clap) |
+| Shape | Poor mic → good speaker; good mic via HW sidetone (BiCROS) |
+| Toggle | Quad-tap; knobs over TOTA |
+
+**Disable / re-enable latency (~15–40 s) is intentional.** Peer SCO rarely
+delivers `sco_notify(CLOSED)` on this closed-source stack; we wait for HCI
+`BTEVENT_SCO_DISCONNECT` (and cool down after force teardown) so the next
+`open_link` actually OPENS. Prefer that buffer over a fast toggle that wedges
+until a case reset. Document in release notes and any future installer/flasher
+UX — do not “optimize away” without a proven faster close.
+
+Extra L2CAP (~330 ms) remains a fallback (v0.3.27 freeze). Historical survey
+below.
+
 ## What we learned on the control channel
 
 Custom `APP_IBRT_CUSTOM_CMD_*` over BESAUD **works** for CROS audio, but it is a
