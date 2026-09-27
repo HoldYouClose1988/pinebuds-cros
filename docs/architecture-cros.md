@@ -105,11 +105,13 @@ ANC binary blob remains opaque; CROS should **not** depend on finished ANC. FF A
 
 ## Safety / UX constraints
 
-- Soft-knee limiter on CROS path (shared with industrial damp work)
+- Soft-knee limiter on CROS path (gain ceiling; not jobsite PPE)
 - Max gain cap in NV; no unbounded “hearing aid” boost
 - Audible mode prompt (reuse opus alerts under `config/_default_cfg_src_/res/`)
 - Clear README: not a substitute for prescribed CROS / BiCROS devices
-
+- **Industrial / construction-site noise damping is out of scope.** For loud
+  environments use rated **PPE** (foam plugs, earmuffs, etc.). PineBuds Pro are
+  not NRR-rated hearing protection.
 ## Implementation slices
 
 | Slice | Status |

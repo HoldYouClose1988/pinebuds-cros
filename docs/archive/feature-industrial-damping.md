@@ -1,12 +1,10 @@
 # Feature: Industrial noise damping (SITE mode)
 
-**Status: design / not functional.**
+**Status: OUT OF SCOPE — will not be implemented.**
 
-See [docs/architecture-noise-damping.md](architecture-noise-damping.md).
+For loud jobsites / shops, use real **PPE** (foam plugs, earmuffs, dual
+protection as required). PineBuds Pro BiCROS is contralateral routing only —
+not NRR-rated hearing protection and not a substitute for it.
 
-## Acceptance sketch (future)
-
-- [ ] Output limiter always engaged in SITE mode
-- [ ] At least one ANC coef preset selectable (when ANC path works)
-- [ ] Shared limit with CROS inject path
-- [ ] First-enable prompt: not a substitute for PPE
+Historical design notes (archived, not a roadmap):
+[architecture-noise-damping.md](architecture-noise-damping.md).

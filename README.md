@@ -73,7 +73,7 @@ More architecture: [docs/architecture-cros.md](docs/architecture-cros.md).
 | Poor = phone master | Enable **refused** (known crash) |
 | Extra L2CAP CROS | Legacy freeze at v0.3.27 (~330 ms) |
 | **iPhone** | **Not supported** for daily wear (link drops) |
-| Industrial damp | Not implemented |
+| Industrial noise damping | **Out of scope** — use real **PPE** (plugs / muffs); these buds are not hearing protection |
 
 ## Why not iPhone?
 

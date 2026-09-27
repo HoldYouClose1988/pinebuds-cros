@@ -1,6 +1,14 @@
 # Industrial / construction-site noise damping
 
-## Intent
+**Status: OUT OF SCOPE — cancelled. Use PPE.**
+
+This document is kept only as historical design scratch. The BiCROS project
+will **not** ship an industrial / SITE damping mode. Loud environments need
+rated hearing protection (plugs / muffs), not consumer earbuds.
+
+---
+
+## Intent (historical)
 
 Add a firmware **program** that reduces listener exposure and listening fatigue in continuous high-SPL environments (jobsites, shops, generators), while remaining usable for talk-through / CROS awareness when needed.
 

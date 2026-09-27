@@ -15,6 +15,11 @@ Bring-up journals live under [`docs/archive/`](docs/archive/).
 that bin + CROS Control APK + guided installer). iPhone is not supported for
 daily wear — [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
 
+## [docs] — industrial damping out of scope
+
+Industrial / SITE noise damping will **not** be implemented. Loud environments
+need rated **PPE** (plugs / muffs). README + architecture archive updated.
+
 ## [0.4.6] — app — header / status banner layout fix
 
 ### CROS Control **0.4.6**
