@@ -6,6 +6,28 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.52] — 2026-09-27
+
+### Firmware — re-enable BiCROS after DISABLE without case reset
+- **Ear (log 232259):** first session OK; DISABLE; second ENABLE got
+  `open_link rc=0` but **never OPENED** — needed case reseat to start again.
+- **Cause:** teardown called `unregister` immediately after `close_link`
+  without waiting for `SCO_CLOSED`, leaving the controller half-down so the
+  next `open_link` could not complete.
+- **Fix:**
+  - `close_link` → wait for `CLOSED` (800 ms timeout fallback) → then
+    unregister / clear / `DISABLE`
+  - Reset `sco_inited` so the next enable does a fresh `sco_init`
+  - Rearm settle **2.5 s** after a prior session
+  - If `OPENED` missing after open_link, one register+open retry at 2 s
+
+### Test
+1. Flash both — `init v0.3.52`.
+2. Quad-tap on → BiCROS. Quad-tap off → expect `close_link` / `CLOSED` /
+   `DISABLE (CLOSED|timeout)`.
+3. Quad-tap on again **without** the case — expect `ENABLE (…, rearm)` then
+   `OPENED` / voice / BiCROS. Repeat on/off a few times.
+
 ## [0.3.51] — 2026-09-27
 
 ### Firmware — curated diagnostics on phone (without SCO flush wedge)
