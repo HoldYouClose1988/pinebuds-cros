@@ -9,8 +9,18 @@ Firmware **v0.3.44+** with **`TOTA=1`**. See [docs/bt-log-sink.md](../../docs/bt
 
 ## Requirements
 
-- Android Studio Ladybug+ / AGP 8.x
+- Android Studio with AGP 9 support (Panda / Quail / recent Otter+)
+- **Gradle 9.1+** (wrapper ships 9.1.0) — required to run the Gradle daemon on **JDK 25**
 - Phone with classic Bluetooth (BLE-only tablets will not work)
+
+### JDK / Gradle note
+
+Gradle **8.9** only runs on Java ≤22. If Android Studio selected **JVM 25** for Gradle,
+you need this project's Gradle **9.1** wrapper (already set). After a pull:
+
+1. **File → Sync Project with Gradle Files**
+2. If it still complains: **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK**
+   - Either leave **JDK 25** (works with Gradle 9.1), or pick **JDK 17 / 21** embedded in Studio
 
 ## Knobs protocol
 
@@ -29,8 +39,14 @@ cros set poor=right mix=-20 bass=0 treble=0
 
 ## Build / run
 
+In Android Studio: open `android/cros-log` → Sync → Run.
+
+Or from a terminal (needs a local Gradle wrapper / Studio-installed SDK):
+
 ```bash
 cd android/cros-log
+# Studio can generate gradlew on first sync; or:
+gradle wrapper --gradle-version 9.1.0
 ./gradlew :app:assembleDebug
 # apk: app/build/outputs/apk/debug/app-debug.apk
 ```
