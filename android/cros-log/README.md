@@ -1,4 +1,4 @@
-# CROS Control (Android) v0.4.2
+# CROS Control (Android) v0.4.3
 
 Classic-Bluetooth **SPP** client for PineBuds Pro BiCROS (firmware **v0.3.64+**,
 `TOTA=1`; **v0.3.65+** reports `phone=` on status for the poor-ear warning).
@@ -8,11 +8,11 @@ Meant for people who already flash the buds — technical, but not a raw log con
 
 ## What you see
 
-- **Help** — FAQ + status beep/tone chart (rewritten for a general reader)
 - **Connect** — knobs + status (support log stays **off**)
 - **Status banner** — connected / BiCROS on·off / knobs / last save (via `cros status`)
 - **Knobs** — poor ear, local mix, EQ, CROS path level, hiss filter → **Apply** (NV on both buds)
 - **Support log** — hidden toggle; turn on only for bug reports
+- **Help** — FAQ + status beep/tone chart (bottom of scroll, under Support log)
 - **Phone SCO** — only under support log (dev probe)
 
 First launch shows a one-time DIY disclaimer (includes “app not required day to day”).
