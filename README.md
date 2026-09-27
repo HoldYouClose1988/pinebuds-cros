@@ -14,7 +14,7 @@ happening on the “deaf” side, while the good ear’s own mic is mixed in loc
 so that side still sounds natural.
 
 **ANDROID APK HAS TO BE SIDELOADED. FULL ANDROID APP SOURCE IS IN GITHUB UNDER ANDROID FOLDER**
-
+Android APK is included in release zip. 
 | | Default mapping |
 |--|--|
 | **Poor ear (mic / TX)** | **Right or Left (Configurable)** |
@@ -129,5 +129,7 @@ See [docs/development.md](docs/development.md). Doc index: [docs/](docs/).
 | GitHub Releases | Flash zips + app APK when published |
 
 ## License
+
+Feel Free to fork and improve. Just give me credit.
 
 See [LICENSE](LICENSE) and [NOTICE](NOTICE).
