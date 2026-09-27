@@ -6,6 +6,21 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.49] — 2026-09-27
+
+### Firmware — stop muting the phone log after SCO is down
+- **Why it was wrong:** hold was `sco_up || open_issued`. After the SCO pipe
+  closed, `open_issued` stayed set until `close_bt`, so the TOTA tee kept
+  draining/muting — DISABLE/`CLOSED` never reached the phone.
+- **Fix:** hold = **`sco_up` only**; clear `open_issued` on `CLOSED`.
+- While SCO is up: **throttle** flush to 1 line/tick — do **not** discard the
+  ring. When SCO is down: normal multi-line tee resumes immediately.
+
+### Test
+1. Flash both — `init v0.3.49`.
+2. Quad-tap on/off — expect `[cros_tws] DISABLE` and `[cros_sco] CLOSED` on
+   the phone without needing the case.
+
 ## [0.3.48] — 2026-09-27
 
 ### Firmware + app — volume, link-noise filter, DISABLE ack

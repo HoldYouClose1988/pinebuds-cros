@@ -23,7 +23,7 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.48](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.48)** |
+| **Flash** | **[v0.3.49](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.49)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
@@ -42,7 +42,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 | **App knobs** | Mix / EQ / volume / noise / poor via [android/cros-log](android/cros-log/) (v0.3.4) |
 | **Extra L2CAP CROS** | v0.3.27 freeze (~330 ms) — keep as fallback |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
-| **Phone / tablet volume** | Does **not** drive peer-SCO HFP vol; **bud volume keys** do (+ boot bump to 13/15) |
+| **Phone / tablet volume** | App **Volume** slider (`vol=0..15`) or **bud volume keys** |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/) |
 | **Industrial damp** | Not implemented (design only) |
 

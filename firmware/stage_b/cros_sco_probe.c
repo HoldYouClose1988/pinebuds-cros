@@ -95,8 +95,10 @@ static void cros_sco_close_bt(void *a, void *b);
 static void cros_sco_schedule_open(void);
 
 int cros_sco_cfg_hold(void) {
-  /* Pause TOTA SPP flush + skip IBRT cfg sync once open is in flight / up. */
-  return (sco_up || open_issued) ? 1 : 0;
+  /* True only while peer SCO is actually up. Do NOT key off open_issued —
+   * that stayed set after CLOSED and kept the TOTA tee muted with the pipe
+   * already down (DISABLE invisible). IBRT cfg sync still skips while up. */
+  return sco_up ? 1 : 0;
 }
 
 #if CROS_SCO_MEDIA
@@ -308,10 +310,11 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
 #endif
   } else if (event == SCO_CLOSED) {
     sco_up = 0;
+    open_issued = 0; /* hold clears with sco_up — tee resumes immediately */
 #if CROS_SCO_MEDIA
     cros_sco_voice_stop();
 #endif
-    CROS_LOG_ACK(0, "[cros_sco] CLOSED");
+    CROS_LOG(0, "[cros_sco] CLOSED");
   } else {
     CROS_LOG(0, "[cros_sco] notify event=%d", (int)event);
   }

@@ -5,8 +5,10 @@
  * capped per tick, and only when the TOTA SPP path is up. Never call
  * tota_printf (osSemaphoreWait forever) from a general-purpose OS timer.
  *
- * v0.3.46: while cros_sco_cfg_hold(), do not flush the ring to SPP.
- * v0.3.47: one ack slot still flushes under hold (`[cros_cfg] set` / `get`).
+ * v0.3.46: while peer SCO is up, throttle TOTA flush (don't block BT).
+ * v0.3.47: ack slot for Apply/Get under load.
+ * v0.3.49: hold = sco_up only — never mute after the SCO pipe is down;
+ *   under SCO, throttle to 1 line/tick (do not drain/discard the ring).
  ***************************************************************************/
 #include "cros_bt_log.h"
 
@@ -30,6 +32,8 @@ extern int cros_sco_cfg_hold(void);
 /* Cap per BT-thread flush so a slow phone degrades to drop/delay, not a
  * multi-line blocking chain on the BT thread. */
 #define CROS_BT_LOG_FLUSH_MAX 2
+/* While peer SCO is up, still tee — but at most one SPP line per tick. */
+#define CROS_BT_LOG_FLUSH_MAX_SCO 1
 
 typedef struct {
   char line[CROS_BT_LOG_LINE_MAX];
@@ -42,7 +46,7 @@ static volatile uint8_t dropped;
 static volatile uint8_t flush_pending;
 static volatile uint8_t quiet;
 static uint8_t inited;
-/* Single Apply/Get confirmation — survives SCO hold (ring does not). */
+/* Single Apply/Get confirmation — flushed first under load. */
 static char ack_line[CROS_BT_LOG_LINE_MAX];
 static volatile uint8_t ack_pending;
 
@@ -52,11 +56,6 @@ static void cros_bt_log_kick_flush(void);
 
 osTimerDef(CROS_BT_LOG_FLUSH, cros_bt_log_timer);
 static osTimerId flush_id;
-
-static void cros_bt_log_drain_ring(void) {
-  tail = head;
-  dropped = 0;
-}
 
 static void cros_bt_log_kick_flush(void) {
   if (!inited || flush_pending) {
@@ -68,6 +67,9 @@ static void cros_bt_log_kick_flush(void) {
 }
 
 static void cros_bt_log_flush_bt(void *a, void *b) {
+  uint8_t sent = 0;
+  uint8_t max_lines;
+  uint8_t drops;
   (void)a;
   (void)b;
 
@@ -81,30 +83,27 @@ static void cros_bt_log_flush_bt(void *a, void *b) {
     return;
   }
 
-  /* Always try the ack slot first (Apply/Get), even under SCO hold. */
+  /* Ack first (Apply/Get / DISABLE) — one line even under SCO. */
   if (ack_pending) {
     ack_pending = 0;
     tota_printf("%s", ack_line);
+    sent++;
   }
 
-  /* Peer SCO — drop ring backlog; do not multi-line SPP spam on BT. */
-  if (cros_sco_cfg_hold()) {
-    cros_bt_log_drain_ring();
-    flush_pending = 0;
-    return;
-  }
+  /* SCO up: throttle, never discard. SCO down: normal multi-line flush. */
+  max_lines = cros_sco_cfg_hold() ? CROS_BT_LOG_FLUSH_MAX_SCO
+                                  : CROS_BT_LOG_FLUSH_MAX;
 
-  uint8_t sent = 0;
-  uint8_t drops = dropped;
-  if (drops && !quiet) {
+  drops = dropped;
+  if (drops && !quiet && sent < max_lines) {
     dropped = 0;
     tota_printf("[cros_log] dropped=%u", (unsigned)drops);
     sent++;
   } else if (drops && quiet) {
-    dropped = 0; /* discard count while quiet — do not SPP-spam */
+    dropped = 0;
   }
 
-  while (sent < CROS_BT_LOG_FLUSH_MAX && tail != head) {
+  while (sent < max_lines && tail != head) {
     uint8_t i = tail;
     tota_printf("%s", ring[i].line);
     tail = (uint8_t)((i + 1u) % CROS_BT_LOG_DEPTH);
@@ -119,22 +118,9 @@ static void cros_bt_log_timer(void const *arg) {
   if (!inited) {
     return;
   }
-  if (ack_pending) {
+  if (ack_pending || tail != head || dropped != 0) {
     cros_bt_log_kick_flush();
-    return;
   }
-  if (cros_sco_cfg_hold()) {
-    /* Drop tee backlog while SCO hold — UART TRACE already has the lines. */
-    if (tail != head || dropped) {
-      cros_bt_log_drain_ring();
-    }
-    flush_pending = 0;
-    return;
-  }
-  if (tail == head && dropped == 0) {
-    return;
-  }
-  cros_bt_log_kick_flush();
 }
 
 void cros_bt_log_init(void) {
@@ -150,9 +136,8 @@ void cros_bt_log_init(void) {
     osTimerStart(flush_id, CROS_BT_LOG_FLUSH_MS);
   }
   inited = 1;
-  TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, quiet-on-extra, "
-           "hold-pause+ack)",
-        (unsigned)CROS_BT_LOG_FLUSH_MAX);
+  TRACE(0, "[cros_log] init (TOTA tee ON, flush max=%u, sco_throttle=%u)",
+        (unsigned)CROS_BT_LOG_FLUSH_MAX, (unsigned)CROS_BT_LOG_FLUSH_MAX_SCO);
 }
 
 void cros_bt_log_set_quiet(int on) {
@@ -160,7 +145,6 @@ void cros_bt_log_set_quiet(int on) {
   quiet = on ? 1 : 0;
   if (was != quiet) {
     TRACE(0, "[cros_log] quiet=%u (extra media SPP throttle)", (unsigned)quiet);
-    /* One tee line so the phone sees the transition even as we go quiet. */
     if (inited) {
       cros_bt_logf("[cros_log] quiet=%u", (unsigned)quiet);
     }
@@ -175,23 +159,22 @@ void cros_bt_logf(const char *fmt, ...) {
   if (!inited) {
     return;
   }
-  /* Under SCO hold, UART-only — do not fill the SPP ring. */
-  if (cros_sco_cfg_hold()) {
-    return;
-  }
+  /* Always enqueue — SCO-up only throttles flush rate, never drops on hold. */
   va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
   buf[sizeof(buf) - 1] = '\0';
 
-  uint8_t next = (uint8_t)((head + 1u) % CROS_BT_LOG_DEPTH);
-  if (next == tail) {
-    dropped++;
-    return;
+  {
+    uint8_t next = (uint8_t)((head + 1u) % CROS_BT_LOG_DEPTH);
+    if (next == tail) {
+      dropped++;
+      return;
+    }
+    strncpy(ring[head].line, buf, CROS_BT_LOG_LINE_MAX - 1);
+    ring[head].line[CROS_BT_LOG_LINE_MAX - 1] = '\0';
+    head = next;
   }
-  strncpy(ring[head].line, buf, CROS_BT_LOG_LINE_MAX - 1);
-  ring[head].line[CROS_BT_LOG_LINE_MAX - 1] = '\0';
-  head = next;
 }
 
 void cros_bt_logf_stat(const char *fmt, ...) {
@@ -200,22 +183,21 @@ void cros_bt_logf_stat(const char *fmt, ...) {
   if (!inited || quiet) {
     return;
   }
-  if (cros_sco_cfg_hold()) {
-    return;
-  }
   va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
   buf[sizeof(buf) - 1] = '\0';
 
-  uint8_t next = (uint8_t)((head + 1u) % CROS_BT_LOG_DEPTH);
-  if (next == tail) {
-    dropped++;
-    return;
+  {
+    uint8_t next = (uint8_t)((head + 1u) % CROS_BT_LOG_DEPTH);
+    if (next == tail) {
+      dropped++;
+      return;
+    }
+    strncpy(ring[head].line, buf, CROS_BT_LOG_LINE_MAX - 1);
+    ring[head].line[CROS_BT_LOG_LINE_MAX - 1] = '\0';
+    head = next;
   }
-  strncpy(ring[head].line, buf, CROS_BT_LOG_LINE_MAX - 1);
-  ring[head].line[CROS_BT_LOG_LINE_MAX - 1] = '\0';
-  head = next;
 }
 
 void cros_bt_logf_ack(const char *fmt, ...) {
