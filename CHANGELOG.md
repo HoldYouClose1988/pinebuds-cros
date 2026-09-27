@@ -6,6 +6,27 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.65] — 2026-09-27
+
+### App copy + poor-ear warn (CROS Control **0.4.2**) + `phone=` on status
+- Help / FAQ, disclaimer, and knob hints rewritten for a general reader (warmer,
+  same safety facts). Extra FAQ: crash reseat order, enable cool-down wait, mix
+  ceiling / howl history. Phone-call FAQ left out until ear-tested.
+- **Poor-ear Apply warning** no longer hardcodes Left as master. It warns when
+  poor equals the **phone-connected** side (from `cros status` `phone=LEFT|RIGHT`,
+  or Left by default on older fw).
+- Firmware: `cros status` ACK adds `phone=` (physical side of the bud answering
+  SPP) and reports `fw=0.3.65`.
+
+### Test
+1. Install app 0.4.2. On fw ≥0.3.65, Connect → Refresh status → banner/knobs;
+   log line includes `phone=LEFT` (typical).
+2. Select poor = that same side → Apply → warning names that side (not always Left).
+3. Help FAQ matches rewritten copy; pending call FAQ absent.
+
+Flash zip for 0.3.65 ships when rebuilt; app 0.4.2 works on **0.3.64** with the
+Left default until `phone=` is present.
+
 ## [0.3.64] — 2026-09-27
 
 ### Firmware — `cros status` one-shot + app polish (v0.4.0)

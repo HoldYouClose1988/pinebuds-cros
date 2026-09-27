@@ -22,6 +22,7 @@
 #include "cros_tws.h"
 
 #include "app_ibrt_customif_cmd.h"
+#include "app_tws_if.h"
 #include "cmsis_os.h"
 
 #if defined(NEW_NV_RECORD_ENABLED)
@@ -502,14 +503,17 @@ static void cros_cfg_run_pending(void) {
     return;
   }
   if (strncmp(p, "cros status", 11) == 0) {
-    /* One-shot status for the phone UI — no continuous log tee required. */
+    /* One-shot status for the phone UI — no continuous log tee required.
+     * phone= = physical side of THIS bud (the one answering SPP = usually
+     * IBRT master). App warns if poor is set to that same side. */
     CROS_LOG_ACK(0,
                  "[cros_cfg] status enabled=%u poor=%s mix=%ddB bass=%d "
-                 "treble=%d sco=%u a2dp=%u noise=%u fw=0.3.64",
+                 "treble=%d sco=%u a2dp=%u noise=%u phone=%s fw=0.3.65",
                  cros_tws_is_enabled() ? 1u : 0u,
                  g_poor_is_right ? "RIGHT" : "LEFT", (int)g_mix_db,
                  (int)g_bass_db, (int)g_treble_db, (unsigned)g_vol,
-                 (unsigned)g_a2dp, (unsigned)g_noise);
+                 (unsigned)g_a2dp, (unsigned)g_noise,
+                 app_tws_is_right_side() ? "RIGHT" : "LEFT");
     return;
   }
   if (strncmp(p, "cros set", 8) == 0) {

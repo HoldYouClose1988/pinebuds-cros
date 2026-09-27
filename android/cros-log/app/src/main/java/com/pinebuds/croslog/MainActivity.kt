@@ -53,6 +53,8 @@ class MainActivity : AppCompatActivity() {
     private var bicrosOn: Boolean? = null
     private var knobsSummary: String = "—"
     private var lastSavedNote: String = "—"
+    /** Physical side of the phone-connected bud (IBRT master). Null until known. */
+    private var phoneConnectedSide: String? = null
 
     private val scoReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -182,6 +184,21 @@ class MainActivity : AppCompatActivity() {
     private fun poorSide(): String =
         if (binding.poorLeft.isChecked) "left" else "right"
 
+    private fun poorSideLabel(): String =
+        if (binding.poorLeft.isChecked) {
+            getString(R.string.side_left)
+        } else {
+            getString(R.string.side_right)
+        }
+
+    /** Phone-connected ear (master). Default Left until status reports otherwise. */
+    private fun phoneSideLabel(): String =
+        when (phoneConnectedSide?.lowercase(Locale.US)) {
+            "right" -> getString(R.string.side_right)
+            "left" -> getString(R.string.side_left)
+            else -> getString(R.string.side_left)
+        }
+
     private fun refreshKnobLabels() {
         binding.mixLabel.text = "Local ear mix ${mixDb()} dB"
         binding.bassLabel.text = "Bass ${bassDb()} dB"
@@ -195,10 +212,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onApplyClicked() {
-        if (binding.poorLeft.isChecked) {
+        val poor = poorSideLabel()
+        if (poor.equals(phoneSideLabel(), ignoreCase = true)) {
             AlertDialog.Builder(this)
                 .setTitle(R.string.poor_warn_title)
-                .setMessage(R.string.poor_warn_body)
+                .setMessage(getString(R.string.poor_warn_body, poor))
                 .setPositiveButton(R.string.poor_warn_apply) { _, _ -> sendCfgSet() }
                 .setNegativeButton(R.string.poor_warn_cancel, null)
                 .show()
@@ -422,6 +440,7 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.text = getString(R.string.status_idle)
         setConnectChecked(false)
         bicrosOn = null
+        phoneConnectedSide = null
         renderStatusBanner()
         if (userMessage != null) {
             appendDevLog(userMessage)
@@ -479,6 +498,7 @@ class MainActivity : AppCompatActivity() {
                     binding.statusText.text = getString(R.string.status_idle)
                     setConnectChecked(false)
                     bicrosOn = null
+                    phoneConnectedSide = null
                     renderStatusBanner()
                 }
                 break
@@ -537,6 +557,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        maybeUpdatePhoneSide(line)
         if (line.contains("[cros_cfg] NV save")) {
             lastSavedNote = "Saved on buds"
             toast("Saved on buds")
@@ -558,6 +579,24 @@ class MainActivity : AppCompatActivity() {
             }
         }
         renderStatusBanner()
+    }
+
+    private fun maybeUpdatePhoneSide(line: String) {
+        Regex("""\bphone=(RIGHT|LEFT)\b""").find(line)?.groupValues?.getOrNull(1)?.let {
+            phoneConnectedSide = it.lowercase(Locale.US)
+            return
+        }
+        // Support-log side probe from the bud answering SPP (phone-connected).
+        val sideProbe = Regex("""\[cros_tws] side@\S+ left=(\d) right=(\d)""").find(line)
+        if (sideProbe != null) {
+            val left = sideProbe.groupValues[1] == "1"
+            val right = sideProbe.groupValues[2] == "1"
+            phoneConnectedSide = when {
+                left && !right -> "left"
+                right && !left -> "right"
+                else -> phoneConnectedSide
+            }
+        }
     }
 
     private fun renderStatusBanner() {

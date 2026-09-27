@@ -23,7 +23,7 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.64](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.64)** + app **0.4.0** |
+| **Flash** | **[v0.3.64](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.64)** + app **0.4.2** (fw **0.3.65** source ready — `phone=` on status) |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
@@ -33,11 +33,11 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 | **SCO mSBC BiCROS (v0.3.61 baseline)** | ≈ **140 ms** | **Product baseline** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.64 + app 0.4.0)
+## Current status (v0.3.65 source + app 0.4.2; flash still v0.3.64)
 
-**Audio baseline = v0.3.61.** **v0.3.63** NV knobs. **v0.3.64** `cros status` +
-polished **CROS Control 0.4.0** (disclaimer, status banner, support log off by
-default).
+**Audio baseline = v0.3.61.** **v0.3.63** NV knobs. **v0.3.64** `cros status`.
+**App 0.4.2** warmer Help/FAQ + poor-ear warn uses phone-connected side.
+**v0.3.65** (source) adds `phone=` to status — flash when next package is built.
 
 | Mode | Status |
 |------|--------|
@@ -81,6 +81,7 @@ default).
 27. **v0.3.62** — Cue PASS confirmed; 75 s hold-escape vs stuck NOT_YET
 28. **v0.3.63** — Knobs (incl. poor side) persist in bud NV + app confirm
 29. **v0.3.64** — `cros status` + CROS Control 0.4.0 (status banner, log hidden)
+30. **v0.3.65** — `phone=` on status + CROS Control 0.4.2 (copy rewrite, smart poor warn)
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
