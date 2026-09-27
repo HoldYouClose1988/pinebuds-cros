@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
             sendTotaString("cros get")
             sendStatus()
         }
-        binding.aboutButton.setOnClickListener { showDisclaimer(force = true) }
+        binding.helpButton.setOnClickListener { showHelp() }
         binding.connectSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressConnectCallback) return@setOnCheckedChangeListener
             if (checked) {
@@ -125,18 +125,35 @@ class MainActivity : AppCompatActivity() {
 
     private fun maybeShowFirstRunDisclaimer() {
         if (!prefs().getBoolean(PREF_DISCLAIMER_OK, false)) {
-            showDisclaimer(force = false)
+            showDisclaimer()
         }
     }
 
-    private fun showDisclaimer(force: Boolean) {
+    /** First launch only — not shown again after I understand. */
+    private fun showDisclaimer() {
         AlertDialog.Builder(this)
             .setTitle(R.string.disclaimer_title)
             .setMessage(R.string.disclaimer_body)
             .setPositiveButton(R.string.disclaimer_accept) { _, _ ->
                 prefs().edit().putBoolean(PREF_DISCLAIMER_OK, true).apply()
             }
-            .setCancelable(force)
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun showHelp() {
+        val scroll = android.widget.ScrollView(this)
+        val text = android.widget.TextView(this).apply {
+            text = getString(R.string.faq_body)
+            setPadding(48, 32, 48, 32)
+            textSize = 14f
+            setTextIsSelectable(true)
+        }
+        scroll.addView(text)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.faq_title)
+            .setView(scroll)
+            .setPositiveButton(android.R.string.ok, null)
             .show()
     }
 

@@ -23,10 +23,10 @@
             android:textStyle="bold" />
 
         <Button
-            android:id="@+id/aboutButton"
+            android:id="@+id/helpButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/about"
+            android:text="@string/help"
             style="?attr/materialButtonOutlinedStyle" />
     </LinearLayout>
 
