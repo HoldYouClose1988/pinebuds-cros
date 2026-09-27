@@ -23,26 +23,26 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.55](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.55)** |
+| **Flash** | **[v0.3.56](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.56)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.55)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.56)** | ≈ **140 ms** | **Current product path** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.55)
+## Current status (v0.3.56)
 
 | Mode | Status |
 |------|--------|
 | **Stock TWS** | Upstream OpenPineBuds when CROS is off |
 | **SCO BiCROS** | **Ear PASS** — mSBC 16 kHz, ~140 ms, CROS + sidetone mix |
-| **App knobs** | Mix / EQ / SCO DAC / noise / poor via [android/cros-log](android/cros-log/) (v0.3.7) |
+| **App knobs** | Mix / EQ / SCO DAC / noise / poor via [android/cros-log](android/cros-log/) (v0.3.8) |
 | **Extra L2CAP CROS** | v0.3.27 freeze (~330 ms) — keep as fallback |
 | **POOR/TX as IBRT master** | CROS **refused** (known crash) — poor side must be TWS **slave** |
-| **Phone / tablet volume** | App **Volume** slider (`vol=0..15`) or **bud volume keys** |
+| **Phone / tablet volume** | **Rocker** → BiCROS SCO DAC while CROS on; music (A2DP) when off |
 | **Phone logs** | TOTA SPP + [android/cros-log](android/cros-log/) |
 | **Industrial damp** | Not implemented (design only) |
 
@@ -68,6 +68,7 @@ Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next
 18. **v0.3.53** — Wait for real SCO CLOSED (soft 4s×3); defer ENABLE while closing
 19. **v0.3.54** — Default vol 11 + noise 3 (ear: 13 was amplifying SCO floor)
 20. **v0.3.55** — SCO DAC default 8; Music (A2DP) knob; label fix
+21. **v0.3.56** — Phone volume rocker → BiCROS SCO DAC while CROS on
 
 **v1.0 note:** configurable poor side must keep the IBRT-master×TX guard — see
 [architecture-cros.md](docs/architecture-cros.md#hard-constraint-v0333--must-keep-for-v10).
@@ -76,16 +77,17 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.55.zip`](flash-packages/pinebuds-cros-v0.3.55.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip: [`flash-packages/pinebuds-cros-v0.3.56.zip`](flash-packages/pinebuds-cros-v0.3.56.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
 **Product path is in.** Ear-tuned BiCROS level is **SCO DAC 8** + noise 3
-(call DAC gain). **Music loudness = phone volume rocker** (AVRCP Absolute
-Volume) — no app A2DP slider. Restart works; slow on/off is the SCO method.
+(call DAC gain). **While BiCROS is on, the phone volume rocker drives SCO DAC**
+(AVRCP Absolute Volume → `sco=`). With CROS off, the rocker is music again.
+Restart works; slow on/off is the SCO method.
 See [anc-vs-bicros-noise.md](docs/anc-vs-bicros-noise.md).
 
-Flash **[v0.3.55](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.55)**.
+Flash **[v0.3.56](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.56)**.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)

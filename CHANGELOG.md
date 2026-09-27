@@ -6,6 +6,25 @@ Format: version, date (UTC), then user-facing changes.
 **This project is experimental DIY CROS firmware — not a hearing aid or PPE.**
 Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
+## [0.3.56] — 2026-09-27
+
+### Firmware + app — phone volume rocker drives BiCROS SCO DAC
+- **While BiCROS is on**, AVRCP Absolute Volume (phone rocker / system
+  volume) maps to **SCO DAC** on the good ear (`sco=` / `hfp_vol`), not
+  A2DP music. Same 0..15 table as before.
+- Still stores A2DP NV so music after CROS-off matches the rocker.
+- Logs: `[cros_cfg] absvol … sco=N a2dp=N` — app slider tracks via the
+  existing `sco=` parse.
+- Defaults unchanged: sco=8, noise=3.
+
+### Test
+1. Flash both — `init v0.3.56`. Enable BiCROS (quad-tap).
+2. With Capture on, press phone volume up/down — expect `absvol` lines and
+   audible BiCROS level change (not just music).
+3. SCO DAC seekbar in the app should follow. noise= still independent.
+4. Disable CROS, play music — rocker should control music again.
+5. Optional: install android/cros-log **0.3.8** for updated hint copy.
+
 ## [0.3.55] — 2026-09-27
 
 ### Firmware + app — SCO DAC default 8; Music (A2DP) knob

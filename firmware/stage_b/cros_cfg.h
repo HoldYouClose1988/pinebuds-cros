@@ -38,6 +38,13 @@ int cros_cfg_vol(void);
 int cros_cfg_a2dp(void);
 int cros_cfg_noise(void);
 
+/*
+ * Phone AVRCP Absolute Volume while BiCROS is on — dest_vol is
+ * TGT_VOLUME_LEVEL_* (same as a2dp_volume_set). Maps to sco=0..15 and
+ * applies HFP/SCO DAC on the good ear.
+ */
+void cros_cfg_on_abs_volume(int tgt_level);
+
 /* Soft EQ + optional noise gate on SCO PCM (good ear). */
 void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len);
 

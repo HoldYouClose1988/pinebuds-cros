@@ -458,6 +458,46 @@ int cros_cfg_vol(void) { return (int)g_vol; }
 int cros_cfg_a2dp(void) { return (int)g_a2dp; }
 int cros_cfg_noise(void) { return (int)g_noise; }
 
+void cros_cfg_on_abs_volume(int tgt_level) {
+  int user;
+  uint8_t next;
+
+  if (!cros_tws_is_enabled()) {
+    return;
+  }
+  /*
+   * a2dp_volume_set() passes TGT_VOLUME_LEVEL_* (MUTE=1, LEVEL_0=2 … 15=17).
+   * Our sco= / a2dp= UI is 0..15 (same mapping as hfp_volume_get: tgt-2).
+   * Mirror into both: rocker drives BiCROS SCO now; a2dp= stays aligned for
+   * music after CROS off (NV write is in a2dp_volume_local_set caller).
+   */
+  if (tgt_level <= 1) {
+    user = 0;
+  } else {
+    user = tgt_level - 2;
+  }
+  if (user < (int)CROS_VOL_MIN) {
+    user = (int)CROS_VOL_MIN;
+  }
+  if (user > (int)CROS_VOL_MAX) {
+    user = (int)CROS_VOL_MAX;
+  }
+  next = (uint8_t)user;
+  if (next == g_vol && next == g_a2dp) {
+    /* Still re-apply DAC — phone may re-send same step after focus change. */
+    if (!cros_tws_is_poor_side()) {
+      cros_sco_set_hfp_volume((int)g_vol);
+    }
+    return;
+  }
+  g_vol = next;
+  g_a2dp = next;
+  if (!cros_tws_is_poor_side()) {
+    cros_sco_set_hfp_volume((int)g_vol);
+  }
+  log_status("absvol");
+}
+
 void cros_cfg_process_sco_pcm(uint8_t *buf, uint32_t len) {
   int16_t *s;
   uint32_t n;

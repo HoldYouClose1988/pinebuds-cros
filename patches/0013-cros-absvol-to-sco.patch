@@ -1,0 +1,36 @@
+diff --git a/services/bt_app/app_a2dp.cpp b/services/bt_app/app_a2dp.cpp
+index ff8f599..0f088a3 100644
+--- a/services/bt_app/app_a2dp.cpp
++++ b/services/bt_app/app_a2dp.cpp
+@@ -50,6 +50,10 @@
+ 
+ #include "app_bt.h"
+ #include "app_bt_media_manager.h"
++#if defined(CROS_STAGE_B)
++#include "cros_cfg.h"
++#include "cros_tws.h"
++#endif
+ #include "apps.h"
+ #include "bt_drv_interface.h"
+ #include "bt_drv_reg_op.h"
+@@ -4314,6 +4318,20 @@ int a2dp_volume_set(enum BT_DEVICE_ID_T id, uint8_t vol) {
+     }
+   }
+ 
++  /*
++   * BiCROS: phone volume rocker (AVRCP Absolute Volume) drives SCO DAC on
++   * the good ear -- music A2DP is not the active path. Still store a2dp_vol
++   * so post-CROS music matches the rocker position.
++   */
++#if defined(CROS_STAGE_B)
++  if (cros_tws_is_enabled()) {
++    cros_cfg_on_abs_volume(dest_vol);
++    a2dp_volume_local_set(id, dest_vol);
++    TRACE(2, "cros absvol -> sco tgt=%d", dest_vol);
++    return (vol);
++  }
++#endif
++
+   a2dp_volume_local_set(id, dest_vol);
+   if (app_audio_manager_a2dp_is_active(id)) {
+     app_audio_manager_ctrl_volume(APP_AUDIO_MANAGER_VOLUME_CTRL_SET, dest_vol);

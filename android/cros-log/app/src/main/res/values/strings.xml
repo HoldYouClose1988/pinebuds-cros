@@ -17,10 +17,10 @@
     <string name="connect_first">Connect first</string>
     <string name="sco_start">Phone SCO on</string>
     <string name="sco_stop">Phone SCO off</string>
-    <string name="sco_hint">Reference only — starts phone HFP SCO. BiCROS level is SCO DAC gain (or bud keys while CROS is on).</string>
+    <string name="sco_hint">Reference only — starts phone HFP SCO. BiCROS level is the phone volume rocker (or SCO DAC slider) while CROS is on.</string>
     <string name="advanced_title">Advanced</string>
     <string name="knobs_title">BiCROS</string>
-    <string name="knobs_hint">Connect required. Mix = local good-ear sidetone (−30…−12 dB). SCO DAC gain = contralateral SCO playback 0–15 (BiCROS only — not music). Music loudness is the phone volume rocker (AVRCP Absolute Volume). Noise = soft gate on SCO hiss (0=off). Keep good ear as IBRT master.</string>
+    <string name="knobs_hint">Connect required. Mix = local good-ear sidetone (−30…−12 dB). While BiCROS is on, the phone volume rocker drives SCO DAC (0–15). With CROS off, the rocker is music (A2DP). Noise = soft gate on SCO hiss (0=off). Keep good ear as IBRT master.</string>
     <string name="poor_side_label">Poor side (mic / TX)</string>
     <string name="poor_right">RIGHT</string>
     <string name="poor_left">LEFT</string>
