@@ -23,17 +23,22 @@ Ear-validated on hardware:
 | **Shape** | Poor mic → good speaker; good mic mixed locally (BiCROS) |
 | **Knobs (v0.3.48)** | App: mix / EQ / volume / noise / poor side over TOTA |
 | **Usability** | “Good quality phone call” sound, great latency, **mixing confirmed** |
-| **Flash** | **[v0.3.62](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.62)** |
+| **Flash** | **[v0.3.61 baseline](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)** |
 
 Write-up: [CHANGELOG](CHANGELOG.md) · [latency scorecard](docs/latency-and-next.md) ·
 [next steps](docs/latency-and-next.md#where-we-are--suggested-next-2026-09-26).
 
 | Path | Clap (ear) | Role |
 |------|------------|------|
-| **SCO mSBC BiCROS (v0.3.62)** | ≈ **140 ms** | **Current product path** |
+| **SCO mSBC BiCROS (v0.3.61 baseline)** | ≈ **140 ms** | **Product baseline** |
 | Extra L2CAP (v0.3.27) | ≈ **322–330 ms** | Legacy / fallback |
 
-## Current status (v0.3.62)
+## Current status (v0.3.61 baseline)
+
+**SCO BiCROS baseline = [v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61).**
+Ear-validated: BiCROS ~140 ms, status cues, phone A2DP before enable and after
+disable. Flaky teardown / SPP under SCO is accepted on this closed-stack hack.
+v0.3.62 (hold-escape) is optional insurance only — not required for baseline.
 
 | Mode | Status |
 |------|--------|
@@ -83,20 +88,22 @@ Default mapping: **RIGHT = poor (mic / TX)**, **LEFT = good (speaker / RX)**.
 Quad-tap toggles CROS (needs TWS link). **Poor side must not be IBRT master**
 (keep LEFT as master with default mapping).
 
-Latest zip: [`flash-packages/pinebuds-cros-v0.3.62.zip`](flash-packages/pinebuds-cros-v0.3.62.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
+Latest zip (baseline): [`flash-packages/pinebuds-cros-v0.3.61.zip`](flash-packages/pinebuds-cros-v0.3.61.zip) · [CHANGELOG](CHANGELOG.md) · [VERSION](VERSION)
 
 ## Looking for review / next work
 
-**Product path is in.** Ear-tuned BiCROS level is **SCO DAC 8** + noise 3
-(call DAC gain). **While BiCROS is on, the phone volume rocker drives SCO DAC**
-(AVRCP Absolute Volume → `sco=` / `hfp_vol`). With CROS off, the rocker is music again.
-**v0.3.58** re-enables without case reset by waiting for HCI disconnect (or a
-force cool-down). **Disable/re-enable can take ~15–40 s — intentional.**
-**v0.3.61–62** status cues are ear-PASS. SPP logging under SCO remains flaky;
-stuck NOT_YET after a wedge gets a **75 s hold-escape** floor — not 100%, and
-that is accepted for this peer-SCO hack.
+**SCO BiCROS baseline is v0.3.61** — good enough: BiCROS works, phone audio
+works around it, cues work, ~140 ms on ~$70 buds around closed firmware.
+Residual flake is accepted; we are not chasing 100% on peer-SCO.
 
-Flash **[v0.3.62](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.62)**.
+**Next:** polish the Android app · finish Absolute Volume (DAC vs perceived
+loudness) · then installer.
+
+Ear-tuned BiCROS level is **SCO DAC 8** + noise 3. While BiCROS is on, the
+phone volume rocker drives SCO DAC. Disable/re-enable can take ~15–40 s.
+
+Flash **[v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61)**.
+Optional: [v0.3.62](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.62) hold-escape only.
 Fallback: **[v0.3.27](flash-packages/pinebuds-cros-v0.3.27.zip)** extra-only.
 
 ## How it works (short)

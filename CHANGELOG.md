@@ -8,25 +8,17 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 
 ## [0.3.62] — 2026-09-27
 
-### Firmware — cue PASS + hold-escape floor
-- **Ear PASS (093040 / v0.3.61):** all status cues audible — ENABLED, DISABLED,
-  READY, NOT_YET, OPEN_FAIL. Cue-hold path confirmed
-  (`cue hold — voice stays up for DISABLED`). SCO recoverable. **Cues done.**
-- **Residual (accepted):** SPP/logging under SCO is hit-or-miss (`log_hold` +
-  peer SPP drop). After logging died, re-enable stayed on **NOT_YET** (teardown
-  hold never cleared) — no crash. This peer-SCO path will not hit 100%.
-- **Floor:** absolute **75 s hold-escape** — if still in closing / await-HCI /
-  cool-down, force-clear and READY (deferred ENABLE preserved). Not a claim of
-  reliability; stops infinite NOT_YET when timers stall.
+### Optional — 75 s hold-escape (not baseline)
+**Baseline remains [v0.3.61](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.61).**
+v0.3.62 only adds an absolute hold-escape if teardown/cool-down stalls
+(infinite NOT_YET). Likely a closed-stack hang under the flags — another
+band-aid, not a claim of reliability. Flash only if you want that insurance.
 
-### Test
-1. Flash — `init v0.3.62`. Cues should match v0.3.61.
-2. Optional: if stuck on NOT_YET, wait ≤75 s for READY / auto-rearm rather than
-   case reset.
-
-## [0.3.61] — 2026-09-27
+## [0.3.61] — 2026-09-27 — **SCO BiCROS baseline**
 
 ### Firmware — DISABLED / NOT_YET cues audible again
+**Product baseline.** Ear PASS (093040): all status cues; BiCROS ~140 ms;
+phone A2DP before enable / after disable. Residual SCO/SPP flake accepted.
 - **Ear PASS (091029 / v0.3.60):** ENABLED SCO-PCM beep good; READY / OPEN_FAIL
   stock media good; SCO recoverable after OPEN_FAIL — **keep those**.
 - **Ear miss:** `[cros_cue] DISABLED (sco-pcm)` and `NOT_YET (sco-pcm)` fired but
