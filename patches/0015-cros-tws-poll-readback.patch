@@ -1,0 +1,66 @@
+diff --git a/platform/drivers/bt/best2300p/bt_drv_reg_op.cpp b/platform/drivers/bt/best2300p/bt_drv_reg_op.cpp
+index fbd0c7c..2ec4792 100644
+--- a/platform/drivers/bt/best2300p/bt_drv_reg_op.cpp
++++ b/platform/drivers/bt/best2300p/bt_drv_reg_op.cpp
+@@ -1702,6 +1702,45 @@ void btdrv_reg_op_set_private_tws_poll_interval(uint16_t poll_interval,
+   }
+ }
+ 
++void btdrv_reg_op_get_private_tws_poll_interval(uint16_t *poll_interval,
++                                                uint16_t *poll_interval_in_sco) {
++  if (poll_interval) {
++    *poll_interval = 0xffff;
++  }
++  if (poll_interval_in_sco) {
++    *poll_interval_in_sco = 0xffff;
++  }
++  if (!dbg_bt_setting_addr) {
++    return;
++  }
++  if (poll_interval) {
++    *poll_interval = *(volatile uint16_t *)(dbg_bt_setting_addr + 0x40);
++  }
++  if (poll_interval_in_sco) {
++    *poll_interval_in_sco = *(volatile uint16_t *)(dbg_bt_setting_addr + 0x42);
++  }
++}
++
++uint8_t btdrv_reg_op_get_tws_link_duration(void) {
++  if (!dbg_bt_setting_addr) {
++    return 0xff;
++  }
++  return (uint8_t)(*(volatile uint16_t *)(dbg_bt_setting_addr + 0x44) & 0xff);
++}
++
++uint16_t bt_drv_reg_op_get_tpoll(uint8_t linkid) {
++  uint32_t acl_evt_ptr = 0;
++
++  if (!ld_acl_env_addr || linkid >= 3) {
++    return 0xffff;
++  }
++  acl_evt_ptr = *(uint32_t *)(ld_acl_env_addr + linkid * 4);
++  if (!acl_evt_ptr) {
++    return 0xffff;
++  }
++  return *(uint16_t *)(acl_evt_ptr + 0xb8);
++}
++
+ void btdrv_reg_op_set_tws_link_duration(uint8_t slot_num) {
+   BT_DRV_REG_OP_ENTER();
+   // dbg_setting address
+diff --git a/platform/drivers/bt/bt_drv_reg_op.h b/platform/drivers/bt/bt_drv_reg_op.h
+index 4a2e706..b54be8d 100644
+--- a/platform/drivers/bt/bt_drv_reg_op.h
++++ b/platform/drivers/bt/bt_drv_reg_op.h
+@@ -220,6 +220,11 @@ void bt_drv_reg_op_ibrt_env_reset(void);
+ void btdrv_reg_op_set_private_tws_poll_interval(uint16_t poll_interval, uint16_t poll_interval_in_sco);
+ void btdrv_reg_op_enable_private_tws_schedule(bool enable);
+ void btdrv_reg_op_set_tws_link_duration(uint8_t slot_num);
++/* Read-back for TWS ACL poll diagnostics (CROS). Returns 0xffff / 0xff if unavailable. */
++void btdrv_reg_op_get_private_tws_poll_interval(uint16_t *poll_interval,
++                                                uint16_t *poll_interval_in_sco);
++uint8_t btdrv_reg_op_get_tws_link_duration(void);
++uint16_t bt_drv_reg_op_get_tpoll(uint8_t linkid);
+ void bt_drv_reg_op_decrease_tx_pwr_when_reconnect(bool enable);
+ void bt_drv_reg_op_controller_mem_log_config(void);
+ void bt_drv_reg_op_clear_ibrt_snoop_status(void);

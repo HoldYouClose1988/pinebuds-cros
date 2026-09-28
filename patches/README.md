@@ -21,10 +21,13 @@ Keep patches minimal and feature-scoped.
 | `0012-cros-ibrt-cfg-cmd.patch` | Peer sync `APP_IBRT_CUSTOM_CMD_CROS_CFG` |
 | `0013-cros-absvol-to-sco.patch` | While BiCROS on, AVRCP Absolute Volume → SCO DAC (`cros_cfg_on_abs_volume`) |
 | `0014-cros-sco-btevent-teardown.patch` | `BTEVENT_SCO_DISCONNECT` → `cros_sco_on_hci_disconnect` (peer SCO teardown) |
+| `0015-cros-tws-poll-readback.patch` | Read-only getters for private TWS poll / link duration / per-link tpoll |
 
 Sources:
 - Stage A: `firmware/stage_a/` → `apps/cros_loopback/`
-- Stage B: `firmware/stage_b/` → `apps/cros_tws/` (`cros_tws` + `cros_besaud_extra` + `cros_bt_log` + `cros_cfg`)
+- Stage B: `firmware/stage_b/` → `apps/cros_tws/` (`cros_tws` + `cros_besaud_extra` + `cros_bt_log` + `cros_cfg` + `cros_link_diag`)
 
 Phone log sink + knobs (no new patch beyond 0009): `TOTA=1 ./scripts/build.sh` registers stock
 TOTA SPP (RFCOMM 12). See [docs/archive/bt-log-sink.md](../docs/archive/bt-log-sink.md).
+
+TWS poll lead: [docs/archive/tws-link-tuning.md](../docs/archive/tws-link-tuning.md).

@@ -9,6 +9,7 @@ docs — see [../README.md](../README.md).
 | [cros-transport.md](cros-transport.md) | Extra L2CAP / SCO transport bring-up |
 | [bt-log-sink.md](bt-log-sink.md) | TOTA/SPP log-sink investigation |
 | [anc-vs-bicros-noise.md](anc-vs-bicros-noise.md) | “Clean link” = HFP DAC gain (resolved) |
+| [tws-link-tuning.md](tws-link-tuning.md) | Closed-lib lead: TWS poll / OTA tighten (Task B diag) |
 | [feature-cros.md](feature-cros.md) | Old feature stub (frozen at v0.3.45 wording) |
 | [public-git.md](public-git.md) | Public-repo commit hygiene |
 

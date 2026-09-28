@@ -28,6 +28,7 @@
 #include "cmsis_os.h"
 #include "cros_bt_log.h"
 #include "cros_cue.h"
+#include "cros_link_diag.h"
 #include "cros_tws.h"
 #include "string.h"
 
@@ -381,12 +382,15 @@ static void cros_sco_notify(enum sco_event_enum event, void *pdata,
 #if CROS_SCO_ALONE
 #if CROS_SCO_MEDIA
     CROS_LOG_ACK(0, "[cros_sco] OPENED (alone + media — voice + BiCROS)");
+    cros_link_diag_log("sco-opened");
     cros_sco_voice_start();
 #else
     CROS_LOG_ACK(0, "[cros_sco] OPENED (alone hold — leave up until disable)");
+    cros_link_diag_log("sco-opened");
 #endif
 #else
     CROS_LOG_ACK(0, "[cros_sco] OPENED (peer SCO up — proof ok, tearing down)");
+    cros_link_diag_log("sco-opened");
     if (proof_timer) {
       osTimerStop(proof_timer);
       osTimerStart(proof_timer, CROS_SCO_PROOF_HOLD_MS);

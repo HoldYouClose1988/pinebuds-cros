@@ -16,6 +16,7 @@
 #include "cros_bt_log.h"
 #include "cros_cfg.h"
 #include "cros_lat.h"
+#include "cros_link_diag.h"
 #include "cros_sco_probe.h"
 #include "hal_trace.h"
 #include "string.h"
@@ -771,6 +772,7 @@ int cros_tws_start(void) {
 #endif
   cros_sco_probe_on_cros_enable();
   log_side_probe("enable");
+  cros_link_diag_log("enable");
   CROS_LOG(0, "[cros_tws] ENABLE extra_open=%d alone=%d",
         cros_besaud_extra_is_open() ? 1 : 0,
 #if defined(CROS_SCO_ALONE) && CROS_SCO_ALONE
@@ -798,6 +800,8 @@ int cros_tws_stop(void) {
   if (!enabled) {
     return 0;
   }
+
+  cros_link_diag_log("disable");
   enabled = false;
   if (app_tws_ibrt_tws_link_connected()) {
     tws_ctrl_send_cmd(APP_IBRT_CUSTOM_CMD_CROS_MODE, &mode, 1);
