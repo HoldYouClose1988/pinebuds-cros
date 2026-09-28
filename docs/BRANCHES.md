@@ -2,13 +2,21 @@
 
 | Branch | Role |
 |--------|------|
-| **`main`** / **`android`** | **Product** — Android BiCROS **v0.3.65**. Use this. |
+| **`main`** / **`android`** | **Product** — Android BiCROS (**fw v0.3.65**, flash zip **v0.3.66**). Use this. |
+| `cursor/tws-link-explore-3d85` | **Explore** — TWS poll / closed-lib diagnostics. Not a release line. |
 | `cursor/ios-coexist-3d85` | **Parked** — experimental iPhone coexist (**v0.4.0**). Not a daily driver. |
 
 ## Product = Android
 
-Flash **[v0.3.65](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.65)**.
-Pair buds to an **Android** phone. App: CROS Control from Releases / `android/cros-log`.
+Flash **[v0.3.66](https://github.com/HoldYouClose1988/pinebuds-cros/releases/tag/v0.3.66)**
+(same bin as v0.3.65 + installer + APK). Pair buds to an **Android** phone.
+App: CROS Control from the zip / `android/cros-log`.
+
+## Explore (TWS link)
+
+`cursor/tws-link-explore-3d85` has read-only poll/tpoll diagnostics and notes from
+peeking named IBRT objects. Fun / research only — do **not** ship from this
+branch or merge into `main` until something is deliberately productized.
 
 ## Why iOS is parked
 
