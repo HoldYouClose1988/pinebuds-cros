@@ -1,10 +1,15 @@
 ﻿# PineBuds Pro - BiCROS firmware + NV dumper (Windows)
+# Lives in tools/windows/ (not shipped in the flash zip).
 #
 # Dumps both buds via bestool, hashes them vs open_source.bin (if present),
 # and scans for BiCROS NV knob blobs (magic 0xC7).
 #
+# From an unzipped flash package folder (bestool.exe + open_source.bin):
+#   powershell -ExecutionPolicy Bypass -File path\to\tools\windows\Dump.ps1
+# Or copy Dump.ps1 next to bestool.exe, then:
 #   powershell -ExecutionPolicy Bypass -File .\Dump.ps1
-#   powershell -ExecutionPolicy Bypass -File .\Dump.ps1 -AnalyzeOnly -LeftBin .\backups\left.bin -RightBin .\backups\right.bin
+# Offline:
+#   .\Dump.ps1 -AnalyzeOnly -LeftBin .\backups\left.bin -RightBin .\backups\right.bin
 #
 # Zip the dump folder and send REPORT.txt + both .bin files for diagnosis.
 param(

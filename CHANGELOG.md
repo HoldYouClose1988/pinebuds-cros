@@ -11,26 +11,15 @@ Ear-validated extra-path CROS from v0.3.16+; still not a clinical product.
 [GitHub Releases](https://github.com/HoldYouClose1988/pinebuds-cros/releases).
 Bring-up journals live under [`docs/archive/`](docs/archive/).
 
-**Product = Android + v0.3.65 firmware** (current flash zip **v0.3.67** bundles
-that bin + CROS Control APK + guided installer + Dump.ps1). iPhone is not supported for
+**Product = Android + v0.3.65 firmware** (current flash zip **v0.3.66** bundles
+that bin + CROS Control APK + guided installer). iPhone is not supported for
 daily wear — [docs/iphone.md](docs/iphone.md). Parked iOS experiment: v0.4.0 branch.
 
-## [0.3.67] — 2026-09-28
+## [0.3.67] — withdrawn
 
-### Diagnostics — `Dump.ps1` (same fw binary as v0.3.65)
-- **Same Android firmware binary as v0.3.65 / v0.3.66** (`fw=` still `0.3.65`).
-- New **`Dump.ps1`**: read both buds via bestool, hash images, scan for BiCROS
-  NV knob blobs (`0xC7` magic → poor/mix/bass/treble/sco/a2dp/noise), write
-  `dumps/dump-*/REPORT.txt`.
-- `Install.ps1` menu option **[4] Dump firmware + BiCROS NV**.
-- Use when audio sounds wrong after flash — NV sco/noise often the culprit
-  (AbsVol rocker while BiCROS on persists high sco).
-
-### Test
-1. Unzip → `powershell -ExecutionPolicy Bypass -File .\Dump.ps1`
-2. Zip `dumps\dump-*` (REPORT.txt + left.bin + right.bin) and share.
-
-Flash zip: [`flash-packages/pinebuds-cros-v0.3.67.zip`](flash-packages/pinebuds-cros-v0.3.67.zip).
+Packaging-only bump with `Dump.ps1` in the flash zip — **withdrawn**. Current
+flash package remains **v0.3.66**. Diagnostics dumper lives at
+[`tools/windows/Dump.ps1`](tools/windows/Dump.ps1) (not in the zip).
 
 ## [0.4.6] — app — header / status banner layout fix
 
