@@ -194,9 +194,10 @@ while ($true) {
   Write-Host "  [1] Backup stock firmware (do this once before first custom flash)"
   Write-Host "  [2] Flash BiCROS firmware to both buds"
   Write-Host "  [3] Backup THEN flash  (recommended first time)"
-  Write-Host "  [4] Show Android APK install steps"
-  Write-Host "  [5] Re-print flashing instructions"
-  Write-Host "  [6] Exit"
+  Write-Host "  [4] Dump firmware + BiCROS NV (for diagnostics)"
+  Write-Host "  [5] Show Android APK install steps"
+  Write-Host "  [6] Re-print flashing instructions"
+  Write-Host "  [7] Exit"
   $choice = Read-Host "Choice"
 
   switch ($choice) {
@@ -220,10 +221,15 @@ while ($true) {
       Write-Host "All set. Leave both buds seated 30-60s, then pair Android." -ForegroundColor Green
       Show-ApkHelp
     }
-    "4" { Show-ApkHelp }
-    "5" { Write-FlashInstructions }
-    "6" { break }
-    default { Write-Host "Enter 1-6." -ForegroundColor Yellow }
+    "4" {
+      $dumpScript = Join-Path $Here "Dump.ps1"
+      if (-not (Test-Path $dumpScript)) { throw "Dump.ps1 missing from this folder." }
+      & $dumpScript -Port0 $Port0 -Port1 $Port1 -Bestool $bestoolPath
+    }
+    "5" { Show-ApkHelp }
+    "6" { Write-FlashInstructions }
+    "7" { break }
+    default { Write-Host "Enter 1-7." -ForegroundColor Yellow }
   }
   Write-Host ""
 }

@@ -121,6 +121,9 @@ cp -f "$BIN_SRC" "$PKG/open_source.bin"
 copy_ps1_win "$ROOT/scripts/flash.ps1" "$PKG/flash.ps1"
 copy_ps1_win "$ROOT/scripts/backup.ps1" "$PKG/backup.ps1"
 copy_ps1_win "$INSTALL_PS1" "$PKG/Install.ps1"
+if [[ -f "$ROOT/scripts/Dump.ps1" ]]; then
+  copy_ps1_win "$ROOT/scripts/Dump.ps1" "$PKG/Dump.ps1"
+fi
 cp -f "$VERSION_FILE" "$PKG/VERSION"
 cp -f "$CHANGELOG_FILE" "$PKG/CHANGELOG.md"
 cp -f "$BESTOOL_DOC" "$PKG/BESTOOL.md"
@@ -158,9 +161,12 @@ body = (m.group(1) + m.group(2)).strip() + "\n" if m else f"## [{ver}]\n(no chan
 open(out, "w", encoding="utf-8").write(body)
 PY
 
-MANIFEST_FILES="open_source.bin bestool.exe Install.ps1 flash.ps1 backup.ps1 FLASH.md BESTOOL.md CHANGELOG.md RELEASE_NOTES.txt VERSION MANIFEST.txt SHA256SUMS NOTICE"
+MANIFEST_FILES="open_source.bin bestool.exe Install.ps1 Dump.ps1 flash.ps1 backup.ps1 FLASH.md BESTOOL.md CHANGELOG.md RELEASE_NOTES.txt VERSION MANIFEST.txt SHA256SUMS NOTICE"
 if [[ "$APK_INCLUDED" == "1" ]]; then
   MANIFEST_FILES="$MANIFEST_FILES CROScontrol.apk"
+fi
+if [[ ! -f "$PKG/Dump.ps1" ]]; then
+  MANIFEST_FILES="${MANIFEST_FILES// Dump.ps1/}"
 fi
 
 cat >"$PKG/MANIFEST.txt" <<EOF
@@ -239,6 +245,7 @@ Also see **\`BESTOOL.md\`** (Sync detail) and **\`RELEASE_NOTES.txt\`** (this ve
 | File | Purpose |
 |------|---------|
 | \`Install.ps1\` | **Guided installer** — instructions + backup/flash menu + COM detect |
+| \`Dump.ps1\` | Dump both buds + scan BiCROS NV knobs (diagnostics) |
 | \`VERSION\` | Package version (\`$VERSION\`) |
 | \`CHANGELOG.md\` | Full project changelog |
 | \`RELEASE_NOTES.txt\` | Notes for **this** version only |

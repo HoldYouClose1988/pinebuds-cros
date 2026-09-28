@@ -2,11 +2,11 @@
 
 > **DIY / own-risk — not a hearing aid or PPE.** Experimental CROS firmware.
 
-**Current:** [pinebuds-cros-v0.3.66.zip](./pinebuds-cros-v0.3.66.zip)
+**Current:** [pinebuds-cros-v0.3.67.zip](./pinebuds-cros-v0.3.67.zip)
 
 | Package | Role |
 |---------|------|
-| [pinebuds-cros-v0.3.66.zip](./pinebuds-cros-v0.3.66.zip) | **Current** (v0.3.66) |
+| [pinebuds-cros-v0.3.67.zip](./pinebuds-cros-v0.3.67.zip) | **Current** (v0.3.67) |
 | [pinebuds-cros-v0.3.61.zip](./pinebuds-cros-v0.3.61.zip) | **Audio baseline** |
 
 Each zip includes `Install.ps1` (guided flasher), `bestool.exe`, `CROScontrol.apk`,
